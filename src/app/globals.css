@@ -1,0 +1,97 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  --primary--50: #D2EEFF;
+  --primary--100: #A5DCFF;
+  --primary--200: #77CBFF;
+  --primary--300: #4ABAFF;
+  --primary--400: #1DA8FF;
+  --primary--500: #0093EF;
+  --primary--600: #0077C2;
+  --primary--700: #0066A6;
+  --primary--800: #00558A;
+  --primary--900: #00446F;
+  --primary--950: #003353;
+
+  --monochrome--50: #FFFFFF;
+  --monochrome--100: #EDEDED;
+  --monochrome--200: #DBDBDB;
+  --monochrome--300: #B6B6B6;
+  --monochrome--400: #A4A4A4;
+  --monochrome--500: #808080;
+  --monochrome--600: #6D6D6D;
+  --monochrome--700: #494949;
+  --monochrome--800: #373737;
+  --monochrome--900: #242424;
+  --monochrome--950: #000000;
+
+  --green--50: #E9FFFA;
+  --green--100: #BDFFEF;
+  --green--200: #7CFFDE;
+  --green--300: #24FFC8;
+  --green--400: #00F8BA;
+  --green--500: #00F8BA;
+  --green--600: #00CC99;
+  --green--700: #00AF83;
+  --green--800: #00926D;
+  --green--900: #007557;
+  --green--950: #005742;
+
+  --yellow--50: #FFFAD6;
+  --yellow--100: #FFF8CC;
+  --yellow--200: #FFF5B8;
+  --yellow--300: #FFF4AD;
+  --yellow--400: #FFF199;
+  --yellow--500: #FFEF85;
+  --yellow--600: #FFED70;
+  --yellow--700: #FFE53C;
+  --yellow--800: #FFDE07;
+  --yellow--900: #D2B600;
+  --yellow--950: #9D8800;
+
+  --red--50: #FCE7E7;
+  --red--100: #F9CFCF;
+  --red--200: #F7B7B7;
+  --red--300: #F49E9E;
+  --red--400: #F18686;
+  --red--500: #EE6E6E;
+  --red--600: #EB5757;
+  --red--700: #E62D2D;
+  --red--800: #CD1818;
+  --red--900: #A41313;
+  --red--950: #7B0E0E;
+
+  --blue--50: #E7E7FE;
+  --blue--100: #CECFFD;
+  --blue--200: #B6B7FC;
+  --blue--300: #9E9FFA;
+  --blue--400: #8587F9;
+  --blue--500: #6D6FF8;
+  --blue--600: #5458F7;
+  --blue--700: #272BF5;
+  --blue--800: #0B0EE2;
+  --blue--900: #090BB5;
+  --blue--950: #060988;
+}
+
+@layer base {
+  :root {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
