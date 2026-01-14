@@ -1,0 +1,5 @@
+[test]
+preload = ["./vitest.setup.ts"]
+
+[test.env]
+NODE_ENV = "test"
