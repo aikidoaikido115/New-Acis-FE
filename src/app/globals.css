@@ -91,7 +91,13 @@
 }
 
 body {
-  background: var(--background);
+  /* background: var(--background); */
+
+  /* Main Background */
+  background: linear-gradient(to bottom, #0093EF 0%, #85C7F0 100%);
+  min-height: 100vh;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sarabun), Arial, Helvetica, sans-serif;
 }
