@@ -1,13 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Camera, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { authService } from "@/services/auth.service";
-import type { RegisterRequest } from "@/types/auth";
 
 export function RegisterForm() {
   const router = useRouter();
@@ -15,9 +13,7 @@ export function RegisterForm() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>("");
-  const [success, setSuccess] = useState<string>("");
 
   const [formData, setFormData] = useState({
     username: "",
@@ -30,6 +26,30 @@ export function RegisterForm() {
     gender: "",
     role_name: "",
   });
+
+  useEffect(() => {
+    const savedData = sessionStorage.getItem('registrationData');
+    const savedImage = sessionStorage.getItem('profileImageData');
+    
+    if (savedData) {
+      const parsedData = JSON.parse(savedData);
+      setFormData({
+        username: parsedData.username || "",
+        email: parsedData.email || "",
+        first_name: parsedData.first_name || "",
+        last_name: parsedData.last_name || "",
+        nickname: parsedData.nickname || "",
+        password: parsedData.password || "",
+        confirmPassword: parsedData.password || "",
+        gender: parsedData.gender || "",
+        role_name: parsedData.role_name || "",
+      });
+    }
+    
+    if (savedImage) {
+      setProfileImage(savedImage);
+    }
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({
@@ -64,51 +84,47 @@ export function RegisterForm() {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    setSuccess("");
-    setIsLoading(true);
 
-    try {
-      if (formData.password !== formData.confirmPassword) {
-        setError("รหัสผ่านไม่ตรงกัน");
-        setIsLoading(false);
-        return;
-      }
+    if (formData.password !== formData.confirmPassword) {
+      setError("รหัสผ่านไม่ตรงกัน");
+      return;
+    }
 
-      if (formData.password.length < 8) {
-        setError("รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร");
-        setIsLoading(false);
-        return;
-      }
+    if (formData.password.length < 8) {
+      setError("รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร");
+      return;
+    }
 
-      if (!formData.gender) {
-        setError("กรุณาเลือกเพศ");
-        setIsLoading(false);
-        return;
-      }
+    if (!formData.gender) {
+      setError("กรุณาเลือกเพศ");
+      return;
+    }
 
-      const registerData: RegisterRequest = {
-        username: formData.username,
-        email: formData.email,
-        password: formData.password,
-        first_name: formData.first_name,
-        last_name: formData.last_name,
-        nickname: formData.nickname || undefined,
-        role_name: formData.role_name,
-        gender: formData.gender,
-        profile_image: profileImageFile || undefined,
+    const registrationData = {
+      username: formData.username,
+      email: formData.email,
+      password: formData.password,
+      first_name: formData.first_name,
+      last_name: formData.last_name,
+      nickname: formData.nickname,
+      role_name: formData.role_name,
+      gender: formData.gender,
+    };
+
+    sessionStorage.setItem('registrationData', JSON.stringify(registrationData));
+    
+    if (profileImageFile) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        sessionStorage.setItem('profileImageData', reader.result as string);
+        router.push("/consent");
       };
-
-      await authService.register(registerData);
-      setSuccess("ลงทะเบียนสำเร็จ! กำลังนำคุณไปยังหน้าเข้าสู่ระบบ...");
-
-      setTimeout(() => {
-        router.push("/login");
-      }, 2000);
-    } catch (err) {
-      const error = err as { message?: string };
-      setError(error.message || "ลงทะเบียนไม่สำเร็จ กรุณาลองอีกครั้ง");
-    } finally {
-      setIsLoading(false);
+      reader.readAsDataURL(profileImageFile);
+    } else if (profileImage) {
+      sessionStorage.setItem('profileImageData', profileImage);
+      router.push("/consent");
+    } else {
+      router.push("/consent");
     }
   };
 
@@ -123,13 +139,8 @@ export function RegisterForm() {
           </div>
         )}
 
-        {success && (
-          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm col-span-2">
-            {success}
-          </div>
-        )}
-
         <div className="grid grid-cols-2 gap-x-16 gap-y-3.5">
+          {/* Left Column */}
           <div className="space-y-3.5">
             <div className="space-y-1.5">
               <label className="text-sm font-normal text-gray-700">
@@ -143,7 +154,6 @@ export function RegisterForm() {
                 type="text"
                 className="h-10 border-gray-300 bg-[rgba(245,245,245,1)] text-xs text-[rgba(103,103,103,1)] placeholder:text-[rgba(103,103,103,1)]"
                 required
-                disabled={isLoading}
               />
             </div>
 
@@ -159,7 +169,6 @@ export function RegisterForm() {
                 type="text"
                 className="h-10 border-gray-300 bg-[rgba(245,245,245,1)] text-xs text-[rgba(103,103,103,1)] placeholder:text-[rgba(103,103,103,1)]"
                 required
-                disabled={isLoading}
               />
             </div>
 
@@ -174,7 +183,6 @@ export function RegisterForm() {
                 placeholder="ชื่อเล่น" 
                 type="text"
                 className="h-10 border-gray-300 bg-[rgba(245,245,245,1)] text-xs text-[rgba(103,103,103,1)] placeholder:text-[rgba(103,103,103,1)]"
-                disabled={isLoading}
               />
             </div>
 
@@ -205,7 +213,6 @@ export function RegisterForm() {
                 accept="image/*"
                 onChange={handleImageUpload}
                 className="hidden"
-                disabled={isLoading}
               />
             </div>
 
@@ -222,14 +229,12 @@ export function RegisterForm() {
                   type={showPassword ? "text" : "password"}
                   className="h-10 border-gray-300 pr-10 bg-[rgba(245,245,245,1)] text-xs text-[rgba(103,103,103,1)] placeholder:text-[rgba(103,103,103,1)]"
                   required
-                  disabled={isLoading}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                   aria-label={showPassword ? "Hide password" : "Show password"}
-                  disabled={isLoading}
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -249,7 +254,6 @@ export function RegisterForm() {
                 onChange={handleChange}
                 className="w-full h-10 border border-gray-300 rounded-md px-3 bg-[rgba(245,245,245,1)] text-xs text-[rgba(103,103,103,1)] focus:outline-none focus:ring-2 focus:ring-[#4A8B6A] focus:border-transparent"
                 required
-                disabled={isLoading}
               >
                 <option value="">เลือกตำแหน่ง</option>
                 <option value="Medical Staff">แพทย์ / พยาบาล</option>
@@ -258,6 +262,7 @@ export function RegisterForm() {
             </div>
           </div>
 
+          {/* Right Column */}
           <div className="space-y-3.5">
             <div className="space-y-1.5">
               <label className="text-sm font-normal text-gray-700">
@@ -271,7 +276,6 @@ export function RegisterForm() {
                 type="email"
                 className="h-10 border-gray-300 bg-[rgba(245,245,245,1)] text-xs text-[rgba(103,103,103,1)] placeholder:text-[rgba(103,103,103,1)]"
                 required
-                disabled={isLoading}
               />
             </div>
 
@@ -287,7 +291,6 @@ export function RegisterForm() {
                 type="text"
                 className="h-10 border-gray-300 bg-[rgba(245,245,245,1)] text-xs text-[rgba(103,103,103,1)] placeholder:text-[rgba(103,103,103,1)]"
                 required
-                disabled={isLoading}
               />
             </div>
 
@@ -306,7 +309,6 @@ export function RegisterForm() {
                     onChange={handleChange}
                     className="w-4 h-4 text-[#4A8B6A] focus:ring-[#4A8B6A] cursor-pointer"
                     required
-                    disabled={isLoading}
                   />
                   <label htmlFor="male" className="text-sm text-gray-700 cursor-pointer font-normal">
                     ชาย
@@ -321,7 +323,6 @@ export function RegisterForm() {
                     checked={formData.gender === "female"}
                     onChange={handleChange}
                     className="w-4 h-4 text-[#4A8B6A] focus:ring-[#4A8B6A] cursor-pointer"
-                    disabled={isLoading}
                   />
                   <label htmlFor="female" className="text-sm text-gray-700 cursor-pointer font-normal">
                     หญิง
@@ -336,7 +337,6 @@ export function RegisterForm() {
                     checked={formData.gender === "other"}
                     onChange={handleChange}
                     className="w-4 h-4 text-[#4A8B6A] focus:ring-[#4A8B6A] cursor-pointer"
-                    disabled={isLoading}
                   />
                   <label htmlFor="other" className="text-sm text-gray-700 cursor-pointer font-normal">
                     อื่นๆ
@@ -363,14 +363,12 @@ export function RegisterForm() {
                   type={showConfirmPassword ? "text" : "password"}
                   className="h-10 border-gray-300 pr-10 bg-[rgba(245,245,245,1)] text-xs text-[rgba(103,103,103,1)] placeholder:text-[rgba(103,103,103,1)]"
                   required
-                  disabled={isLoading}
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                   aria-label={showConfirmPassword ? "Hide password" : "Show password"}
-                  disabled={isLoading}
                 >
                   {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -382,10 +380,9 @@ export function RegisterForm() {
         <div className="pt-4 flex justify-center">
           <Button 
             type="submit"
-            className="bg-[#4A8B6A] hover:bg-[#3d7357] text-white text-base font-medium transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={isLoading}
+            className="bg-[#4A8B6A] hover:bg-[#3d7357] text-white text-base font-medium transition-colors shadow-sm"
           >
-            {isLoading ? "กำลังลงทะเบียน..." : "ลงทะเบียนเข้าใช้"}
+            ถัดไป
           </Button>
         </div>
 
