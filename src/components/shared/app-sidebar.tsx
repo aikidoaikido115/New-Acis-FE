@@ -86,7 +86,7 @@ export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
 			)}
 
 			<aside
-				className={`fixed left-0 top-0 z-50 h-full w-72 bg-linear-to-b from-[#0B84EA] to-[#4AA3F5] px-4 py-6 text-white transition-transform duration-300 lg:translate-x-0 ${
+				className={`fixed left-0 top-0 z-40 h-full w-72 bg-linear-to-b from-[#0B84EA] to-[#4AA3F5] px-4 py-6 text-white transition-transform duration-300 lg:translate-x-0 ${
 					isOpen ? "translate-x-0" : "-translate-x-full"
 				}`}
 			>

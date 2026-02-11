@@ -252,7 +252,7 @@ export default function ProfilePage() {
         onToggleSidebar={() => setIsSidebarOpen(true)}
       />
 
-      <div className="flex flex-1">
+      <div className="flex flex-1 pt-16">
         <AppSidebar
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
