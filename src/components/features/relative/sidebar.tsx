@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ChevronLeft, User } from 'lucide-react';
+import { ChevronLeft, LogOut, User } from 'lucide-react';
 
 interface RelativeSidebarProps {
   isOpen?: boolean;
@@ -99,6 +99,17 @@ export function RelativeSidebar({ isOpen = true, onClose }: RelativeSidebarProps
           <button className="bg-[#D4FDE7] text-green-700 font-light px-2 py-1 rounded-full transition-colors shadow-lg text-xs">
             {elderInfo.status}
           </button>
+        </div>
+
+        {/* Logout */}
+        <div className="px-6 pb-6">
+          <Link
+            href="/login/relative"
+            className="flex items-center justify-center gap-2 rounded-lg border border-white/40 bg-white/10 px-4 py-2 text-sm text-white transition hover:bg-white/20"
+          >
+            <LogOut size={16} />
+            ออกจากระบบ
+          </Link>
         </div>
       </aside>
     </>
