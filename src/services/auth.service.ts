@@ -12,6 +12,33 @@ import type {
 
 class AuthService {
   /**
+   * Fetch user profile from /api/user/
+   */
+  async fetchUserProfile(): Promise<User | null> {
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) return null;
+      
+      const response = await apiClient.get<ApiResponse<User>>('/api/user/');
+      return response.data.result;
+    } catch (error) {
+      return null;
+    }
+  }
+  /**
+   * Map role ID to internal role name
+   */
+  private mapRoleIdToInternal(roleId: string): string {
+    const roleIdMap: Record<string, string> = {
+      '1': 'nurse',
+      '2': 'kitchen',
+      '3': 'relative',
+    };
+    
+    return roleIdMap[roleId] || 'nurse';
+  }
+
+  /**
    * Login user with username/email and password
    */
   async login(credentials: LoginRequest): Promise<LoginResponse> {
@@ -20,13 +47,37 @@ class AuthService {
       credentials
     );
     
-    // Store token and user info in localStorage
-    if (response.data.result.token) {
-      localStorage.setItem('access_token', response.data.result.token);
-      localStorage.setItem('user', JSON.stringify(response.data.result));
+    const apiResult = response.data.result;
+    
+    if (!apiResult.token) {
+      throw new Error('No token received from server');
     }
     
-    return response.data.result;
+    localStorage.setItem('access_token', apiResult.token);
+    
+    const profile = await this.fetchUserProfile();
+    
+    if (!profile) {
+      throw new Error('Failed to fetch user profile');
+    }
+    
+    const mappedRole = profile.role_id 
+      ? this.mapRoleIdToInternal(profile.role_id)
+      : 'nurse';
+    
+    const userData: LoginResponse = {
+      ...apiResult,
+      first_name: profile.first_name || '',
+      last_name: profile.last_name || '',
+      role_name: mappedRole,
+    };
+    
+    localStorage.setItem('user', JSON.stringify(userData));
+    
+    document.cookie = `auth_token=${apiResult.token}; path=/; max-age=2592000; SameSite=Lax`;
+    document.cookie = `user_role=${mappedRole}; path=/; max-age=2592000; SameSite=Lax`;
+    
+    return userData;
   }
 
   /**
@@ -72,11 +123,20 @@ class AuthService {
    */
   async logout(): Promise<void> {
     try {
+      // Try to call logout API, but don't fail if it errors
       await apiClient.post('/api/auth/logout');
+    } catch (error) {
+      // API error is not critical, continue with cleanup
+      console.warn('Logout API failed:', error);
     } finally {
-      // Clear localStorage regardless of API response
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('user');
+      // Always clean up local storage and cookies
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('user');
+        // Clear cookies so middleware redirects to login
+        document.cookie = 'auth_token=; path=/; max-age=0; SameSite=Lax';
+        document.cookie = 'user_role=; path=/; max-age=0; SameSite=Lax';
+      }
     }
   }
 

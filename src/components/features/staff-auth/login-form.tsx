@@ -44,8 +44,25 @@ export function LoginForm() {
         password: formData.password,
       };
 
-      await authService.login(credentials);
-      router.push("/dashboard");
+      const userData = await authService.login(credentials);
+      
+      // Redirect based on role (now using mapped role)
+      const normalizedRole = userData.role_name?.toLowerCase();
+      
+      switch (normalizedRole) {
+        case "nurse":
+          router.push("/dashboard");
+          break;
+        case "kitchen":
+          router.push("/manage-meal");
+          break;
+        case "relative":
+          router.push("/relative/dashboard");
+          break;
+        default:
+          router.push("/dashboard");
+          break;
+      }
     } catch (err) {
       const error = err as { message?: string };
       setError(error.message || "เข้าสู่ระบบไม่สำเร็จ กรุณาลองอีกครั้ง");
