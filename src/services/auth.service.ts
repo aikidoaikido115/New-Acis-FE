@@ -123,14 +123,20 @@ class AuthService {
    */
   async logout(): Promise<void> {
     try {
+      // Try to call logout API, but don't fail if it errors
       await apiClient.post('/api/auth/logout');
+    } catch (error) {
+      // API error is not critical, continue with cleanup
+      console.warn('Logout API failed:', error);
     } finally {
-      // Clear localStorage
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('user');
-      // Clear cookies so middleware redirects to login
-      document.cookie = 'auth_token=; path=/; max-age=0; SameSite=Lax';
-      document.cookie = 'user_role=; path=/; max-age=0; SameSite=Lax';
+      // Always clean up local storage and cookies
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('user');
+        // Clear cookies so middleware redirects to login
+        document.cookie = 'auth_token=; path=/; max-age=0; SameSite=Lax';
+        document.cookie = 'user_role=; path=/; max-age=0; SameSite=Lax';
+      }
     }
   }
 

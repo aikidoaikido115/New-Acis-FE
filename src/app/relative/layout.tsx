@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { ProtectedRoute } from '@/components/shared/auth/ProtectedRoute';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -11,7 +11,12 @@ export default function RelativeLayout({
   children: React.ReactNode 
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, isAuthenticated } = useAuth();
+
+  // Routes that don't need authentication
+  const publicRelativeRoutes = ['/relative/login', '/relative/register'];
+  const isPublicRoute = publicRelativeRoutes.includes(pathname);
 
   useEffect(() => {
     // Only check consent if authenticated
@@ -23,6 +28,11 @@ export default function RelativeLayout({
       }
     }
   }, [router, isAuthenticated, user]);
+
+  // If it's a public route, don't wrap with ProtectedRoute
+  if (isPublicRoute) {
+    return <>{children}</>;
+  }
 
   return (
     <ProtectedRoute allowedRoles={["relative", "Relative", "RELATIVE"]}>

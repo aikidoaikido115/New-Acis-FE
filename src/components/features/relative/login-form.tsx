@@ -44,18 +44,25 @@ export function LoginFormRelative() {
         email: `${formData.phoneNumber}@relative.local`,
         token: 'mock_token_relative',
         profile_image: '',
+        role_name: 'relative',
+        first_name: 'ญาติ',
+        last_name: 'ทดสอบ',
       };
 
       // เก็บข้อมูล mock ลง localStorage
       localStorage.setItem('access_token', mockUser.token);
       localStorage.setItem('user', JSON.stringify(mockUser));
       
+      // เซ็ต cookies สำหรับ middleware
+      document.cookie = `auth_token=${mockUser.token}; path=/; max-age=2592000; SameSite=Lax`;
+      document.cookie = `user_role=relative; path=/; max-age=2592000; SameSite=Lax`;
+      
       // ตรวจสอบว่าเคยยอมรับ consent หรือยัง (ตาม user_id)
       const consentAccepted = localStorage.getItem(`consent_accepted_${mockUser.user_id}`);
       if (consentAccepted) {
         router.push("/relative/dashboard");
       } else {
-        router.push("/relative-consent");
+        router.push("/relative/consent");
       }
     } catch (err) {
       const error = err as { message?: string };

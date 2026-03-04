@@ -44,7 +44,7 @@ function EmptyActivityCard({ selectedDate, onAddActivity }: EmptyActivityCardPro
         <button
           type="button"
           onClick={onAddActivity}
-          className="mt-6 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+          className="mt-6 inline-flex items-center gap-2 rounded-lg bg-[#0093EF] px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-500"
         >
           <Plus className="h-4 w-4" />
           เพิ่มกิจกรรมในวันนี้

@@ -18,6 +18,10 @@ export default function ConsentPage() {
     }
   }, [router]);
 
+  const handleBack = () => {
+    router.push('/relative/login');
+  };
+
   const handleAccept = () => {
     if (!isAccepted) return;
     
@@ -89,11 +93,20 @@ export default function ConsentPage() {
           <div className="flex gap-4 justify-center">
             <Button
               type="button"
+              onClick={handleBack}
+              disabled={isLoading}
+              className="bg-white border-2 border-gray-300 text-gray-700 hover:bg-gray-50 px-8 disabled:opacity-50"
+            >
+              ย้อนกลับ
+            </Button>
+            <Button
+              type="button"
               onClick={handleAccept}
               disabled={!isAccepted || isLoading}
               className="bg-[#4A8B6A] hover:bg-[#3d7357] text-white px-8 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              ยอมรับและดำเนินการต่อ
+              <span className="sm:hidden">ยอมรับ</span>
+              <span className="hidden sm:inline">ยอมรับและดำเนินการต่อ</span>
             </Button>
           </div>
 

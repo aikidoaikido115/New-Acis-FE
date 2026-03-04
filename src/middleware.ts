@@ -14,6 +14,8 @@ const PUBLIC_ROUTES = [
   '/register', 
   '/forgot-password',
   '/',
+  '/relative/login',
+  '/relative/consent',
 ];
 
 // Check if route is public
@@ -56,18 +58,28 @@ export function middleware(request: NextRequest) {
   const token = request.cookies.get('auth_token')?.value;
   const userRole = request.cookies.get('user_role')?.value;
 
-  // No token - redirect to login
+  // No token - redirect to appropriate login
   if (!token) {
     const url = request.nextUrl.clone();
-    url.pathname = '/login';
+    // Check if this is a relative route
+    if (pathname.startsWith('/relative')) {
+      url.pathname = '/relative/login';
+    } else {
+      url.pathname = '/login';
+    }
     url.searchParams.set('redirect', pathname);
     return NextResponse.redirect(url);
   }
 
-  // No role cookie - redirect to login (incomplete auth state)
+  // No role cookie - redirect to appropriate login (incomplete auth state)
   if (!userRole) {
     const url = request.nextUrl.clone();
-    url.pathname = '/login';
+    // Check if this is a relative route
+    if (pathname.startsWith('/relative')) {
+      url.pathname = '/relative/login';
+    } else {
+      url.pathname = '/login';
+    }
     return NextResponse.redirect(url);
   }
 

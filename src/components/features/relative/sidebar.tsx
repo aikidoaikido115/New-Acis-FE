@@ -16,8 +16,14 @@ export function RelativeSidebar({ isOpen = true, onClose }: RelativeSidebarProps
   const router = useRouter();
 
   const handleLogout = async () => {
-    await authService.logout();
-    router.push('/login');
+    try {
+      await authService.logout();
+      router.push('/relative/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Force navigate even if API fails
+      router.push('/relative/login');
+    }
   };
 
   // TODO: ดึงข้อมูลจริงจาก API

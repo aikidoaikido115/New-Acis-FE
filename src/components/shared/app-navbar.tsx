@@ -47,8 +47,14 @@ function ProfileDropdown() {
   const router = useRouter();
 
   const handleLogout = async () => {
-    await authService.logout();
-    router.push('/login');
+    try {
+      await authService.logout();
+      router.push('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Force navigate even if API fails
+      router.push('/login');
+    }
   };
 
   return (
