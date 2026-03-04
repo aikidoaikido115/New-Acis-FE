@@ -69,7 +69,7 @@
   --blue--300: #9E9FFA;
   --blue--400: #8587F9;
   --blue--500: #6D6FF8;
-  --blue--600: #5458F7;
+  --blue--600: #0093EF;
   --blue--700: #272BF5;
   --blue--800: #0B0EE2;
   --blue--900: #090BB5;
@@ -91,7 +91,13 @@
 }
 
 body {
-  background: var(--background);
+  /* background: var(--background); */
+
+  /* Main Background */
+  background: linear-gradient(to bottom, #0093EF 0%, #85C7F0 100%);
+  min-height: 100vh;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sarabun), Arial, Helvetica, sans-serif;
 }
