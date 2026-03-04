@@ -1,153 +1,186 @@
 "use client";
-
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
 	BookOpen,
 	Calendar,
 	ClipboardList,
 	HelpCircle,
 	LayoutGrid,
+	PanelLeftClose,
+	PanelLeftOpen,
 	Pill,
 	ShoppingBag,
 	Users,
+	UtensilsCrossed,
+	type LucideIcon,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-type SidebarItem = {
+// Types
+type UserRole = "nurse" | "kitchen";
+
+interface SidebarItem {
 	label: string;
 	href: string;
-	icon: React.ReactNode;
-};
+	icon: LucideIcon;
+}
 
-type AppSidebarProps = {
+interface AppSidebarProps {
+	role?: UserRole;
 	isOpen?: boolean;
+	isCollapsed?: boolean;
+	isReady?: boolean;
 	onClose?: () => void;
+	onCollapsedChange?: (collapsed: boolean) => void;
+}
+
+// Sidebar width constants (exported for use in pages)
+export const SIDEBAR_WIDTH = 288; // 72 * 4 = 288px (w-72)
+export const SIDEBAR_COLLAPSED_WIDTH = 64; // 16 * 4 = 64px (w-16)
+
+// Menu items per role
+const MENU_ITEMS: Record<UserRole, { main: SidebarItem[]; support: SidebarItem[] }> = {
+  nurse: {
+    main: [
+      { label: "แดชบอร์ด", href: "/dashboard", icon: LayoutGrid },
+      { label: "แฟ้มข้อมูลผู้สูงอายุ", href: "/elder-info", icon: Users },
+      { label: "เวชระเบียน", href: "/emr", icon: ClipboardList },
+      { label: "จัดการยา", href: "/medicine", icon: Pill },
+      { label: "ตารางกิจกรรม", href: "/activity", icon: Calendar },
+      { label: "สินค้าคงคลัง", href: "/warehouse", icon: ShoppingBag },
+    ],
+    support: [
+      { label: "คู่มือการใช้งาน", href: "/user-manual", icon: BookOpen },
+      { label: "แจ้งปัญหาการใช้งาน", href: "/support-service", icon: HelpCircle },
+    ],
+  },
+  kitchen: {
+    main: [{ label: "จัดการมื้ออาหาร", href: "/meal-management", icon: UtensilsCrossed }],
+    support: [
+      { label: "คู่มือการใช้งาน", href: "/user-manual-kitchen", icon: BookOpen },
+      { label: "แจ้งปัญหาการใช้งาน", href: "/support-service-kitchen", icon: HelpCircle },
+    ],
+  },
 };
 
-const mainItems: SidebarItem[] = [
-	{
-		label: "แดชบอร์ด",
-		href: "/dashboard-nurse",
-		icon: <LayoutGrid size={20} />,
-	},
-	{
-		label: "แฟ้มข้อมูลผู้สูงอายุ",
-		href: "/elder-info-nurse",
-		icon: <Users size={20} />,
-	},
-	{
-		label: "เวชระเบียน",
-		href: "/emr",
-		icon: <ClipboardList size={20} />,
-	},
-	{
-		label: "จัดการยา",
-		href: "/medicine",
-		icon: <Pill size={20} />,
-	},
-	{
-		label: "ตารางกิจกรรม",
-		href: "/activity",
-		icon: <Calendar size={20} />,
-	},
-	{
-		label: "สินค้าคงคลัง",
-		href: "/warehouse",
-		icon: <ShoppingBag size={20} />,
-	},
-];
+// Sub-components
+function SidebarHeader({ isCollapsed, onCollapsedChange }: { isCollapsed: boolean; onCollapsedChange?: (collapsed: boolean) => void }) {
+  if (!onCollapsedChange) return null;
 
-const supportItems: SidebarItem[] = [
-	{
-		label: "คู่มือการใช้งาน",
-		href: "/user-manual",
-		icon: <BookOpen size={20} />,
-	},
-	{
-		label: "แจ้งปัญหาการใช้งาน",
-		href: "/support-service",
-		icon: <HelpCircle size={20} />,
-	},
-];
+  return (
+    <div className={cn("flex pb-4", isCollapsed ? "justify-center" : "justify-end")}> 
+      <button
+        type="button"
+        onClick={() => onCollapsedChange(!isCollapsed)}
+        className="hidden lg:flex items-center justify-center text-[#E6E6E6] transition hover:text-white"
+        aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+      >
+        {isCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+      </button>
+    </div>
+  );
+}
 
-export function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
-	const pathname = usePathname();
+function SidebarNavItem({
 
+  item,
+  isActive,
+  isCollapsed,
+}: {
+	item: SidebarItem;
+	isActive: boolean;
+	isCollapsed: boolean;
+}) {
+  const Icon = item.icon;
+
+  return (
+    <Link
+      href={item.href}
+      title={isCollapsed ? item.label : undefined}
+      className={cn(
+        "flex items-center rounded-xl py-2.5 text-sm font-medium transition-colors",
+        isActive ? "bg-white/20 text-white" : "text-white/90 hover:bg-white/10",
+        isCollapsed ? "justify-center px-2" : "gap-3 px-3"
+      )}
+    >
+      <Icon size={20} className="shrink-0" />
+      {!isCollapsed && <span className="whitespace-nowrap">{item.label}</span>}
+    </Link>
+  );
+}
+
+function SidebarNav({
+	items,
+	pathname,
+	isCollapsed,
+}: {
+	items: SidebarItem[];
+	pathname: string;
+	isCollapsed: boolean;
+}) {
 	return (
-		<>
-			{isOpen && onClose && (
-				<button
-					type="button"
-					className="fixed inset-0 bg-black/30 z-40 lg:hidden"
-					onClick={onClose}
-					aria-label="Close sidebar"
+		<nav className="space-y-1">
+			{items.map((item) => (
+				<SidebarNavItem
+					key={item.href}
+					item={item}
+					isActive={pathname === item.href}
+					isCollapsed={isCollapsed}
 				/>
-			)}
-
-			<aside
-				className={`fixed left-0 top-0 z-40 h-full w-72 bg-linear-to-b from-[#0B84EA] to-[#4AA3F5] px-4 py-6 text-white transition-transform duration-300 lg:translate-x-0 ${
-					isOpen ? "translate-x-0" : "-translate-x-full"
-				}`}
-			>
-				<div className="flex items-center gap-3 px-2 pb-6">
-					<div className="relative h-10 w-10 shrink-0">
-						<Image
-							src="/images/logo.png"
-							alt="Elder Nursing Logo"
-							fill
-							className="object-contain"
-							priority
-						/>
-					</div>
-					<div>
-						<p className="text-base font-semibold">Elder Nursing</p>
-						<p className="text-xs text-white/80">ระบบสำหรับเจ้าหน้าที่</p>
-					</div>
-				</div>
-
-				<nav className="space-y-2">
-					{mainItems.map((item) => {
-						const isActive = pathname === item.href;
-						return (
-							<Link
-								key={item.href}
-								href={item.href}
-								className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition ${
-									isActive
-										? "bg-white/20 text-white"
-										: "text-white/90 hover:bg-white/10"
-								}`}
-							>
-								{item.icon}
-								{item.label}
-							</Link>
-						);
-					})}
-				</nav>
-
-				<div className="my-6 h-px bg-white/30" />
-
-				<nav className="space-y-2">
-					{supportItems.map((item) => {
-						const isActive = pathname === item.href;
-						return (
-							<Link
-								key={item.href}
-								href={item.href}
-								className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition ${
-									isActive
-										? "bg-white/20 text-white"
-										: "text-white/90 hover:bg-white/10"
-								}`}
-							>
-								{item.icon}
-								{item.label}
-							</Link>
-						);
-					})}
-				</nav>
-			</aside>
-		</>
+			))}
+		</nav>
 	);
+}
+
+// Main component
+export function AppSidebar({ 
+  role = "nurse", 
+  isOpen = true, 
+  isCollapsed = false,
+  isReady = true,
+  onClose,
+  onCollapsedChange,
+}: AppSidebarProps) {
+  const pathname = usePathname();
+  const [currentPath, setCurrentPath] = useState("");
+
+  useEffect(() => {
+    setCurrentPath(pathname);
+  }, [pathname]);
+
+  const { main: mainItems, support: supportItems } = MENU_ITEMS[role];
+  const sidebarWidth = isCollapsed ? "w-16" : "w-72";
+
+  return (
+    <>
+      {isOpen && onClose && (
+        <button
+          type="button"
+          className="fixed inset-0 z-40  lg:hidden"
+          onClick={onClose}
+          aria-label="Close sidebar"
+        />
+      )}
+
+      <aside
+        className={cn(
+          "fixed left-0 top-16 z-30 h-[calc(100%-4rem)] overflow-hidden bg-linear-to-b from-[#0093EF] to-[#85C7F0] px-3 py-6 text-white",
+          isReady && "transition-all duration-300",
+          sidebarWidth,
+          isOpen ? "translate-x-0" : "-translate-x-full",
+          "lg:translate-x-0"
+        )}
+      >
+        <SidebarHeader isCollapsed={isCollapsed} onCollapsedChange={onCollapsedChange} />
+
+        <SidebarNav items={mainItems} pathname={currentPath} isCollapsed={isCollapsed} />
+
+        <div className={cn("my-6 h-px bg-white/30", isCollapsed && "mx-2")} />
+
+        <SidebarNav items={supportItems} pathname={currentPath} isCollapsed={isCollapsed} />
+      </aside>
+    </>
+  );
 }

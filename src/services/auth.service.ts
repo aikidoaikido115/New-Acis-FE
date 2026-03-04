@@ -12,6 +12,39 @@ import type {
 
 class AuthService {
   /**
+   * Map API role names to internal role names
+   */
+  private mapRoleToInternal(roleName: string): string {
+    const roleMapping: Record<string, string> = {
+      'medical staff': 'nurse',
+      'nurse': 'nurse',
+      'พยาบาล': 'nurse',
+      'kitchen': 'kitchen',
+      'ครัว': 'kitchen',
+      'relative': 'relative',
+      'ญาติ': 'relative',
+    };
+    
+    const normalized = roleName.toLowerCase().trim();
+    return roleMapping[normalized] || roleName;
+  }
+
+  /**
+   * Fetch user profile from /api/user/
+   */
+  async fetchUserProfile(): Promise<User | null> {
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) return null;
+      
+      const response = await apiClient.get<ApiResponse<User>>('/api/user/');
+      return response.data.result;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * Login user with username/email and password
    */
   async login(credentials: LoginRequest): Promise<LoginResponse> {
@@ -20,13 +53,45 @@ class AuthService {
       credentials
     );
     
-    // Store token and user info in localStorage
+    // Store token first
     if (response.data.result.token) {
       localStorage.setItem('access_token', response.data.result.token);
-      localStorage.setItem('user', JSON.stringify(response.data.result));
+      // Store in cookie for middleware
+      document.cookie = `auth_token=${response.data.result.token}; path=/; max-age=2592000; SameSite=Lax`;
     }
     
-    return response.data.result;
+    // Fetch full user profile to get first_name, last_name, etc.
+    const profile = await this.fetchUserProfile();
+    
+    // Get role name from profile or response
+    const apiRoleName = profile?.role?.name || response.data.result.role_name || '';
+    
+    // Map API role to internal role
+    const internalRole = this.mapRoleToInternal(apiRoleName);
+    
+    const userData: LoginResponse = {
+      ...response.data.result,
+      first_name: profile?.first_name || '',
+      last_name: profile?.last_name || '',
+      role_name: internalRole,
+    };
+    
+    console.log('[Auth Service] Role mapping:', {
+      apiRoleName,
+      internalRole,
+      username: userData.username
+    });
+    
+    localStorage.setItem('user', JSON.stringify(userData));
+    
+    // Store role in cookie for middleware
+    if (userData.role_name) {
+      const normalizedRole = userData.role_name.toLowerCase();
+      document.cookie = `user_role=${normalizedRole}; path=/; max-age=2592000; SameSite=Lax`;
+      console.log('[Auth Service] Cookie set:', normalizedRole);
+    }
+    
+    return userData;
   }
 
   /**
@@ -77,6 +142,10 @@ class AuthService {
       // Clear localStorage regardless of API response
       localStorage.removeItem('access_token');
       localStorage.removeItem('user');
+      
+      // Clear cookies
+      document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      document.cookie = 'user_role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
     }
   }
 

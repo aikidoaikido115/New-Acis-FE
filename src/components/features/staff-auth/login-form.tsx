@@ -44,8 +44,35 @@ export function LoginForm() {
         password: formData.password,
       };
 
-      await authService.login(credentials);
-      router.push("/dashboard");
+      const userData = await authService.login(credentials);
+      
+      console.log('[Login Success] Role after mapping:', userData.role_name);
+      console.log('[Login Success] Cookies:', document.cookie);
+      
+      // Small delay to ensure cookies are set
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Redirect based on role (now using mapped role)
+      const normalizedRole = userData.role_name?.toLowerCase();
+      
+      switch (normalizedRole) {
+        case "nurse":
+          console.log('[Login] Redirecting to /dashboard');
+          router.push("/dashboard");
+          break;
+        case "kitchen":
+          console.log('[Login] Redirecting to /kitchen/manage-meal');
+          router.push("/kitchen/manage-meal");
+          break;
+        case "relative":
+          console.log('[Login] Redirecting to /relative/dashboard');
+          router.push("/relative/dashboard");
+          break;
+        default:
+          console.warn('[Login] Unknown role, defaulting to dashboard');
+          router.push("/dashboard");
+          break;
+      }
     } catch (err) {
       const error = err as { message?: string };
       setError(error.message || "เข้าสู่ระบบไม่สำเร็จ กรุณาลองอีกครั้ง");

@@ -48,7 +48,7 @@ export function DailyActivities({ activities }: DailyActivitiesProps) {
             className="flex flex-col md:flex-row gap-4 p-4 border border-blue-200 bg-blue-50 rounded-lg hover:shadow-md transition-shadow"
           >
             {/* Image Placeholder */}
-            <div className="w-full md:w-48 h-32 rounded-lg overflow-hidden bg-gradient-to-br from-blue-200 to-blue-300 shrink-0 flex items-center justify-center">
+            <div className="w-full md:w-48 h-32 rounded-lg overflow-hidden bg-linear-to-br from-blue-200 to-blue-300 shrink-0 flex items-center justify-center">
               <ImageIcon size={48} className="text-blue-600 opacity-50" />
             </div>
 

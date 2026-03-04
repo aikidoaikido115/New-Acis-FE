@@ -42,11 +42,19 @@ export interface LoginResponse {
   user_id: string;
   username: string;
   email: string;
+  first_name: string;
+  last_name: string;
   profile_image: string;
+  role_name: string;
+}
+
+export interface Role {
+  id: string;
+  name: string;
 }
 
 export interface User {
-  id: string;
+  user_id: string;
   username: string;
   email: string;
   first_name: string;
@@ -54,7 +62,8 @@ export interface User {
   nickname?: string;
   gender?: string;
   profile_image?: string;
-  role_name: string;
+  role?: Role;
+  role_name?: string;
   created_at: string;
   updated_at: string;
 }

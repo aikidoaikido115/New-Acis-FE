@@ -47,27 +47,39 @@ apiClient.interceptors.response.use(
     return response;
   },
   (error: AxiosError<ApiError>) => {
+    // Log detailed error for debugging
+    if (process.env.NODE_ENV === 'development') {
+      console.debug('[API Client Error]', {
+        url: error.config?.url,
+        method: error.config?.method,
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message,
+      });
+    }
+
     if (error.response) {
-      // Handle 401 Unauthorized - redirect to login
-      if (error.response.status === 401) {
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('user');
-          window.location.href = '/login';
-        }
-      }
-      
-      // Return formatted error
+      // Server responded with error
       return Promise.reject({
-        message: error.response.data?.message || 'An error occurred',
+        message: error.response.data?.message || `Request failed with status ${error.response.status}`,
         status_code: error.response.status,
         status: error.response.data?.status || 'Error',
+        response: error.response,
       });
     }
     
-    // Network error
+    if (error.request) {
+      // Request made but no response received
+      return Promise.reject({
+        message: 'ไม่ได้รับการตอบกลับจากเซิร์ฟเวอร์ กรุณาตรวจสอบการเชื่อมต่อ',
+        status_code: 0,
+        status: 'Network Error',
+      });
+    }
+
+    // Something else happened
     return Promise.reject({
-      message: 'Network error. Please check your connection.',
+      message: error.message || 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ',
       status_code: 0,
       status: 'Error',
     });
