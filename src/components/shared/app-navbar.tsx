@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useClickOutside } from "@/hooks/use-click-outside";
 import { NotificationBell } from "@/components/features/nurse/notifications";
+import { authService } from "@/services/auth.service";
 
 interface NavbarUser {
   firstName: string;
@@ -43,19 +44,26 @@ function NavbarLogo() {
 }
 
 function ProfileDropdown() {
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await authService.logout();
+    router.push('/login');
+  };
+
   return (
     <div className="absolute right-0 mt-2 w-52 overflow-hidden rounded-xl bg-white text-gray-700 shadow-lg">
       <Link href="/profile-nurse" className="flex w-full items-center gap-2 px-4 py-3 text-sm transition hover:bg-slate-50">
         <User size={16} />
         แก้ไขโปรไฟล์
       </Link>
-      <Link
-        href="/login"
+      <button
+        onClick={handleLogout}
         className="flex w-full items-center gap-2 px-4 py-3 text-sm text-red-600 transition hover:bg-red-50"
       >
         <LogOut size={16} />
         ออกจากระบบ
-      </Link>
+      </button>
     </div>
   );
 }
@@ -98,8 +106,15 @@ function UserAvatar({ user }: { user: NavbarUser }) {
   const avatarSrc = getRoleAvatar(user.role);
 
   return (
-    <div className="relative h-8 w-8 overflow-hidden rounded-full border border-white/40">
-      <Image src={avatarSrc} alt={user.firstName} fill className="object-cover" />
+    <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full border border-white/40">
+      <Image 
+        src={avatarSrc} 
+        alt={user.firstName} 
+        fill 
+        className="object-cover" 
+        unoptimized
+        priority
+      />
     </div>
   );
 }
@@ -117,6 +132,11 @@ export function AppNavbar({
 
   const toggleMenu = () => setIsMenuOpen((prev) => !prev);
 
+  // Check if user is kitchen staff
+  const isKitchenStaff = user.role?.toLowerCase().includes("kitchen") || 
+                         user.role?.toLowerCase().includes("โภชนา") || 
+                         user.role?.toLowerCase().includes("ครัว");
+
   return (
     <header className="fixed top-0 left-0 right-0 z-50 w-full bg-[#0093EF] text-white shadow-sm">
       <div className="mx-auto flex h-16 items-center justify-between px-4 lg:px-6">
@@ -133,7 +153,7 @@ export function AppNavbar({
         </div>
 
         <div className="flex items-center gap-5">
-          <NotificationBell notificationsCount={notificationsCount} />
+          {!isKitchenStaff && <NotificationBell notificationsCount={notificationsCount} />}
 
           <div className="relative" ref={menuRef}>
             <button

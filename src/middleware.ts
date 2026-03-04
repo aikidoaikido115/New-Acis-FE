@@ -4,7 +4,7 @@ import type { NextRequest } from 'next/server';
 // Define route permissions
 const ROLE_ROUTES: Record<string, string[]> = {
   nurse: ['/dashboard', '/elder-info', '/activity'],
-  kitchen: ['manage-meal'],
+  kitchen: ['/manage-meal'],
   relative: ['/relative'],
 };
 
@@ -55,39 +55,32 @@ export function middleware(request: NextRequest) {
   // Get auth token from cookie
   const token = request.cookies.get('auth_token')?.value;
   const userRole = request.cookies.get('user_role')?.value;
-  
-  // Debug logging
-  console.log('[Middleware]', {
-    pathname,
-    hasToken: !!token,
-    userRole,
-    allCookies: request.cookies.getAll().map(c => c.name)
-  });
-  
+
   // No token - redirect to login
   if (!token) {
-    console.log('[Middleware] No token, redirecting to login');
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     url.searchParams.set('redirect', pathname);
     return NextResponse.redirect(url);
   }
 
-  if (userRole) {
-    // Check if user has access to this route
-    const allowed = hasAccess(pathname, userRole);
-    console.log('[Middleware] Access check:', { pathname, userRole, allowed });
-    
-    if (!allowed) {
-      const defaultRoute = getDefaultRoute(userRole);
-      console.log('[Middleware] No access, redirecting to:', defaultRoute);
-      const url = request.nextUrl.clone();
-      url.pathname = defaultRoute;
-      return NextResponse.redirect(url);
-    }
+  // No role cookie - redirect to login (incomplete auth state)
+  if (!userRole) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/login';
+    return NextResponse.redirect(url);
   }
 
-  console.log('[Middleware] Access granted');
+  // Check if user has access to this route
+  const allowed = hasAccess(pathname, userRole);
+
+  if (!allowed) {
+    const defaultRoute = getDefaultRoute(userRole);
+    const url = request.nextUrl.clone();
+    url.pathname = defaultRoute;
+    return NextResponse.redirect(url);
+  }
+
   return NextResponse.next();
 }
 

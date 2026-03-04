@@ -62,6 +62,7 @@ export interface User {
   nickname?: string;
   gender?: string;
   profile_image?: string;
+  role_id?: string;
   role?: Role;
   role_name?: string;
   created_at: string;

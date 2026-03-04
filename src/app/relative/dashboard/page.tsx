@@ -18,8 +18,8 @@ export default function RelativeDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
-      <div className="hidden lg:block fixed top-0 left-0 h-full w-80 z-50">
+      {/* Sidebar - Desktop */}
+      <div className="hidden lg:block fixed top-0 left-0 h-full w-80 z-50 pointer-events-auto">
         <RelativeSidebar isOpen={true} />
       </div>
       {/* Main Content */}

@@ -13,7 +13,7 @@ interface ProtectedRouteProps {
 
 const DEFAULT_ROLE_ROUTES: Record<string, string> = {
   nurse: '/dashboard',
-  kitchen: '/kitchen/manage-meal',
+  kitchen: '/manage-meal',
   relative: '/relative/dashboard',
 };
 

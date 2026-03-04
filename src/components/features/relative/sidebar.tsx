@@ -3,7 +3,9 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ChevronLeft, LogOut, User } from 'lucide-react';
+import { authService } from '@/services/auth.service';
 
 interface RelativeSidebarProps {
   isOpen?: boolean;
@@ -11,6 +13,13 @@ interface RelativeSidebarProps {
 }
 
 export function RelativeSidebar({ isOpen = true, onClose }: RelativeSidebarProps) {
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await authService.logout();
+    router.push('/login');
+  };
+
   // TODO: ดึงข้อมูลจริงจาก API
   const elderInfo = {
     name: 'สมชาย ศรีบุญเมือง',
@@ -31,9 +40,9 @@ export function RelativeSidebar({ isOpen = true, onClose }: RelativeSidebarProps
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 h-full bg-linear-to-b from-[#1E88E5] to-[#42A5F5] z-50 transition-transform duration-300 ${
-          isOpen ? 'translate-x-0' : '-translate-x-full'
-        } lg:translate-x-0 w-80 flex flex-col`}
+        className={`fixed top-0 left-0 h-full bg-linear-to-b from-[#1E88E5] to-[#42A5F5] z-50 transition-transform duration-300 w-80 flex flex-col ${
+          isOpen ? 'translate-x-0 pointer-events-auto' : '-translate-x-full pointer-events-none'
+        } lg:translate-x-0 lg:pointer-events-auto`}
       >
         {/* Close button for mobile */}
         {onClose && (
@@ -73,7 +82,7 @@ export function RelativeSidebar({ isOpen = true, onClose }: RelativeSidebarProps
         {/* Elder Info Section */}
         <div className="flex-1 px-6 py-8 flex flex-col items-center">
           {/* Profile Avatar - Mock */}
-          <div className="relative w-40 h-40 rounded-full bg-gradient-to-br from-blue-300 to-blue-500 mb-6 overflow-hidden ring-4 ring-white/30 flex items-center justify-center">
+          <div className="relative w-40 h-40 rounded-full bg-linear-to-br from-blue-300 to-blue-500 mb-6 overflow-hidden ring-4 ring-white/30 flex items-center justify-center">
             <User size={80} className="text-white" />
           </div>
 
@@ -103,13 +112,13 @@ export function RelativeSidebar({ isOpen = true, onClose }: RelativeSidebarProps
 
         {/* Logout */}
         <div className="px-6 pb-6">
-          <Link
-            href="/login/relative"
-            className="flex items-center justify-center gap-2 rounded-lg border border-white/40 bg-white/10 px-4 py-2 text-sm text-white transition hover:bg-white/20"
+          <button
+            onClick={handleLogout}
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-white/40 bg-white/10 px-4 py-2 text-sm text-white transition hover:bg-white/20"
           >
             <LogOut size={16} />
             ออกจากระบบ
-          </Link>
+          </button>
         </div>
       </aside>
     </>

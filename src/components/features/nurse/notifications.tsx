@@ -37,7 +37,7 @@ function NotificationItem({ notification }: { notification: Notification }) {
 
   return (
     <div className="flex gap-3 rounded-lg border border-gray-200 p-5 hover:bg-gray-50 transition cursor-pointer">
-      <div className="shrink-0 flex items-center justify-center w-10 h-10 rounded-full bg-blue-600 text-white">
+      <div className="shrink-0 flex items-center justify-center w-10 h-10 rounded-full bg-blue-500 text-white">
         {Icon && <Icon className="w-6 h-6" />}
       </div>
       <div className="flex-1 min-w-0">
@@ -86,7 +86,7 @@ function NotificationDropdown({
         <h3 className="text-sm font-bold text-gray-900">การแจ้งเตือน</h3>
         <button
           onClick={onViewAll}
-          className="text-xs font-semibold text-blue-600 hover:text-blue-800 transition"
+          className="text-xs font-semibold text-blue-500 hover:text-blue-800 transition"
         >
           ดูทั้งหมด
         </button>

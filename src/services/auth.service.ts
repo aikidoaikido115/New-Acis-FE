@@ -12,24 +12,6 @@ import type {
 
 class AuthService {
   /**
-   * Map API role names to internal role names
-   */
-  private mapRoleToInternal(roleName: string): string {
-    const roleMapping: Record<string, string> = {
-      'medical staff': 'nurse',
-      'nurse': 'nurse',
-      'พยาบาล': 'nurse',
-      'kitchen': 'kitchen',
-      'ครัว': 'kitchen',
-      'relative': 'relative',
-      'ญาติ': 'relative',
-    };
-    
-    const normalized = roleName.toLowerCase().trim();
-    return roleMapping[normalized] || roleName;
-  }
-
-  /**
    * Fetch user profile from /api/user/
    */
   async fetchUserProfile(): Promise<User | null> {
@@ -39,9 +21,21 @@ class AuthService {
       
       const response = await apiClient.get<ApiResponse<User>>('/api/user/');
       return response.data.result;
-    } catch {
+    } catch (error) {
       return null;
     }
+  }
+  /**
+   * Map role ID to internal role name
+   */
+  private mapRoleIdToInternal(roleId: string): string {
+    const roleIdMap: Record<string, string> = {
+      '1': 'nurse',
+      '2': 'kitchen',
+      '3': 'relative',
+    };
+    
+    return roleIdMap[roleId] || 'nurse';
   }
 
   /**
@@ -53,43 +47,35 @@ class AuthService {
       credentials
     );
     
-    // Store token first
-    if (response.data.result.token) {
-      localStorage.setItem('access_token', response.data.result.token);
-      // Store in cookie for middleware
-      document.cookie = `auth_token=${response.data.result.token}; path=/; max-age=2592000; SameSite=Lax`;
+    const apiResult = response.data.result;
+    
+    if (!apiResult.token) {
+      throw new Error('No token received from server');
     }
     
-    // Fetch full user profile to get first_name, last_name, etc.
+    localStorage.setItem('access_token', apiResult.token);
+    
     const profile = await this.fetchUserProfile();
     
-    // Get role name from profile or response
-    const apiRoleName = profile?.role?.name || response.data.result.role_name || '';
+    if (!profile) {
+      throw new Error('Failed to fetch user profile');
+    }
     
-    // Map API role to internal role
-    const internalRole = this.mapRoleToInternal(apiRoleName);
+    const mappedRole = profile.role_id 
+      ? this.mapRoleIdToInternal(profile.role_id)
+      : 'nurse';
     
     const userData: LoginResponse = {
-      ...response.data.result,
-      first_name: profile?.first_name || '',
-      last_name: profile?.last_name || '',
-      role_name: internalRole,
+      ...apiResult,
+      first_name: profile.first_name || '',
+      last_name: profile.last_name || '',
+      role_name: mappedRole,
     };
-    
-    console.log('[Auth Service] Role mapping:', {
-      apiRoleName,
-      internalRole,
-      username: userData.username
-    });
     
     localStorage.setItem('user', JSON.stringify(userData));
     
-    // Store role in cookie for middleware
-    if (userData.role_name) {
-      const normalizedRole = userData.role_name.toLowerCase();
-      document.cookie = `user_role=${normalizedRole}; path=/; max-age=2592000; SameSite=Lax`;
-      console.log('[Auth Service] Cookie set:', normalizedRole);
-    }
+    document.cookie = `auth_token=${apiResult.token}; path=/; max-age=2592000; SameSite=Lax`;
+    document.cookie = `user_role=${mappedRole}; path=/; max-age=2592000; SameSite=Lax`;
     
     return userData;
   }
@@ -139,13 +125,12 @@ class AuthService {
     try {
       await apiClient.post('/api/auth/logout');
     } finally {
-      // Clear localStorage regardless of API response
+      // Clear localStorage
       localStorage.removeItem('access_token');
       localStorage.removeItem('user');
-      
-      // Clear cookies
-      document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-      document.cookie = 'user_role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      // Clear cookies so middleware redirects to login
+      document.cookie = 'auth_token=; path=/; max-age=0; SameSite=Lax';
+      document.cookie = 'user_role=; path=/; max-age=0; SameSite=Lax';
     }
   }
 

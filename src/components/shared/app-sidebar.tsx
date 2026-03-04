@@ -57,7 +57,7 @@ const MENU_ITEMS: Record<UserRole, { main: SidebarItem[]; support: SidebarItem[]
     ],
   },
   kitchen: {
-    main: [{ label: "จัดการมื้ออาหาร", href: "/meal-management", icon: UtensilsCrossed }],
+    main: [{ label: "จัดการมื้ออาหาร", href: "/manage-meal", icon: UtensilsCrossed }],
     support: [
       { label: "คู่มือการใช้งาน", href: "/user-manual-kitchen", icon: BookOpen },
       { label: "แจ้งปัญหาการใช้งาน", href: "/support-service-kitchen", icon: HelpCircle },
@@ -158,7 +158,7 @@ export function AppSidebar({
       {isOpen && onClose && (
         <button
           type="button"
-          className="fixed inset-0 z-40  lg:hidden"
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
           onClick={onClose}
           aria-label="Close sidebar"
         />
@@ -166,7 +166,7 @@ export function AppSidebar({
 
       <aside
         className={cn(
-          "fixed left-0 top-16 z-30 h-[calc(100%-4rem)] overflow-hidden bg-linear-to-b from-[#0093EF] to-[#85C7F0] px-3 py-6 text-white",
+          "fixed left-0 top-16 z-50 h-[calc(100%-4rem)] overflow-hidden bg-linear-to-b from-[#0093EF] to-[#85C7F0] px-3 py-6 text-white",
           isReady && "transition-all duration-300",
           sidebarWidth,
           isOpen ? "translate-x-0" : "-translate-x-full",
