@@ -149,7 +149,6 @@ export default function Page() {
 
       if (statusCode === 401) {
         message = "เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง";
-        setError(message);
         showToast({ type: "error", title: "เซสชันหมดอายุ", message });
         router.push("/login");
         return;
