@@ -17,7 +17,7 @@ class ResidentService {
    */
   async getByRoom(roomId: string): Promise<Resident[]> {
     const response = await apiClient.get<ApiResponse<Resident[]>>(
-      `/api/emr/residents?room_id=${roomId}`
+      `/api/emr/residents?room_id=${encodeURIComponent(roomId)}`
     );
     return response.data.result;
   }

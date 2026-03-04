@@ -134,7 +134,7 @@ export function NotificationBell({
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown when clicking outside
-  useClickOutside([bellRef, dropdownRef], () => setIsOpen(false));
+  useClickOutside(() => setIsOpen(false), bellRef, dropdownRef);
 
   // Handlers
   const handleViewAll = useCallback(() => {

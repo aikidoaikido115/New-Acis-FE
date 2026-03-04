@@ -14,7 +14,7 @@ export default function ConsentPage() {
     // ตรวจสอบว่า login แล้วหรือยัง
     const token = localStorage.getItem('access_token');
     if (!token) {
-      router.push('/login/relative');
+      router.push('/relative/login');
     }
   }, [router]);
 

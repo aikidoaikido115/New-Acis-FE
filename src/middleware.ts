@@ -13,13 +13,20 @@ const PUBLIC_ROUTES = [
   '/login',
   '/register', 
   '/forgot-password',
-  '/',
   '/relative/login',
   '/relative/consent',
+  '/terms',
+  '/privacy',
+  '/relative/terms',
+  '/relative/privacy',
 ];
 
 // Check if route is public
 function isPublicRoute(pathname: string): boolean {
+  // Exact match for home page
+  if (pathname === '/') {
+    return true;
+  }
   return PUBLIC_ROUTES.some(route => pathname.startsWith(route));
 }
 

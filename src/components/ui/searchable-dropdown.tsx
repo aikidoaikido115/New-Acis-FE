@@ -86,7 +86,7 @@ export function SearchableDropdown({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="ค้นหา..."
-                className="w-full rounded-sm border border-slate-200 py-1.5 pl-8 pr-3 text-sm focus:border-black-400 focus:outline-none focus:ring-1 focus:ring-black"
+                className="w-full rounded-sm border border-slate-200 py-1.5 pl-8 pr-3 text-sm focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
               />
             </div>
           </div>

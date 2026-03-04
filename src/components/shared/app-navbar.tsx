@@ -134,7 +134,7 @@ export function AppNavbar({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  useClickOutside([menuRef], () => setIsMenuOpen(false));
+  useClickOutside(() => setIsMenuOpen(false), menuRef);
 
   const toggleMenu = () => setIsMenuOpen((prev) => !prev);
 

@@ -170,7 +170,7 @@ export default function RelativePatientInfoPage() {
           <div className="max-w-2xl mx-auto space-y-6">
             <h1 className="text-2xl font-bold text-gray-800">ข้อมูลผู้สูงอายุ</h1>
             
-            TODO: เปลี่ยน sectioncard เป็นดึงข้อมูลจริงจาก ระบบเจ้าหน้าที่
+            {/* TODO: เปลี่ยน sectioncard เป็นดึงข้อมูลจริงจาก ระบบเจ้าหน้าที่ */}
             {/* Basic Info */}
             <SectionCard title="ข้อมูลพื้นฐาน">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

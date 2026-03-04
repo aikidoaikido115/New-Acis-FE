@@ -7,7 +7,7 @@ import type { CreateResidentRequest } from '@/types/resident';
 
 // Backend format (ตามที่ BE รองรับตอนนี้)
 interface BackendResidentRequest {
-  room_id: string;
+  room_id?: string; // Optional in UX, BE อาจรับ empty string หรือ undefined
   first_name: string;
   last_name: string;
   age: number;
@@ -56,7 +56,6 @@ export function adaptResidentPayload(frontendData: CreateResidentRequest): Backe
   }
 
   const payload: BackendResidentRequest = {
-    room_id: frontendData.room_id || "",
     first_name: frontendData.first_name,
     last_name: frontendData.last_name,
     age,
@@ -64,8 +63,9 @@ export function adaptResidentPayload(frontendData: CreateResidentRequest): Backe
     floor: frontendData.floor,
   };
 
-  if (!payload.room_id) {
-    console.warn('room_id is empty: BE อาจตอบ room does not exist');
+  // เพิ่ม room_id เฉพาะเมื่อมีค่า (UX ให้ optional)
+  if (frontendData.room_id) {
+    payload.room_id = frontendData.room_id;
   }
 
   // Log fields ที่ไม่ได้ส่งไป (แสดงเฉพาะ development mode)

@@ -80,7 +80,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 	return (
 		<ToastContext.Provider value={value}>
 			{children}
-			<div className="fixed top-4 right-4 z-250 flex flex-col gap-3 pointer-events-none">
+			<div className="fixed top-4 right-4 z-[250] flex flex-col gap-3 pointer-events-none">
 				{toasts.map((toast) => {
 					const style = baseStyles[toast.type];
 					return (

@@ -23,11 +23,11 @@ export default function RelativeLayout({
     if (isAuthenticated && user) {
       // ตรวจสอบว่ายอมรับ consent แล้วหรือยัง
       const consentAccepted = localStorage.getItem(`consent_accepted_${user.user_id}`);
-      if (!consentAccepted) {
+      if (!consentAccepted && pathname !== '/relative/consent') {
         router.push('/relative/consent');
       }
     }
-  }, [router, isAuthenticated, user]);
+  }, [router, isAuthenticated, user, pathname]);
 
   // If it's a public route, don't wrap with ProtectedRoute
   if (isPublicRoute) {
