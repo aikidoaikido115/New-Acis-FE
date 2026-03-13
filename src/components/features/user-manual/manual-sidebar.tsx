@@ -54,7 +54,7 @@ export function ManualSidebar() {
   const pathname = usePathname();
   
   const isActive = (sectionId: string) => {
-    return pathname === `/manual/${sectionId}`;
+    return pathname === `/user-manual/${sectionId}`;
   };
 
   return (
@@ -65,7 +65,7 @@ export function ManualSidebar() {
         {manualSections.map((section) => (
           <Link
             key={section.id}
-            href={`/manual/${section.id}`}
+            href={`/user-manual/${section.id}`}
             className={`
               flex flex-col items-center justify-center gap-3 p-6 rounded-2xl border-2 transition-all text-gray-800 bg-white
               ${isActive(section.id)
