@@ -3,12 +3,6 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
-import { AppNavbar } from "@/components/shared/app-navbar";
-import { AppSidebar } from "@/components/shared/app-sidebar";
-import { AppFooter } from "@/components/shared/app-footer";
-import { useAuth } from "@/hooks/useAuth";
-import { useSidebarState } from "@/hooks/useSidebarState";
-import { cn } from "@/lib/utils";
 import { residentService } from "@/services/resident.service";
 import { roomService } from "@/services/room.service";
 import { adaptResidentPayload, calculateAge } from "@/utils/resident-adapter";
@@ -65,10 +59,8 @@ const transformResidentData = (apiResident: ApiResident): Resident => {
 };
 
 export default function Page() {
-  const { user } = useAuth();
   const router = useRouter();
   const { showToast } = useToast();
-  const { isSidebarOpen, setIsSidebarOpen, isSidebarCollapsed, setIsSidebarCollapsed, isReady } = useSidebarState();
   
   // Modal state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -339,113 +331,77 @@ export default function Page() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-      <AppNavbar
-        user={{ 
-          firstName: user?.first_name || "ผู้ใช้งาน", 
-          role: user?.role_name 
-        }}
-        notificationsCount={3}
-        onToggleSidebar={() => setIsSidebarOpen(true)}
-      />
+    <>
+      <div className="flex flex-col gap-6 p-4 sm:p-6 lg:p-8">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-xl font-semibold text-slate-800">แฟ้มข้อมูลผู้สูงอายุ</h1>
+          <button
+            type="button"
+            onClick={() => {
+              setModalMode("create");
+              setEditingResidentId(null);
+              setEditingInitialValues(undefined);
+              setIsAddModalOpen(true);
+            }}
+            className="inline-flex items-center gap-2 rounded-lg bg-[#0093EF] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#0080D0] active:bg-[#0070C0] transition"
+          >
+            <Plus className="h-4 w-4" />
+            <span className="sm:inline md:hidden">เพิ่มประวัติ</span>
+            <span className="hidden md:inline">เพิ่มประวัติแรกเข้า</span>
+          </button>
+        </div>
 
-      <div className="flex flex-1 pt-16">
-        <AppSidebar
-          role="nurse"
-          isOpen={isSidebarOpen}
-          isCollapsed={isSidebarCollapsed}
-          isReady={isReady}
-          onClose={() => setIsSidebarOpen(false)}
-          onCollapsedChange={setIsSidebarCollapsed}
-        />
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <ElderTableFilter
+            searchTerm={searchTerm}
+            onSearchChange={(value) => handleFilterChange(() => setSearchTerm(value))}
+            selectedFloor={selectedFloor}
+            onFloorChange={(value) => handleFilterChange(() => setSelectedFloor(value))}
+            selectedCareType={selectedCareType}
+            onCareTypeChange={(value) => handleFilterChange(() => setSelectedCareType(value))}
+            showActive={showActive}
+            onShowActiveToggle={() => handleFilterChange(() => setShowActive(!showActive))}
+          />
 
-        <main
-          className={cn(
-            "flex-1 p-4 sm:p-6 lg:p-8",
-            isReady && "transition-[margin-left] duration-300",
-            isSidebarCollapsed ? "lg:ml-16" : "lg:ml-72"
-          )}
-        >
-          <div className="flex flex-col gap-6">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h1 className="text-xl font-semibold text-slate-800">แฟ้มข้อมูลผู้สูงอายุ</h1>
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-16 text-slate-500">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#0093EF] mb-4"></div>
+              <div className="text-sm">กำลังโหลดข้อมูล...</div>
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center py-16 text-red-500">
+              <div className="text-sm mb-4">{error}</div>
               <button
-                type="button"
-                onClick={() => {
-                  setModalMode("create");
-                  setEditingResidentId(null);
-                  setEditingInitialValues(undefined);
-                  setIsAddModalOpen(true);
-                }}
-                className="inline-flex items-center gap-2 rounded-lg bg-[#0093EF] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#0080D0] active:bg-[#0070C0] transition"
+                onClick={fetchResidents}
+                className="px-4 py-2 bg-[#0093EF] text-white rounded-lg text-sm hover:bg-[#0080D0] transition"
               >
-                <Plus className="h-4 w-4" />
-                <span className="sm:inline md:hidden">เพิ่มประวัติ</span>
-                <span className="hidden md:inline">เพิ่มประวัติแรกเข้า</span>
+                ลองอีกครั้ง
               </button>
             </div>
+          ) : (
+            <>
+              <ElderTable residents={paginatedResidents} onEdit={handleEditClick} onViewRelative={handleViewRelative} />
 
-            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-              <ElderTableFilter
-                searchTerm={searchTerm}
-                onSearchChange={(value) => handleFilterChange(() => setSearchTerm(value))}
-                selectedFloor={selectedFloor}
-                onFloorChange={(value) => handleFilterChange(() => setSelectedFloor(value))}
-                selectedCareType={selectedCareType}
-                onCareTypeChange={(value) => handleFilterChange(() => setSelectedCareType(value))}
-                showActive={showActive}
-                onShowActiveToggle={() => handleFilterChange(() => setShowActive(!showActive))}
-              />
-
-              {isLoading ? (
-                <div className="flex flex-col items-center justify-center py-16 text-slate-500">
-                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#0093EF] mb-4"></div>
-                  <div className="text-sm">กำลังโหลดข้อมูล...</div>
-                </div>
-              ) : error ? (
-                <div className="flex flex-col items-center justify-center py-16 text-red-500">
-                  <div className="text-sm mb-4">{error}</div>
-                  <button
-                    onClick={fetchResidents}
-                    className="px-4 py-2 bg-[#0093EF] text-white rounded-lg text-sm hover:bg-[#0080D0] transition"
-                  >
-                    ลองอีกครั้ง
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <ElderTable 
-                    residents={paginatedResidents} 
-                    onEdit={handleEditClick}
-                    onViewRelative={handleViewRelative}
-                  />
-
-                  {totalItems > 0 && (
-                    <ElderTablePagination
-                      currentPage={currentPage}
-                      totalPages={totalPages}
-                      totalItems={totalItems}
-                      startItem={startItem}
-                      endItem={endItem}
-                      onPageChange={setCurrentPage}
-                    />
-                  )}
-
-                  {totalItems === 0 && (
-                    <div className="flex flex-col items-center justify-center py-12 text-slate-500">
-                      <div className="text-sm">ไม่พบข้อมูลที่ตรงกับเงื่อนไขการค้นหา</div>
-                      <div className="text-xs mt-1">ลองเปลี่ยนคำค้นหาหรือตัวกรองใหม่</div>
-                    </div>
-                  )}
-                </>
+              {totalItems > 0 && (
+                <ElderTablePagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalItems={totalItems}
+                  startItem={startItem}
+                  endItem={endItem}
+                  onPageChange={setCurrentPage}
+                />
               )}
-            </div>
-          </div>
-        </main>
-      </div>
 
-      <div className={cn("mt-auto transition-[margin-left] duration-300", isSidebarCollapsed ? "lg:ml-16" : "lg:ml-72")}>
-        <AppFooter />
+              {totalItems === 0 && (
+                <div className="flex flex-col items-center justify-center py-12 text-slate-500">
+                  <div className="text-sm">ไม่พบข้อมูลที่ตรงกับเงื่อนไขการค้นหา</div>
+                  <div className="text-xs mt-1">ลองเปลี่ยนคำค้นหาหรือตัวกรองใหม่</div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
       {/* Add Record Modal */}
@@ -465,6 +421,6 @@ export default function Page() {
         onClose={() => setIsRelativeViewModalOpen(false)}
         residentName={relativeViewResidentName}
       />
-    </div>
+    </>
   );
 }
