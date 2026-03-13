@@ -75,7 +75,7 @@ export default function ConsentPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex flex-col items-center justify-center bg-gradient-to-br from-[#1E88E5] to-[#42A5F5] p-6">
+    <div className="min-h-screen w-full flex flex-col items-center justify-center bg-linear-to-br from-[#1E88E5] to-[#42A5F5] p-6">
       <AppLogo />
       
       <div className="bg-white rounded-2xl shadow-lg p-10 w-full max-w-[800px] mx-auto mt-8">

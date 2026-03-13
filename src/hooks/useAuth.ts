@@ -1,12 +1,17 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { authService } from '@/services/auth.service';
 import type { LoginResponse } from '@/types/auth';
 
 export function useAuth() {
-  const [user, setUser] = useState<LoginResponse | null>(() => {
-    // Initialize state from localStorage on mount
-    return authService.getCurrentUser();
-  });
+  const [user, setUser] = useState<LoginResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Load user from localStorage on client-side only (after hydration)
+  useEffect(() => {
+    const currentUser = authService.getCurrentUser();
+    setUser(currentUser);
+    setIsLoading(false);
+  }, []);
 
   const login = useCallback(async (credentials: { username?: string; email?: string; password: string }) => {
     const userData = await authService.login(credentials);
@@ -20,7 +25,6 @@ export function useAuth() {
   }, []);
 
   const isAuthenticated = !!user && authService.isAuthenticated();
-  const isLoading = false;
 
   return {
     user,

@@ -1,44 +1,69 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
   redirectTo?: string;
+  allowedRoles?: string[];
+  roleRoutes?: Record<string, string>;
 }
 
-export function ProtectedRoute({ children, redirectTo = '/login' }: ProtectedRouteProps) {
-  const [mounted, setMounted] = useState(false);
-  const { isAuthenticated, isLoading } = useAuth();
+const DEFAULT_ROLE_ROUTES: Record<string, string> = {
+  nurse: '/dashboard',
+  kitchen: '/manage-meal',
+  relative: '/relative/dashboard',
+};
+
+export function ProtectedRoute({ children, redirectTo = '/login', allowedRoles = [], roleRoutes = DEFAULT_ROLE_ROUTES }: ProtectedRouteProps) {
+  const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
 
-  // Mark as mounted after first client-side render
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    if (isLoading) return;
 
-  useEffect(() => {
-    if (mounted && !isLoading && !isAuthenticated) {
-      router.replace(redirectTo);
+    if (!isAuthenticated) {
+      router.push(redirectTo);
+      return;
     }
-  }, [mounted, isAuthenticated, isLoading, router, redirectTo]);
 
-  if (!mounted || isLoading) {
+    if (allowedRoles.length > 0 && user?.role_name) {
+      const userRole = user.role_name.toLowerCase();
+      const hasPermission = allowedRoles.some((role) => role.toLowerCase() === userRole);
+
+      if (!hasPermission) {
+        const targetRoute = roleRoutes[userRole] || redirectTo;
+        router.push(targetRoute);
+      }
+    }
+  }, [allowedRoles, isAuthenticated, isLoading, redirectTo, roleRoutes, router, user?.role_name]);
+
+  // Show loading state while checking authentication/role
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#4A8B6A] mx-auto"></div>
-          <p className="mt-4 text-gray-600">กำลังโหลด...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto"></div>
+          <p className="mt-4 text-white text-bold">กำลังโหลดข้อมูล...</p>
         </div>
       </div>
     );
   }
 
+  // Don't render if not authenticated
   if (!isAuthenticated) {
     return null;
+  }
+
+  // Don't render if role check failed
+  if (allowedRoles.length > 0 && user?.role_name) {
+    const userRole = user.role_name.toLowerCase();
+    const hasPermission = allowedRoles.some((role) => role.toLowerCase() === userRole);
+    if (!hasPermission) {
+      return null;
+    }
   }
 
   return <>{children}</>;

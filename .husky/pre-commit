@@ -1,0 +1,14 @@
+echo "ตรวจสอบความปลอดภัยก่อน commit..."
+
+echo "1. ตรวจสอบไฟล์ความลับ..."
+if git diff --cached --name-only | grep -E "\.(env|env\.local|env\.production|pem|key|p12|pfx)$|\.env\." | grep -v ".env.example"; then
+    echo "พบไฟล์อันตราย กรุณาเอาออกจาก commit:"
+    git diff --cached --name-only | grep -E "\.(env|env\.local|env\.production|pem|key|p12|pfx)$|\.env\." | grep -v ".env.example"
+    echo "fix: git reset HEAD <filename>"
+    exit 1
+fi
+
+echo "2. รัน lint-staged..."
+npx lint-staged
+
+echo "ผ่านการตรวจสอบ กำลัง commit..."

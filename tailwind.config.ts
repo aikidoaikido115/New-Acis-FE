@@ -84,13 +84,14 @@ const config: Config = {
           300: "var(--blue--300)",
           400: "var(--blue--400)",
           500: "var(--blue--500)",
-          600: "var(--blue--600)",
+          600: "var(--primary--600)",
           700: "var(--blue--700)",
           800: "var(--blue--800)",
           900: "var(--blue--900)",
           950: "var(--blue--950)",
         },
       },
+
       fontSize: {
         'headline-1': ['6rem', { fontWeight: '300', letterSpacing: '-1.5px' }],
         'headline-2': ['3.75rem', { fontWeight: '300', letterSpacing: '-0.5px' }],

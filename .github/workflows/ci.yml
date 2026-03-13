@@ -1,0 +1,58 @@
+name: Frontend CI (Optimized with Husky)
+
+on:
+  push:
+    branches: [ dev, main, master ]
+  pull_request:
+    branches: [ dev, main, master ]
+
+env:
+  NODE_VERSION: '20'
+  BUN_VERSION: 'latest'
+
+jobs:
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    
+    steps:
+      # 1. โหลดโค้ดหน้าบ้านมา
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Setup Bun (Package Manager ของโปรเจกต์)
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      # 3. Setup Node.js สำหรับ compatibility
+      - name: Set up Node.js  
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      # 4. ลง Dependencies ด้วย Bun 
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # 5. รัน Unit Tests 
+      - name: Run Tests
+        run: bun run test:run
+
+      # 6. สร้าง Production Build (ตรวจสอบ build ได้หรือไม่)
+      - name: Build Next.js
+        run: bun run build
+        env:
+          NODE_ENV: production
+
+      # 9. Upload Build Artifacts (debugging)
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: build-outputs
+          path: |
+            .next/
+            coverage/
+          retention-days: 7
