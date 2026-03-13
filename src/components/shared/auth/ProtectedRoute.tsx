@@ -1,6 +1,7 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -10,17 +11,22 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, redirectTo = '/login' }: ProtectedRouteProps) {
+  const [mounted, setMounted] = useState(false);
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
 
+  // Mark as mounted after first client-side render
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push(redirectTo);
-    }
-  }, [isAuthenticated, isLoading, router, redirectTo]);
+    setMounted(true);
+  }, []);
 
-  // Show loading state while checking authentication
-  if (isLoading) {
+  useEffect(() => {
+    if (mounted && !isLoading && !isAuthenticated) {
+      router.replace(redirectTo);
+    }
+  }, [mounted, isAuthenticated, isLoading, router, redirectTo]);
+
+  if (!mounted || isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -31,7 +37,6 @@ export function ProtectedRoute({ children, redirectTo = '/login' }: ProtectedRou
     );
   }
 
-  // Don't render children if not authenticated
   if (!isAuthenticated) {
     return null;
   }
