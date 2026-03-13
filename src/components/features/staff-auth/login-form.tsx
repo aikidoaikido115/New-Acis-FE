@@ -3,18 +3,19 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { authService } from "@/services/auth.service";
+import { getAuthErrorMessage } from "@/lib/error-messages";
 
 export function LoginForm() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string>("");
+  const [error, setError] = useState<{ title?: string; message: string } | null>(null);
 
   const [formData, setFormData] = useState({
     usernameOrEmail: "",
@@ -26,12 +27,12 @@ export function LoginForm() {
       ...formData,
       [e.target.name]: e.target.value,
     });
-    if (error) setError("");
+    if (error) setError(null);
   };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setError(null);
     setIsLoading(true);
 
     try {
@@ -47,8 +48,8 @@ export function LoginForm() {
       await authService.login(credentials);
       router.push("/dashboard");
     } catch (err) {
-      const error = err as { message?: string };
-      setError(error.message || "เข้าสู่ระบบไม่สำเร็จ กรุณาลองอีกครั้ง");
+      const friendlyError = getAuthErrorMessage(err);
+      setError(friendlyError);
     } finally {
       setIsLoading(false);
     }
@@ -60,8 +61,16 @@ export function LoginForm() {
 
       <form onSubmit={onSubmit} className="space-y-5">
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-            {error}
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                {error.title && (
+                  <p className="font-semibold text-sm mb-1">{error.title}</p>
+                )}
+                <p className="text-sm">{error.message}</p>
+              </div>
+            </div>
           </div>
         )}
 
