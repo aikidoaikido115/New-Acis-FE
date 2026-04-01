@@ -39,7 +39,7 @@ export default function NotificationPage() {
   return (
     <div className="min-h-screen bg-[#F5F7FA] flex flex-col items-center pt-10 px-4">
       <div className="w-full max-w-4xl bg-white rounded-2xl shadow-lg p-8">
-        <h1 className="text-2xl font-bold text-gray-800 mb-6">การแจ้งเตือนทั้งหมด</h1>
+        <h1 className="text-2xl font-bold text-gray-800 mb-6">การแจ้งเตือน</h1>
         <div className="space-y-5">
           {notifications.map((notification) => (
             <NotificationCard key={notification.id} notification={notification} />
