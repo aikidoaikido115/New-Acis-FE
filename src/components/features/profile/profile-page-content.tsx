@@ -154,7 +154,7 @@ const ReadOnlyField = ({ label, value }: { label: string; value: string }) => (
         {value}
       </div>
       <div className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg data-testid="lock-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
           <path d="M7 11V7a5 5 0 0 1 10 0v4" />
         </svg>
@@ -356,7 +356,7 @@ export function ProfilePageContent() {
   })();
 
   return (
-    <div className="min-h-screen bg-[#F5F7FA] flex flex-col items-center pt-6 sm:pt-10 px-6 sm:px-20 lg:px-56">
+    <div className="min-h-screen bg-[#F5F7FA] flex flex-col items-center pt-6 sm:pt-10 px-6 sm:px-20 lg:px-56 mb-6">
       {isCropOpen && cropImageUrl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-lg">
@@ -418,7 +418,7 @@ export function ProfilePageContent() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-lg p-5 sm:p-8 w-full max-w-5xl">
+      <div className="bg-white rounded-2xl shadow-lg p-5 sm:p-8 w-full max-w-6xl">
         <div className="mb-8">
           <h2 className="text-lg sm:text-xl font-semibold text-gray-800 mb-4">ข้อมูลส่วนตัว</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
