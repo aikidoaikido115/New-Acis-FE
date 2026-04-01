@@ -353,7 +353,7 @@ export default function Page() {
     <>
       <div className="flex flex-col gap-6 p-4 sm:p-6 lg:p-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-xl font-semibold text-slate-800">แฟ้มข้อมูลผู้สูงอายุ</h1>
+          <h2 className="text-2xl font-bold text-slate-800">แฟ้มข้อมูลผู้สูงอายุ</h2>
           <button
             type="button"
             onClick={() => {

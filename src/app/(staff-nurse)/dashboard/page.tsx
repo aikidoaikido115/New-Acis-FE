@@ -229,9 +229,9 @@ export default function Page() {
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <h1 className="text-2xl font-semibold text-slate-800">
+              <h2 className="text-2xl font-bold text-slate-800">
                 ยินดีต้อนรับ, {user?.first_name || "ผู้ใช้งาน"}
-              </h1>
+              </h2>
               <p className="text-sm mt-2 text-slate-500">ภาพรวมการดูแลผู้สูงอายุประจำวันนี้</p>
             </div>
             <div className="flex flex-wrap items-center gap-3">

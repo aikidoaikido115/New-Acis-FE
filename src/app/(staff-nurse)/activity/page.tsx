@@ -66,7 +66,7 @@ export default function ActivityPage() {
     <>
       <div className="flex flex-col gap-6 p-4 sm:p-6 lg:p-8">
         <div>
-          <h1 className="text-xl font-semibold text-slate-800">ตารางกิจกรรม</h1>
+          <h2 className="text-2xl font-bold text-slate-800">ตารางกิจกรรม</h2>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
