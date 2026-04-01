@@ -5,17 +5,31 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useClickOutside } from "@/hooks/use-click-outside";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { NOTIFICATION_ICON_MAP, type NotificationItemData, type NotificationIconType } from "@/components/shared/notifications/notification-types";
+import { NOTIFICATION_ICON_MAP, type NotificationItemData } from "@/components/shared/notifications/notification-types";
 
-// Types
-export const NURSE_NOTIFICATIONS: NotificationItemData[] = [
-  { id: "1", title: "รายการ vital signs ผิดปกติ", icon: "vital", timeAgo: "2 นาทีที่แล้ว" },
-  { id: "2", title: "ผู้สูงอายุไม่ได้กินยา 2 คน", icon: "user", timeAgo: "34 นาทีที่แล้ว" },
-  { id: "3", title: "กิจกรรมการกายภาพ 9:00 น", icon: "calendar", timeAgo: "1 ชั่วโมงแล้ว" },
-  { id: "4", title: "ผ้าอ้อมคงเหลือ 2 รายการ", icon: "shopping", timeAgo: "2 ชั่วโมงแล้ว" },
+// Static notification data for kitchen staff
+export const KITCHEN_NOTIFICATIONS: NotificationItemData[] = [
+  {
+    id: "k1",
+    title: "กรุณากำหนดเมนูอาหารเช้า ภายใน 06:00 น.",
+    icon: "calendar",
+    timeAgo: "อีก 60 นาที",
+  },
+  {
+    id: "k2",
+    title: "กรุณากำหนดเมนูอาหารกลางวัน ภายใน 12:00 น.",
+    icon: "calendar",
+    timeAgo: "อีก 120 นาที",
+  },
+  {
+    id: "k3",
+    title: "กรุณากำหนดเมนูอาหารเย็น ภายใน 17:00 น.",
+    icon: "calendar",
+    timeAgo: "อีก 60 นาที",
+  },
 ];
 
-// Sub-Components
+// Single NotificationItem component
 function NotificationItem({ notification }: { notification: NotificationItemData }) {
   const Icon = NOTIFICATION_ICON_MAP[notification.icon];
 
@@ -65,7 +79,6 @@ function NotificationDropdown({
 
   return (
     <div className="absolute mt-2 w-[calc(100vw-2rem)] max-w-sm sm:w-86 sm:max-w-none max-h-96 overflow-hidden rounded-xl bg-white text-gray-800 shadow-xl left-1/2 -translate-x-[71%] sm:left-auto sm:translate-x-0 sm:right-0">
-      {/* Header */}
       <div className="border-b border-gray-200 px-4 py-3 flex items-center justify-between">
         <h3 className="text-sm font-bold text-gray-900">การแจ้งเตือน</h3>
         <button
@@ -76,15 +89,9 @@ function NotificationDropdown({
         </button>
       </div>
 
-      {/* Notification List */}
-      <div
-        ref={scrollContainerRef}
-        className="max-h-72 overflow-y-auto space-y-2 p-3"
-      >
+      <div ref={scrollContainerRef} className="max-h-72 overflow-y-auto space-y-2 p-3">
         {notifications.length === 0 ? (
-          <div className="text-center py-8 text-gray-500 text-sm">
-            ไม่มีการแจ้งเตือน
-          </div>
+          <div className="text-center py-8 text-gray-500 text-sm">ไม่มีการแจ้งเตือน</div>
         ) : (
           notifications.map((notification) => (
             <NotificationItem key={notification.id} notification={notification} />
@@ -96,31 +103,26 @@ function NotificationDropdown({
   );
 }
 
-// Main Component
-interface NotificationBellProps {
+interface KitchenNotificationBellProps {
   notificationsCount?: number;
   viewAllPath?: string;
 }
 
-export function NotificationBell({
+export function KitchenNotificationBell({
   notificationsCount = 0,
   viewAllPath = "/notification",
-}: NotificationBellProps) {
+}: KitchenNotificationBellProps) {
   const router = useRouter();
 
-  // State
   const [isOpen, setIsOpen] = useState(false);
-  const [notifications, setNotifications] = useState<NotificationItemData[]>(NURSE_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState<NotificationItemData[]>(KITCHEN_NOTIFICATIONS);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-  // Refs
   const bellRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown when clicking outside
   useClickOutside(() => setIsOpen(false), bellRef, dropdownRef);
 
-  // Handlers
   const handleViewAll = useCallback(() => {
     setIsOpen(false);
     router.push(viewAllPath);
@@ -128,11 +130,15 @@ export function NotificationBell({
 
   const handleLoadMore = useCallback(async () => {
     setIsLoadingMore(true);
-    // TODO: Replace with actual API call
+    // Simulate loading more notifications
     setTimeout(() => {
       const moreNotifications: NotificationItemData[] = [
-        { id: `${notifications.length + 1}`, title: "แจ้งเตือนเก่าที่ 1", icon: "vital", timeAgo: "3 ชั่วโมงแล้ว" },
-        { id: `${notifications.length + 2}`, title: "แจ้งเตือนเก่าที่ 2", icon: "user", timeAgo: "4 ชั่วโมงแล้ว" },
+        {
+          id: `${notifications.length + 1}`,
+          title: "กำหนดเมนูอาหารเพิ่มเติมสำหรับวันถัดไป",
+          icon: "shopping",
+          timeAgo: "เมื่อสักครู่",
+        },
       ];
       setNotifications((prev) => [...prev, ...moreNotifications]);
       setIsLoadingMore(false);
@@ -141,7 +147,6 @@ export function NotificationBell({
 
   return (
     <div className="relative" ref={bellRef}>
-      {/* Bell Button */}
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
@@ -160,7 +165,6 @@ export function NotificationBell({
         )}
       </button>
 
-      {/* Dropdown */}
       {isOpen && (
         <div ref={dropdownRef}>
           <NotificationDropdown

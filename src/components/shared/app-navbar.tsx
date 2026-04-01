@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useClickOutside } from "@/hooks/use-click-outside";
 import { NotificationBell } from "@/components/features/nurse/notifications";
+import { KitchenNotificationBell } from "@/components/features/kitchen/notificetions";
 import { authService } from "@/services/auth.service";
 
 interface NavbarUser {
@@ -139,8 +140,8 @@ export function AppNavbar({
   const toggleMenu = () => setIsMenuOpen((prev) => !prev);
 
   // Check if user is kitchen staff
-  const isKitchenStaff = user.role?.toLowerCase().includes("kitchen") || 
-                         user.role?.toLowerCase().includes("โภชนา") || 
+  const isKitchenStaff = user.role?.toLowerCase().includes("kitchen") ||
+                         user.role?.toLowerCase().includes("โภชนา") ||
                          user.role?.toLowerCase().includes("ครัว");
 
   return (
@@ -159,7 +160,11 @@ export function AppNavbar({
         </div>
 
         <div className="flex items-center gap-5">
-          {!isKitchenStaff && <NotificationBell notificationsCount={notificationsCount} />}
+          {isKitchenStaff ? (
+            <KitchenNotificationBell notificationsCount={notificationsCount} />
+          ) : (
+            <NotificationBell notificationsCount={notificationsCount} />
+          )}
 
           <div className="relative" ref={menuRef}>
             <button
