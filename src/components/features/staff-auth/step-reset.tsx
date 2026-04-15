@@ -53,20 +53,20 @@ export function StepReset({ email, onComplete }: StepResetProps) {
 
   return (
     <div className="bg-white rounded-2xl shadow-lg p-10 w-full max-w-[440px] mx-auto">
-      <h2 className="text-2xl font-bold mb-2 text-gray-800">ตั้งรหัสผ่านใหม่</h2>
-      <p className="text-sm text-gray-600 mb-6">
+      <h2 className="text-headline-5 font-bold mb-2 text-gray-800">ตั้งรหัสผ่านใหม่</h2>
+      <p className="text-body-small text-gray-600 mb-6">
         กรุณากรอกรหัสผ่านใหม่ของคุณ
       </p>
       
       <form onSubmit={handleSubmit} className="space-y-5">
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-body-small">
             {error}
           </div>
         )}
 
         <div className="space-y-2.5">
-          <label className="text-sm font-normal text-gray-700">
+          <label className="text-body-small font-normal text-gray-700">
             รหัสผ่านใหม่<span className="text-red-500">*</span>
           </label>
           <div className="relative">
@@ -75,7 +75,7 @@ export function StepReset({ email, onComplete }: StepResetProps) {
               type={showPassword ? "text" : "password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="h-11 border-gray-300 pr-10 bg-[rgba(245,245,245,1)] text-xs text-[rgba(103,103,103,1)] placeholder:text-[rgba(103,103,103,1)]"
+              className="h-11 border-gray-300 pr-10 bg-[rgba(245,245,245,1)] text-overline text-[rgba(103,103,103,1)] placeholder:text-[rgba(103,103,103,1)]"
               required
               disabled={isLoading}
             />
@@ -89,13 +89,13 @@ export function StepReset({ email, onComplete }: StepResetProps) {
               {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
           </div>
-          <p className="text-[10px] text-gray-500">
+          <p className="text-overline text-gray-500">
             รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร
           </p>
         </div>
 
         <div className="space-y-2.5">
-          <label className="text-sm font-normal text-gray-700">
+          <label className="text-body-small font-normal text-gray-700">
             ยืนยันรหัสผ่านใหม่<span className="text-red-500">*</span>
           </label>
           <div className="relative">
@@ -104,7 +104,7 @@ export function StepReset({ email, onComplete }: StepResetProps) {
               type={showConfirmPassword ? "text" : "password"}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="h-11 border-gray-300 pr-10 bg-[rgba(245,245,245,1)] text-xs text-[rgba(103,103,103,1)] placeholder:text-[rgba(103,103,103,1)]"
+              className="h-11 border-gray-300 pr-10 bg-[rgba(245,245,245,1)] text-overline text-[rgba(103,103,103,1)] placeholder:text-[rgba(103,103,103,1)]"
               required
               disabled={isLoading}
             />
@@ -124,7 +124,7 @@ export function StepReset({ email, onComplete }: StepResetProps) {
           <Button 
             type="submit"
             disabled={isLoading}
-            className="w-full bg-[#4A8B6A] hover:bg-[#3d7357] text-white h-12 text-base font-medium transition-colors shadow-sm disabled:opacity-50"
+            className="w-full bg-[#4A8B6A] hover:bg-[#3d7357] text-white h-12 text-body-large font-medium transition-colors shadow-sm disabled:opacity-50"
           >
             {isLoading ? "กำลังบันทึก..." : "ตั้งรหัสผ่านใหม่"}
           </Button>

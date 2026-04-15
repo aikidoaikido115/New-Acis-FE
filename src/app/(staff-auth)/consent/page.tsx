@@ -57,8 +57,7 @@ export default function ConsentPage() {
         nickname: registrationData.nickname || undefined,
         role_name: registrationData.role_name,
         gender: registrationData.gender,
-        profile_image: profileImageFile,
-      };
+        profile_image: profileImageFile };
 
       await authService.register(registerData);
 
@@ -79,31 +78,31 @@ export default function ConsentPage() {
       <AppLogo />
       
       <div className="bg-white rounded-2xl shadow-lg p-10 w-full max-w-[800px] mx-auto mt-8">
-        <h2 className="text-2xl font-bold mb-6 text-gray-800 text-center">
+        <h2 className="text-headline-5 font-bold mb-6 text-gray-800 text-center">
           ข้อกำหนดและนโยบายความเป็นส่วนตัว
         </h2>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-body-small mb-4">
             {error}
           </div>
         )}
         
         <div className="space-y-6 max-h-[400px] overflow-y-auto px-4 mb-6 border border-gray-200 rounded-lg p-4">
           <div className="space-y-3">
-            <h3 className="text-lg font-semibold text-gray-800">
+            <h3 className="text-headline-7 font-semibold text-gray-800">
               1. นโยบายความเป็นส่วนตัว (Privacy Policy)
             </h3>
-            <p className="text-sm text-gray-700 leading-relaxed text-justify">
+            <p className="text-body-small text-gray-700 leading-relaxed text-justify">
               ระบบนี้จัดทำขึ้นเพื่อสนับสนุนการดูแลผู้สูงอายุภายในศูนย์ฯ โดยมีการจัดเก็บข้อมูลส่วนบุคคล และข้อมูลด้านสุขภาพ เช่น ประวัติสุขภาพ ประวัติการรักษา และข้อมูลที่เกี่ยวข้อง เพื่อใช้สำหรับวัตถุประสงค์ทางการแพทย์ และการบริหารจัดการภายในศูนย์ฯ เท่านั้น ข้อมูลทั้งหมดจะถูกจัดเก็บและดูแลรักษาอย่างปลอดภัย ตามมาตรฐานการคุ้มครองข้อมูลส่วนบุคคล (PDPA) และระเบียบของศูนย์ฯ การเข้าถึงข้อมูลจำกัดเฉพาะเจ้าหน้าที่ที่ได้รับมอบหมาย และเกี่ยวข้องกับการปฏิบัติงานเท่านั้น ห้ามเปิดเผยข้อมูลแก่บุคคลภายนอก โดยไม่ได้รับอนุญาตจากศูนย์ฯ อย่างเป็นทางการ
             </p>
           </div>
 
           <div className="space-y-3">
-            <h3 className="text-lg font-semibold text-gray-800">
+            <h3 className="text-headline-7 font-semibold text-gray-800">
               2. ข้อกำหนดการใช้งาน (Terms & Conditions)
             </h3>
-            <p className="text-sm text-gray-700 leading-relaxed text-justify">
+            <p className="text-body-small text-gray-700 leading-relaxed text-justify">
               บัญชีผู้ใช้งานนี้จัดทำขึ้นสำหรับการใช้งานภายในศูนย์ฯ เท่านั้น ผู้ใช้งานมีหน้าที่เก็บรักษาชื่อผู้ใช้และรหัสผ่านเป็นความลับ และต้องไม่เปิดเผยให้บุคคลอื่นทราบ ห้ามคัดลอก นำออก หรือเผยแพร่ข้อมูลผู้ป่วย หรือข้อมูลภายในระบบไปใช้นอกวัตถุประสงค์ หรือโดยไม่ได้รับอนุญาตจากศูนย์ฯ การใช้งานระบบจะมีการบันทึกข้อมูลการใช้งาน (Log) เพื่อการตรวจสอบและความปลอดภัยของระบบ หากมีการฝ่าฝืนข้อกำหนด ศูนย์ฯ ขอสงวนสิทธิ์ในการดำเนินการตามระเบียบ และมาตรการที่กำหนดไว้
             </p>
           </div>
@@ -120,7 +119,7 @@ export default function ConsentPage() {
             />
             <label 
               htmlFor="accept-consent" 
-              className="text-sm text-gray-700 cursor-pointer select-none leading-relaxed font-medium"
+              className="text-body-small text-gray-700 cursor-pointer select-none leading-relaxed font-medium"
             >
               ข้าพเจ้าได้อ่านและยอมรับ นโยบายความเป็นส่วนตัว และ ข้อกำหนดและเงื่อนไขการใช้งาน
             </label>
@@ -145,7 +144,7 @@ export default function ConsentPage() {
             </Button>
           </div>
 
-          <p className="text-xs text-center text-gray-500">
+          <p className="text-overline text-center text-gray-500">
             * หากไม่ยอมรับข้อกำหนด คุณจะไม่สามารถลงทะเบียนเข้าใช้งานระบบได้
           </p>
         </div>
