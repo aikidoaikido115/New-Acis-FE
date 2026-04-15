@@ -1,11 +1,10 @@
 "use client";
 
-import type { WarehouseItem } from "../warehouse.mock";
+import type { WarehouseItem } from "@/services/warehouse.service";
 import {
   WarehouseAlertDialog,
   warehouseCancelButtonClassName,
-  warehouseDangerButtonClassName,
-} from "../../../shared/warehouse/modal";
+  warehouseDangerButtonClassName } from "../../../shared/warehouse/modal";
 
 interface DeleteItemModalProps {
   item: WarehouseItem;
@@ -24,8 +23,8 @@ export function DeleteItemModal({ item, onClose, onConfirm }: DeleteItemModalPro
       title="ยืนยันการนำรายการออก"
       description={
         <>
-          <p>คุณต้องการนำ "{item.name}" ออกจากรายการสินค้านี้หรือไม่?</p>
-          <p className="text-[13px] leading-5 text-[#555555]">การกระทำนี้ไม่สามารถย้อนกลับได้</p>
+          <p>คุณต้องการส่งคำขอนำรายการออกสำหรับ &quot;{item.name}&quot; หรือไม่?</p>
+          <p className="text-sm leading-5 text-[#555555]">รายการจะยังไม่ถูกนำออกจนกว่าจะได้รับอนุมัติ</p>
         </>
       }
       onClose={onClose}
