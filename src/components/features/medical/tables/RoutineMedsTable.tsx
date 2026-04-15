@@ -12,6 +12,7 @@ interface RoutineMedsTableProps {
   onDeleteMed: (medId: number) => void;
   patientName?: string;
   patientRoom?: string;
+  emptyMessage?: string;
 }
 
 export function RoutineMedsTable({ 
@@ -20,7 +21,8 @@ export function RoutineMedsTable({
   onEditMed, 
   onDeleteMed,
   patientName = "สมชาย ศรีบุญญมเมือง",
-  patientRoom = "ห้อง 112 ชั้น 2"
+  patientRoom = "ห้อง 112 ชั้น 2",
+  emptyMessage = "ไม่พบรายการยา"
 }: RoutineMedsTableProps) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -40,36 +42,48 @@ export function RoutineMedsTable({
   return (
     <>
       {/* Table */}
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto rounded-2xl bg-[#E9EDF1] border border-[#D6DCE2]">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-gray-200">
-              <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">ชื่อยา</th>
-              <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">โดส</th>
-              <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">ความถี่/วัน</th>
-              <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">หมายเหตุ</th>
-              <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">จัดการ</th>
+            <tr className="border-b border-[#CFD5DC]">
+              <th className="text-left py-3 px-4 text-xs font-medium text-gray-500">ชื่อยา</th>
+              <th className="text-left py-3 px-4 text-xs font-medium text-gray-500">โดส</th>
+              <th className="text-left py-3 px-4 text-xs font-medium text-gray-500">ความถี่/วัน</th>
+              <th className="text-left py-3 px-4 text-xs font-medium text-gray-500">หมายเหตุ</th>
+              <th className="text-left py-3 px-4 text-xs font-medium text-gray-500">จัดการ</th>
             </tr>
           </thead>
           <tbody>
-            {medications.map((med) => (
-              <tr key={med.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors align-middle">
-                <td className="py-3 px-4 text-sm text-gray-700">{med.name}</td>
-                <td className="py-3 px-4 text-sm text-gray-700">{med.dose}</td>
-                <td className="py-3 px-4 text-sm text-gray-700">{med.frequency}</td>
-                <td className="py-3 px-4 text-sm text-gray-700">{med.note}</td>
+            {medications.length === 0 && (
+              <tr>
+                <td colSpan={5} className="py-12 px-4 text-center">
+                  <div className="text-sm text-gray-600">{emptyMessage}</div>
+                  <div className="text-xs text-gray-400 mt-1">ยังไม่มีข้อมูลยาสำหรับเงื่อนไขที่เลือก</div>
+                </td>
+              </tr>
+            )}
+
+            {medications.map((med, index) => (
+              <tr
+                key={med.id}
+                className={`align-middle ${index !== medications.length - 1 ? "border-b border-[#CFD5DC]" : ""}`}
+              >
+                <td className="py-3 px-4 text-xs sm:text-sm font-medium text-gray-900">{med.name}</td>
+                <td className="py-3 px-4 text-xs sm:text-sm font-medium text-gray-900">{med.dose}</td>
+                <td className="py-3 px-4 text-xs sm:text-sm font-medium text-gray-900">{med.frequency}</td>
+                <td className="py-3 px-4 text-xs sm:text-sm font-medium text-gray-900">{med.note}</td>
                 <td className="py-3 px-4">
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleEditClick(med)}
-                      className="p-1 text-blue-500 hover:text-blue-700 transition-colors"
+                      className="p-1 text-[#1290EB] hover:text-[#0D75C0] transition-colors"
                       title="แก้ไข"
                     >
                       <Edit className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDeleteClick(med)}
-                      className="p-1 text-red-500 hover:text-red-700 transition-colors"
+                      className="p-1 text-[#FF3557] hover:text-[#D92644] transition-colors"
                       title="ลบ"
                     >
                       <Trash2 className="w-4 h-4" />
