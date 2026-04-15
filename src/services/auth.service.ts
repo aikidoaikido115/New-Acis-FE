@@ -16,26 +16,74 @@ class AuthService {
    */
   async fetchUserProfile(): Promise<User | null> {
     try {
+      if (typeof window === 'undefined') return null;
+
       const token = localStorage.getItem('access_token');
       if (!token) return null;
       
       const response = await apiClient.get<ApiResponse<User>>('/api/user/');
       return response.data.result;
-    } catch (error) {
+    } catch {
       return null;
     }
   }
   /**
    * Map role ID to internal role name
    */
-  private mapRoleIdToInternal(roleId: string): string {
+  private mapRoleIdToInternal(roleId?: string): string | null {
+    if (!roleId) return null;
+
     const roleIdMap: Record<string, string> = {
       '1': 'nurse',
       '2': 'kitchen',
       '3': 'relative',
     };
     
-    return roleIdMap[roleId] || 'nurse';
+    return roleIdMap[roleId] || null;
+  }
+
+  /**
+   * Map role name variants to internal role name
+   */
+  private mapRoleNameToInternal(roleName?: string): string | null {
+    if (!roleName) return null;
+
+    const normalizedRole = roleName.trim().toLowerCase();
+
+    if (
+      normalizedRole === 'medical staff' ||
+      normalizedRole === 'nurse' ||
+      normalizedRole.includes('medical') ||
+      normalizedRole.includes('nurse')
+    ) {
+      return 'nurse';
+    }
+
+    if (
+      normalizedRole === 'kitchen staff' ||
+      normalizedRole === 'kitchen' ||
+      normalizedRole.includes('kitchen')
+    ) {
+      return 'kitchen';
+    }
+
+    if (normalizedRole === 'relative' || normalizedRole.includes('relative')) {
+      return 'relative';
+    }
+
+    return null;
+  }
+
+  /**
+   * Resolve internal role from user profile payload
+   */
+  private resolveInternalRole(profile: User): string {
+    return (
+      this.mapRoleIdToInternal(profile.role_id) ||
+      this.mapRoleNameToInternal(profile.role_name) ||
+      this.mapRoleNameToInternal(profile.role?.name) ||
+      'nurse'
+    );
   }
 
   /**
@@ -61,9 +109,7 @@ class AuthService {
       throw new Error('Failed to fetch user profile');
     }
     
-    const mappedRole = profile.role_id 
-      ? this.mapRoleIdToInternal(profile.role_id)
-      : 'nurse';
+    const mappedRole = this.resolveInternalRole(profile);
     
     const userData: LoginResponse = {
       ...apiResult,
