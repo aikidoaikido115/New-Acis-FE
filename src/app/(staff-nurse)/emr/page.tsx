@@ -12,12 +12,12 @@ export default function EMRPage() {
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-[1400px] mx-auto">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">เวชระเบียน</h1>
+          <h1 className="text-headline-5 font-bold text-gray-800">เวชระเบียน</h1>
 
           <div className="flex items-center gap-2">
             <button
               onClick={() => setMainView("overview")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-full text-body-small font-medium transition-all ${
                 mainView === "overview"
                   ? "bg-blue-500 text-white shadow-sm"
                   : "bg-white text-black border border-black hover:bg-gray-50"
@@ -28,7 +28,7 @@ export default function EMRPage() {
             </button>
             <button
               onClick={() => setMainView("individual")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-full text-body-small font-medium transition-all ${
                 mainView === "individual"
                   ? "bg-blue-500 text-white shadow-sm"
                   : "bg-white text-black border border-black hover:bg-gray-50"
