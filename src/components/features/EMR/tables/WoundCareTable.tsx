@@ -95,7 +95,8 @@ export function WoundCareTable() {
       showToast({ type: "success", title: "บันทึกสำเร็จ", message: "เพิ่มบันทึกทำแผลเรียบร้อยแล้ว" });
     } catch {
       showToast({ type: "error", title: "บันทึกไม่สำเร็จ", message: "ไม่สามารถสร้างบันทึกทำแผลได้" });
-      throw new Error("Create wound care note failed");
+      
+      return; 
     }
   };
 
