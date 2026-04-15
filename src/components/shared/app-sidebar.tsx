@@ -6,6 +6,7 @@ import {
 	BookOpen,
 	Calendar,
 	ClipboardList,
+  FileText,
 	HelpCircle,
 	LayoutGrid,
 	PanelLeftClose,
@@ -54,6 +55,7 @@ const MENU_ITEMS: Record<UserRole, { main: SidebarItem[]; support: SidebarItem[]
     support: [
       { label: "คู่มือการใช้งาน", href: "/user-manual", icon: BookOpen },
       { label: "แจ้งปัญหาการใช้งาน", href: "/support-service", icon: HelpCircle },
+      { label: "จัดการ Ticket", href: "/support-tickets", icon: FileText },
     ],
   },
   kitchen: {
