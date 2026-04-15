@@ -1,15 +1,24 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { X, Calendar, MessageSquare, AlertTriangle, Image as ImageIcon, Send } from "lucide-react";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/components/ui/toast";
+import { ResidentSearchCombobox } from "./ResidentSearchCombobox";
+import type { Resident } from "@/types/resident";
+import type { Room } from "@/types/room";
 
 interface AddNurseNoteModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: NurseNoteFormData) => void;
+  onSubmit: (data: NurseNoteFormData) => void | Promise<void>;
+  residents?: Resident[];
+  rooms?: Room[];
+  showResidentPicker?: boolean;
 }
 
 export interface NurseNoteFormData {
+  residentId?: string;
   date: string;
   time: string;
   category: string;
@@ -19,49 +28,55 @@ export interface NurseNoteFormData {
   sendNote: boolean;
 }
 
-export function AddNurseNoteModal({ isOpen, onClose, onSubmit }: AddNurseNoteModalProps) {
+export function AddNurseNoteModal({
+  isOpen,
+  onClose,
+  onSubmit,
+  residents = [],
+  rooms = [],
+  showResidentPicker = false,
+}: AddNurseNoteModalProps) {
+  const { confirm, confirmDialog } = useConfirmDialog();
+  const { showToast } = useToast();
   const [formData, setFormData] = useState<NurseNoteFormData>({
+    residentId: "",
     date: new Date().toLocaleDateString("th-TH"),
     time: new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }),
-    category: "ประจำวัน",
+    category: "",
     content: "",
     priority: "normal",
-    sendNote: false,
-  });
+    sendNote: false });
 
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const firstInputRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
-  // Track unsaved changes
-  useEffect(() => {
-    const hasData = !!(
-      formData.content.trim().length > 0 || 
-      formData.attachments?.length
-    );
-    setHasUnsavedChanges(hasData);
-  }, [formData]);
+  const hasUnsavedChanges = useMemo(
+    () => !!(formData.content.trim().length > 0 || formData.attachments?.length),
+    [formData]
+  );
 
   // Handle close with confirmation
-  const handleClose = useCallback(() => {
+  const handleClose = useCallback(async () => {
     if (hasUnsavedChanges) {
-      const confirmClose = window.confirm(
-        "คุณมีข้อมูลที่ยังไม่ได้บันทึก ต้องการปิดหน้าต่างนี้หรือไม่?"
-      );
+      const confirmClose = await confirm({
+        title: "ยืนยันการปิดหน้าต่าง",
+        message: "คุณมีข้อมูลที่ยังไม่ได้บันทึก ต้องการปิดหน้าต่างนี้หรือไม่?",
+        confirmText: "ปิดหน้าต่าง",
+        cancelText: "กลับไปแก้ไข",
+      });
       if (!confirmClose) return;
     }
     onClose();
     // Reset form
     setFormData({
+      residentId: "",
       date: new Date().toLocaleDateString("th-TH"),
       time: new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }),
-      category: "ประจำวัน",
+      category: "",
       content: "",
       priority: "normal",
-      sendNote: false,
-    });
-    setHasUnsavedChanges(false);
-  }, [hasUnsavedChanges, onClose]);
+      sendNote: false });
+  }, [hasUnsavedChanges, onClose, confirm]);
 
   // Auto-focus first input when modal opens
   useEffect(() => {
@@ -77,7 +92,7 @@ export function AddNurseNoteModal({ isOpen, onClose, onSubmit }: AddNurseNoteMod
     const handleKeyDown = (e: KeyboardEvent) => {
       // ESC key to close with confirmation if unsaved changes
       if (e.key === "Escape") {
-        handleClose();
+        void handleClose();
       }
 
       // Trap focus within modal (Tab key)
@@ -122,10 +137,15 @@ export function AddNurseNoteModal({ isOpen, onClose, onSubmit }: AddNurseNoteMod
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
-    setHasUnsavedChanges(false);
+
+    if (showResidentPicker && !formData.residentId) {
+      showToast({ type: "error", title: "ข้อมูลไม่ครบ", message: "กรุณาเลือกผู้ป่วยก่อนบันทึก" });
+      return;
+    }
+
+    await onSubmit(formData);
     onClose();
   };
 
@@ -137,27 +157,28 @@ export function AddNurseNoteModal({ isOpen, onClose, onSubmit }: AddNurseNoteMod
   // Handle backdrop click
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) {
-      handleClose();
+      void handleClose();
     }
   };
 
   return (
-    <div 
-      className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 transition-all duration-300"
-      onClick={handleBackdropClick}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="modal-title"
-    >
+    <>
       <div 
-        ref={modalRef}
-        className="bg-white rounded-lg shadow-2xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200"
+        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 transition-all duration-200"
+        onClick={handleBackdropClick}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-title"
       >
+        <div 
+          ref={modalRef}
+          className="bg-white rounded-2xl shadow-xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200"
+        >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 sticky top-0 bg-white z-10">
-          <h2 id="modal-title" className="text-lg font-bold text-gray-800">เขียน Nurse Note</h2>
+          <h2 id="modal-title" className="text-lg font-semibold text-slate-800">เขียน Nurse Note</h2>
           <button 
-            onClick={handleClose} 
+            onClick={() => void handleClose()} 
             className="text-gray-400 hover:text-gray-600 transition-colors rounded-lg p-1 hover:bg-gray-100"
             aria-label="ปิด"
           >
@@ -167,18 +188,32 @@ export function AddNurseNoteModal({ isOpen, onClose, onSubmit }: AddNurseNoteMod
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
+          {showResidentPicker ? (
+            <ResidentSearchCombobox
+              residents={residents}
+              rooms={rooms}
+              value={formData.residentId || ""}
+              onChange={(residentId) => setFormData({ ...formData, residentId })}
+              onClear={() => setFormData({ ...formData, residentId: "" })}
+              autoFocus={isOpen}
+            />
+          ) : null}
+
           {/* Date and Time */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label htmlFor="nurse-note-date" className="block text-sm font-medium text-gray-700 mb-1">วันที่</label>
               <div className="relative">
                 <input
-                  ref={firstInputRef}
+                  ref={showResidentPicker ? null : firstInputRef}
                   id="nurse-note-date"
                   type="text"
+                  placeholder="วว/ดด/ปปปป"
                   value={formData.date}
                   onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-lg placeholder:text-[#CCCCCC] focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${
+                    formData.date ? "text-gray-700" : "text-[#CCCCCC]"
+                  }`}
                 />
                 <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-500 pointer-events-none" />
               </div>
@@ -188,9 +223,12 @@ export function AddNurseNoteModal({ isOpen, onClose, onSubmit }: AddNurseNoteMod
               <input
                 id="nurse-note-time"
                 type="text"
+                placeholder="00:00"
                 value={formData.time}
                 onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className={`w-full px-3 py-2 border border-gray-300 rounded-lg placeholder:text-[#CCCCCC] focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${
+                  formData.time ? "text-gray-700" : "text-[#CCCCCC]"
+                }`}
               />
             </div>
           </div>
@@ -204,8 +242,11 @@ export function AddNurseNoteModal({ isOpen, onClose, onSubmit }: AddNurseNoteMod
                 id="nurse-note-category"
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white appearance-none"
+                className={`w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white appearance-none ${
+                  formData.category ? "text-gray-700" : "text-[#CCCCCC]"
+                }`}
               >
+                <option value="" disabled>เลือกประเภทบันทึก</option>
                 <option value="ประจำวัน">ประจำวัน</option>
                 <option value="พิเศษ">พิเศษ</option>
                 <option value="ฉุกเฉิน">ฉุกเฉิน</option>
@@ -222,7 +263,7 @@ export function AddNurseNoteModal({ isOpen, onClose, onSubmit }: AddNurseNoteMod
               value={formData.content}
               onChange={(e) => setFormData({ ...formData, content: e.target.value })}
               rows={5}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-none"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg placeholder:text-[#CCCCCC] focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-none"
             />
           </div>
 
@@ -295,7 +336,7 @@ export function AddNurseNoteModal({ isOpen, onClose, onSubmit }: AddNurseNoteMod
           <div className="flex items-center justify-end gap-3 pt-2 sticky bottom-0 bg-white pb-2">
             <button
               type="button"
-              onClick={handleClose}
+              onClick={() => void handleClose()}
               className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors text-sm font-medium"
             >
               ยกเลิก
@@ -309,6 +350,10 @@ export function AddNurseNoteModal({ isOpen, onClose, onSubmit }: AddNurseNoteMod
           </div>
         </form>
       </div>
-    </div>
+      </div>
+      {confirmDialog}
+    </>
   );
 }
+
+
