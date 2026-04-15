@@ -3,8 +3,7 @@
 import {
   WarehouseAlertDialog,
   warehouseCancelButtonClassName,
-  warehouseSuccessButtonClassName,
-} from "../../../shared/warehouse/modal";
+  warehouseSuccessButtonClassName } from "../../../shared/warehouse/modal";
 
 interface ApproveTransactionsModalProps {
   count: number;
