@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { ItemCategory, WarehouseItem } from "../warehouse.mock";
+import type {
+  WarehouseCategory as ItemCategory,
+  WarehouseItem } from "@/services/warehouse.service";
 import {
   WarehouseAlertDialog,
   WarehouseModalFooter,
@@ -15,8 +17,7 @@ import {
   warehouseLabelClassName,
   warehouseReadOnlyInputClassName,
   warehouseSuccessButtonClassName,
-  warehouseTextareaClassName,
-} from "../../../shared/warehouse/modal";
+  warehouseTextareaClassName } from "../../../shared/warehouse/modal";
 
 interface AddItemModalProps {
   existingItems: WarehouseItem[];
@@ -49,8 +50,7 @@ export function AddItemModal({ existingItems, onClose, onConfirm }: AddItemModal
     quantity: 0,
     minimumQuantity: 0,
     unit: "",
-    category: "MED" as ItemCategory,
-  });
+    category: "MED" as ItemCategory });
   const [showDiscardModal, setShowDiscardModal] = useState(false);
   const [showValidation, setShowValidation] = useState(false);
 
@@ -100,8 +100,7 @@ export function AddItemModal({ existingItems, onClose, onConfirm }: AddItemModal
       quantity: formData.quantity,
       minimumQuantity: formData.minimumQuantity,
       unit: formData.unit.trim(),
-      category: formData.category,
-    });
+      category: formData.category });
     onClose();
   };
 
@@ -127,7 +126,7 @@ export function AddItemModal({ existingItems, onClose, onConfirm }: AddItemModal
                 className={warehouseInputClassName}
               >
                 <option value="MED">ยาและเวชภัณฑ์</option>
-                <option value="EQU">อุปกรณ์การแพทย์</option>
+                <option value="EQU">อุปกรณ์</option>
                 <option value="CON">ของใช้ประจำวัน</option>
               </select>
             </div>
@@ -152,7 +151,7 @@ export function AddItemModal({ existingItems, onClose, onConfirm }: AddItemModal
                 className={`${warehouseInputClassName} ${nameHasError ? "border-[#FF7A7A]" : ""}`}
               />
               {nameHasError ? (
-                <p className="mt-1 text-[10px] text-[#FF6C6C]">จำเป็นต้องกรอกชื่อสินค้า</p>
+                <p className="mt-1 text-xs text-[#FF6C6C]">จำเป็นต้องกรอกชื่อสินค้า</p>
               ) : null}
             </div>
 
@@ -196,8 +195,7 @@ export function AddItemModal({ existingItems, onClose, onConfirm }: AddItemModal
                 onChange={(e) =>
                   setFormData((prev) => ({
                     ...prev,
-                    minimumQuantity: Number(e.target.value || 0),
-                  }))
+                    minimumQuantity: Number(e.target.value || 0) }))
                 }
                 placeholder="0"
                 className={`${warehouseInputClassName} ${minimumQuantityHasError ? "border-[#FF7A7A]" : ""}`}
@@ -217,7 +215,7 @@ export function AddItemModal({ existingItems, onClose, onConfirm }: AddItemModal
                 placeholder="0"
                 className={`${warehouseInputClassName} ${quantityHasError ? "border-[#FF7A7A]" : ""}`}
               />
-              <p className={warehouseHintClassName}>จำนวนที่พร้อมใช้งานทันทีหลังสร้างรายการสินค้า</p>
+              <p className={warehouseHintClassName}>จำนวนนี้จะถูกเพิ่มเข้าคลังหลังรายการได้รับอนุมัติ</p>
             </div>
           </div>
 
