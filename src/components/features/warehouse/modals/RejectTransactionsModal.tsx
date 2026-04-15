@@ -9,8 +9,7 @@ import {
   warehouseDangerButtonClassName,
   warehouseDisabledButtonClassName,
   warehouseLabelClassName,
-  warehouseTextareaClassName,
-} from "../../../shared/warehouse/modal";
+  warehouseTextareaClassName } from "../../../shared/warehouse/modal";
 
 interface RejectTransactionsModalProps {
   count: number;
@@ -39,7 +38,7 @@ export function RejectTransactionsModal({ count, onClose, onConfirm }: RejectTra
       <WarehouseModalHeader title="ไม่อนุมัติรายการ" onClose={onClose} />
       <form onSubmit={handleSubmit}>
         <div className="space-y-5 px-7 py-5">
-          <p className="text-[15px] leading-6 text-[#262626]">
+          <p className="text-body-large leading-6 text-[#262626]">
             คุณไม่อนุมัติ {count} รายการ กรุณาระบุเหตุผล
           </p>
 
