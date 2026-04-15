@@ -50,22 +50,26 @@ const manualSections: ManualSection[] = [
   }
 ];
 
-export function ManualSidebar() {
+interface ManualSidebarProps {
+  basePath?: string;
+}
+
+export function ManualSidebar({ basePath = "/user-manual" }: ManualSidebarProps) {
   const pathname = usePathname();
   
   const isActive = (sectionId: string) => {
-    return pathname === `/user-manual/${sectionId}`;
+    return pathname === `${basePath}/${sectionId}`;
   };
 
   return (
     <div className="w-full bg-white p-8">
-      <h2 className="text-xl font-bold text-gray-800 mb-6">คู่มือการใช้งาน</h2>
+      <h2 className="text-headline-6 font-bold text-gray-800 mb-6">คู่มือการใช้งาน</h2>
       
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {manualSections.map((section) => (
           <Link
             key={section.id}
-            href={`/user-manual/${section.id}`}
+            href={`${basePath}/${section.id}`}
             className={`
               flex flex-col items-center justify-center gap-3 p-6 rounded-2xl border-2 transition-all text-gray-800 bg-white
               ${isActive(section.id)
@@ -77,7 +81,7 @@ export function ManualSidebar() {
             <div className="flex items-center justify-center">
               {section.icon}
             </div>
-            <span className="text-xs text-center font-medium leading-tight">
+            <span className="text-overline text-center font-medium leading-tight">
               {section.title}
             </span>
           </Link>
