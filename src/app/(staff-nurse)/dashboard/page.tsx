@@ -6,19 +6,13 @@ import {
   Plus,
   ShoppingBag,
   UserRound,
-  Users,
   Pill,
   Calendar,
   Loader2,
   Venus,
   Mars,
 } from "lucide-react";
-import { AppNavbar } from "@/components/shared/app-navbar";
-import { AppSidebar } from "@/components/shared/app-sidebar";
-import { AppFooter } from "@/components/shared/app-footer";
 import { useAuth } from "@/hooks/useAuth";
-import { useSidebarState } from "@/hooks/useSidebarState";
-import { cn } from "@/lib/utils";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Dropdown } from "@/components/ui/dropdown";
 import { ResidentFormModal } from "@/components/features/nurse/elder-info/ResidentFormModal";
@@ -125,7 +119,6 @@ const computeStatsFromResidents = (residents: Resident[]) => {
 
 export default function Page() {
   const { user } = useAuth();
-  const { isSidebarOpen, setIsSidebarOpen, isSidebarCollapsed, setIsSidebarCollapsed, isReady } = useSidebarState();
 
   const [dashboardState, setDashboardState] = useState<DashboardState>(INITIAL_STATE);
   const { residentStats, genderStats, rooms, selectedDate, selectedFloor, isLoading, isAddModalOpen, isSubmitting } = dashboardState;
@@ -230,201 +223,165 @@ export default function Page() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-      <AppNavbar
-        user={{ 
-          firstName: user?.first_name || "ผู้ใช้งาน", 
-          role: user?.role_name 
-        }}
-        notificationsCount={3}
-        onToggleSidebar={() => setIsSidebarOpen(true)}
-      />
-
-      <div className="flex flex-1 pt-16">
-        <AppSidebar
-          role="nurse"
-          isOpen={isSidebarOpen}
-          isCollapsed={isSidebarCollapsed}
-          isReady={isReady}
-          onClose={() => setIsSidebarOpen(false)}
-          onCollapsedChange={setIsSidebarCollapsed}
-        />
-
-        <main
-          className={cn(
-            "flex-1 p-4 sm:p-6 lg:p-8",
-            isReady && "transition-[margin-left] duration-300",
-            isSidebarCollapsed ? "lg:ml-16" : "lg:ml-72"
-          )}
-        >
-          <div className="flex flex-col gap-6">
-            {/* Header Section */}
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                  <h1 className="text-2xl font-semibold text-slate-800">
-                    ยินดีต้อนรับ, {user?.first_name || "ผู้ใช้งาน"}
-                  </h1>
-                  <p className="text-sm mt-2 text-slate-500">ภาพรวมการดูแลผู้สูงอายุประจำวันนี้</p>
-                </div>
-                <div className="flex flex-wrap items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setDashboardState(prev => ({ ...prev, isAddModalOpen: true }))}
-                    className="inline-flex items-center gap-2 rounded-lg bg-[#0093EF] px-4 py-2 text-sm font-semibold text-white shadow-sm"
-                  >
-                    <Plus className="h-4 w-4" />
-                    เพิ่มประวัติแรกเข้า
-                  </button>
-                  <DatePicker 
-                    value={selectedDate} 
-                    onChange={(date) => date && setDashboardState(prev => ({ ...prev, selectedDate: date }))} 
-                  />
-                  <Dropdown
-                    options={FLOOR_OPTIONS}
-                    value={selectedFloor}
-                    onChange={(value) => setDashboardState(prev => ({ ...prev, selectedFloor: value }))}
-                    placeholder="เลือกชั้น"
-                  />
-                </div>
-              </div>
-
-              {/* Stat Cards */}
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                {isLoading ? (
-                  <div className="col-span-4 flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-[#0093EF]" />
-                  </div>
-                ) : (
-                  statCards.map((card) => (
-                    <StatCard
-                      key={card.label}
-                      label={card.label}
-                      value={card.value}
-                      icon={<UserRound className="h-4 w-4" />}
-                      unit=""
-                    />
-                  ))
-                )}
-              </div>
+    <>
+      <div className="flex flex-col gap-6 p-4 sm:p-6 lg:p-8">
+        {/* Header Section */}
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold text-slate-800">
+                ยินดีต้อนรับ, {user?.first_name || "ผู้ใช้งาน"}
+              </h1>
+              <p className="text-sm mt-2 text-slate-500">ภาพรวมการดูแลผู้สูงอายุประจำวันนี้</p>
             </div>
-
-            {/* Row 1: Vital Sign, ยา, สัดส่วนเพศ */}
-            <div className="grid gap-6 md:grid-cols-3">
-              {/* Vital Sign */}
-              <DashboardCard title="Vital sign" icon={<ClipboardList className="h-4 w-4" />}>
-                <div className="space-y-3">
-                  {DASHBOARD_DATA.vitalStats.map((item) => (
-                    <VitalSignItem {...item} key={item.label} />
-                  ))}
-                  <LinkButton href="/emr">[ไปหน้าเวชระเบียน]</LinkButton>
-                </div>
-              </DashboardCard>
-
-              {/* Medicine */}
-              <DashboardCard title="ยา" icon={<Pill className="h-4 w-4" />} className="p-8">
-                <div className="space-y-6 text-sm">
-                  {DASHBOARD_DATA.medicineStatus.map((item) => (
-                    <MedicineSummaryItem {...item} key={item.label} />
-                  ))}
-                  <div className="mt-10">
-                    <LinkButton href="/medicine">[ไปหน้าจัดการยา]</LinkButton>
-                  </div>
-                </div>
-              </DashboardCard>
-
-              {/* Gender Chart */}
-              <DashboardCard
-                title="สัดส่วนเพศ"
-                icon={
-                  <div className="relative h-4 w-4">
-                    <Mars className="absolute inset-0 h-4 w-4" />
-                    <Venus className="absolute inset-0 h-4 w-4 translate-x-0.5 translate-y-0.5 opacity-80" />
-                  </div>
-                }
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setDashboardState((prev) => ({ ...prev, isAddModalOpen: true }))}
+                className="inline-flex items-center gap-2 rounded-lg bg-[#0093EF] px-4 py-2 text-sm font-semibold text-white shadow-sm"
               >
-                {genderStats ? (
-                  <GenderChart {...genderStats} />
-                ) : (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-                  </div>
-                )}
-              </DashboardCard>
-            </div>
-
-            {/* Row 2: ตารางกิจกรรม, รายการสินค้าใกล้หมด */}
-            <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-              {/* Schedule Section */}
-              <DashboardCard title="ตารางกิจกรรม" icon={<Calendar className="h-4 w-4" />}>
-                <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
-                  {/* Mini Calendar */}
-                  <div className="rounded-xl border border-slate-200 p-4">
-                    <div className="flex items-center justify-between text-sm font-semibold text-slate-700">
-                      <span>ธันวาคม 2568</span>
-                      <ChevronDown className="h-4 w-4" />
-                    </div>
-                    <div className="mt-4 grid grid-cols-7 gap-2 text-center text-xs text-slate-500">
-                      {["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"].map((day) => (
-                        <span key={day}>{day}</span>
-                      ))}
-                    </div>
-                    <div className="mt-2 grid grid-cols-7 gap-2 text-center text-xs text-slate-600">
-                      {Array.from({ length: 30 }, (_, i) => i + 1).map((day) => (
-                        <span
-                          key={day}
-                          className={cn(
-                            "rounded-full px-2 py-1",
-                            day === 23 && "bg-blue-600 text-white"
-                          )}
-                        >
-                          {day}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Schedule Items */}
-                  <div className="space-y-4">
-                    {DASHBOARD_DATA.scheduleItems.map((item) => (
-                      <ScheduleItem {...item} key={item.time} />
-                    ))}
-                  </div>
-                </div>
-              </DashboardCard>
-
-              {/* Inventory */}
-              <DashboardCard title="สินค้าคงคลัง" icon={<ShoppingBag className="h-4 w-4" />}>
-                <div className="space-y-6 text-sm">
-                  {DASHBOARD_DATA.inventory.map((item) => (
-                    <div key={item.label} className="space-y-2">
-                      <div className="flex items-center justify-between text-slate-700">
-                        <span className="truncate">{item.label}</span>
-                        <span className="text-red-500 ml-4">{item.value}</span>
-                      </div>
-                      <LinkButton href={item.href}>[ไป{item.href === '/warehouse' ? 'หน้าสินค้าคงคลัง' : 'หน้าประวัติการทำรายการ'}]</LinkButton>
-                    </div>
-                  ))}
-                </div>
-              </DashboardCard>
+                <Plus className="h-4 w-4" />
+                เพิ่มประวัติแรกเข้า
+              </button>
+              <DatePicker
+                value={selectedDate}
+                onChange={(date) => date && setDashboardState((prev) => ({ ...prev, selectedDate: date }))}
+              />
+              <Dropdown
+                options={FLOOR_OPTIONS}
+                value={selectedFloor}
+                onChange={(value) => setDashboardState((prev) => ({ ...prev, selectedFloor: value }))}
+                placeholder="เลือกชั้น"
+              />
             </div>
           </div>
-        </main>
-      </div>
 
-      {/* Footer */}
-      <div className={cn("mt-auto transition-[margin-left] duration-300", isSidebarCollapsed ? "lg:ml-16" : "lg:ml-72")}>
-        <AppFooter />
+          {/* Stat Cards */}
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {isLoading ? (
+              <div className="col-span-4 flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-[#0093EF]" />
+              </div>
+            ) : (
+              statCards.map((card) => (
+                <StatCard
+                  key={card.label}
+                  label={card.label}
+                  value={card.value}
+                  icon={<UserRound className="h-4 w-4" />}
+                  unit=""
+                />
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Row 1: Vital Sign, ยา, สัดส่วนเพศ */}
+        <div className="grid gap-6 md:grid-cols-3">
+          {/* Vital Sign */}
+          <DashboardCard title="Vital sign" icon={<ClipboardList className="h-4 w-4" />}>
+            <div className="space-y-3">
+              {DASHBOARD_DATA.vitalStats.map((item) => (
+                <VitalSignItem {...item} key={item.label} />
+              ))}
+              <LinkButton href="/emr">[ไปหน้าเวชระเบียน]</LinkButton>
+            </div>
+          </DashboardCard>
+
+          {/* Medicine */}
+          <DashboardCard title="ยา" icon={<Pill className="h-4 w-4" />} className="p-8">
+            <div className="space-y-6 text-sm">
+              {DASHBOARD_DATA.medicineStatus.map((item) => (
+                <MedicineSummaryItem {...item} key={item.label} />
+              ))}
+              <div className="mt-10">
+                <LinkButton href="/medicine">[ไปหน้าจัดการยา]</LinkButton>
+              </div>
+            </div>
+          </DashboardCard>
+
+          {/* Gender Chart */}
+          <DashboardCard
+            title="สัดส่วนเพศ"
+            icon={
+              <div className="relative h-4 w-4">
+                <Mars className="absolute inset-0 h-4 w-4" />
+                <Venus className="absolute inset-0 h-4 w-4 translate-x-0.5 translate-y-0.5 opacity-80" />
+              </div>
+            }
+          >
+            {genderStats ? (
+              <GenderChart {...genderStats} />
+            ) : (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+              </div>
+            )}
+          </DashboardCard>
+        </div>
+
+        {/* Row 2: ตารางกิจกรรม, รายการสินค้าใกล้หมด */}
+        <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+          {/* Schedule Section */}
+          <DashboardCard title="ตารางกิจกรรม" icon={<Calendar className="h-4 w-4" />}>
+            <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
+              {/* Mini Calendar */}
+              <div className="rounded-xl border border-slate-200 p-4">
+                <div className="flex items-center justify-between text-sm font-semibold text-slate-700">
+                  <span>ธันวาคม 2568</span>
+                  <ChevronDown className="h-4 w-4" />
+                </div>
+                <div className="mt-4 grid grid-cols-7 gap-2 text-center text-xs text-slate-500">
+                  {["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"].map((day) => (
+                    <span key={day}>{day}</span>
+                  ))}
+                </div>
+                <div className="mt-2 grid grid-cols-7 gap-2 text-center text-xs text-slate-600">
+                  {Array.from({ length: 30 }, (_, i) => i + 1).map((day) => (
+                    <span
+                      key={day}
+                      className={`rounded-full px-2 py-1 ${day === 23 ? "bg-blue-600 text-white" : ""}`}
+                    >
+                      {day}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Schedule Items */}
+              <div className="space-y-4">
+                {DASHBOARD_DATA.scheduleItems.map((item) => (
+                  <ScheduleItem {...item} key={item.time} />
+                ))}
+              </div>
+            </div>
+          </DashboardCard>
+
+          {/* Inventory */}
+          <DashboardCard title="สินค้าคงคลัง" icon={<ShoppingBag className="h-4 w-4" />}>
+            <div className="space-y-6 text-sm">
+              {DASHBOARD_DATA.inventory.map((item) => (
+                <div key={item.label} className="space-y-2">
+                  <div className="flex items-center justify-between text-slate-700">
+                    <span className="truncate">{item.label}</span>
+                    <span className="text-red-500 ml-4">{item.value}</span>
+                  </div>
+                  <LinkButton href={item.href}>[ไป{item.href === "/warehouse" ? "หน้าสินค้าคงคลัง" : "หน้าประวัติการทำรายการ"}]</LinkButton>
+                </div>
+              ))}
+            </div>
+          </DashboardCard>
+        </div>
       </div>
 
       {/* Add Record Modal */}
       <ResidentFormModal
         isOpen={isAddModalOpen}
-        onClose={() => setDashboardState(prev => ({ ...prev, isAddModalOpen: false }))}
+        onClose={() => setDashboardState((prev) => ({ ...prev, isAddModalOpen: false }))}
         onSubmit={handleResidentSubmit}
         isLoading={isSubmitting}
         rooms={rooms}
       />
-    </div>
+    </>
   );
 }
