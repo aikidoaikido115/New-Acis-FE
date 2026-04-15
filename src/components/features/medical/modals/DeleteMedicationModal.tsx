@@ -93,7 +93,7 @@ export function DeleteMedicationModal({
 
   return (
     <div 
-      className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 transition-all duration-300"
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 transition-all duration-200"
       onClick={handleBackdropClick}
       role="dialog"
       aria-modal="true"
@@ -101,11 +101,11 @@ export function DeleteMedicationModal({
     >
       <div 
         ref={modalRef}
-        className="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 animate-in fade-in zoom-in-95 duration-200"
+        className="bg-white rounded-2xl shadow-xl max-w-md w-full mx-4 animate-in fade-in zoom-in-95 duration-200"
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
-          <h2 id="modal-title" className="text-lg font-bold text-gray-800">ลบรายการยา</h2>
+          <h2 id="modal-title" className="text-lg font-semibold text-slate-800">ลบรายการยา</h2>
           <button 
             onClick={handleClose} 
             className="text-gray-400 hover:text-gray-600 transition-colors rounded-lg p-1 hover:bg-gray-100"
@@ -119,7 +119,7 @@ export function DeleteMedicationModal({
         <div className="p-4 space-y-4">
           {/* Patient Info */}
           <div className="bg-gray-50 rounded-lg p-4 flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full border-2 border-blue-400 bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-lg font-bold shrink-0">
+            <div className="w-12 h-12 rounded-full border-2 border-blue-400 bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-headline-7 font-bold shrink-0">
               {patientName.charAt(0)}
             </div>
             <div>
@@ -173,3 +173,5 @@ export function DeleteMedicationModal({
     </div>
   );
 }
+
+

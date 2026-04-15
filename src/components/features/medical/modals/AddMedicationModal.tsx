@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { X, Calendar, Clock } from "lucide-react";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface AddMedicationModalProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ export interface AddMedicationFormData {
 }
 
 export function AddMedicationModal({ isOpen, onClose, onSubmit }: AddMedicationModalProps) {
+  const { confirm, confirmDialog } = useConfirmDialog();
   const [formData, setFormData] = useState<AddMedicationFormData>({
     medicationName: "",
     dosage: "",
@@ -29,8 +31,7 @@ export function AddMedicationModal({ isOpen, onClose, onSubmit }: AddMedicationM
     timing: "ประจำ",
     note: "",
     startDate: "",
-    endDate: "",
-  });
+    endDate: "" });
 
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const firstInputRef = useRef<HTMLInputElement>(null);
@@ -55,11 +56,14 @@ export function AddMedicationModal({ isOpen, onClose, onSubmit }: AddMedicationM
   }, [formData]);
 
   // Handle close with confirmation
-  const handleClose = useCallback(() => {
+  const handleClose = useCallback(async () => {
     if (hasUnsavedChanges) {
-      const confirmClose = window.confirm(
-        "คุณมีข้อมูลที่ยังไม่ได้บันทึก ต้องการปิดหน้าต่างนี้หรือไม่?"
-      );
+      const confirmClose = await confirm({
+        title: "ยืนยันการปิดหน้าต่าง",
+        message: "คุณมีข้อมูลที่ยังไม่ได้บันทึก ต้องการปิดหน้าต่างนี้หรือไม่?",
+        confirmText: "ปิดหน้าต่าง",
+        cancelText: "กลับไปแก้ไข",
+      });
       if (!confirmClose) return;
     }
     onClose();
@@ -72,10 +76,9 @@ export function AddMedicationModal({ isOpen, onClose, onSubmit }: AddMedicationM
       timing: "ประจำ",
       note: "",
       startDate: "",
-      endDate: "",
-    });
+      endDate: "" });
     setHasUnsavedChanges(false);
-  }, [hasUnsavedChanges, onClose]);
+  }, [hasUnsavedChanges, onClose, confirm]);
 
   // Handle keyboard events (ESC to close, trap focus)
   useEffect(() => {
@@ -83,7 +86,7 @@ export function AddMedicationModal({ isOpen, onClose, onSubmit }: AddMedicationM
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        handleClose();
+        void handleClose();
       }
 
       if (e.key === "Tab" && modalRef.current) {
@@ -134,27 +137,28 @@ export function AddMedicationModal({ isOpen, onClose, onSubmit }: AddMedicationM
 
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) {
-      handleClose();
+      void handleClose();
     }
   };
 
   return (
-    <div 
-      className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 transition-all duration-300"
-      onClick={handleBackdropClick}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="modal-title"
-    >
+    <>
       <div 
-        ref={modalRef}
-        className="bg-white rounded-lg shadow-2xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200"
+        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 transition-all duration-200"
+        onClick={handleBackdropClick}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-title"
       >
+        <div 
+          ref={modalRef}
+          className="bg-white rounded-2xl shadow-xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200"
+        >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 sticky top-0 bg-white z-10">
-          <h2 id="modal-title" className="text-lg font-bold text-gray-800">เพิ่มรายการยา</h2>
+          <h2 id="modal-title" className="text-lg font-semibold text-slate-800">เพิ่มรายการยา</h2>
           <button 
-            onClick={handleClose} 
+            onClick={() => void handleClose()} 
             className="text-gray-400 hover:text-gray-600 transition-colors rounded-lg p-1 hover:bg-gray-100"
             aria-label="ปิด"
           >
@@ -176,7 +180,7 @@ export function AddMedicationModal({ isOpen, onClose, onSubmit }: AddMedicationM
               placeholder="ชื่อยา"
               value={formData.medicationName}
               onChange={(e) => setFormData({ ...formData, medicationName: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg placeholder:text-[#CCCCCC] focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               required
             />
           </div>
@@ -192,7 +196,7 @@ export function AddMedicationModal({ isOpen, onClose, onSubmit }: AddMedicationM
               placeholder="เช่น 500 mg"
               value={formData.dosage}
               onChange={(e) => setFormData({ ...formData, dosage: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg placeholder:text-[#CCCCCC] focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               required
             />
           </div>
@@ -261,7 +265,7 @@ export function AddMedicationModal({ isOpen, onClose, onSubmit }: AddMedicationM
               value={formData.note}
               onChange={(e) => setFormData({ ...formData, note: e.target.value })}
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-none"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg placeholder:text-[#CCCCCC] focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-none"
             />
           </div>
 
@@ -279,7 +283,7 @@ export function AddMedicationModal({ isOpen, onClose, onSubmit }: AddMedicationM
                     placeholder="11/02/2566"
                     value={formData.startDate}
                     onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg placeholder:text-[#CCCCCC] focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                     required
                   />
                   <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
@@ -296,7 +300,7 @@ export function AddMedicationModal({ isOpen, onClose, onSubmit }: AddMedicationM
                     placeholder="15/02/2566"
                     value={formData.endDate}
                     onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg placeholder:text-[#CCCCCC] focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                     required
                   />
                   <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
@@ -309,7 +313,7 @@ export function AddMedicationModal({ isOpen, onClose, onSubmit }: AddMedicationM
           <div className="flex items-center justify-end gap-3 pt-2 sticky bottom-0 bg-white pb-2">
             <button
               type="button"
-              onClick={handleClose}
+              onClick={() => void handleClose()}
               className="px-6 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors text-sm font-medium"
             >
               ยกเลิก
@@ -323,6 +327,10 @@ export function AddMedicationModal({ isOpen, onClose, onSubmit }: AddMedicationM
           </div>
         </form>
       </div>
-    </div>
+      </div>
+      {confirmDialog}
+    </>
   );
 }
+
+
