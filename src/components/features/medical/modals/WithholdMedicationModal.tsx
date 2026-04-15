@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { X } from "lucide-react";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface WithholdMedicationModalProps {
   isOpen: boolean;
@@ -27,10 +28,10 @@ export function WithholdMedicationModal({
   medicationName,
   medicationDosage
 }: WithholdMedicationModalProps) {
+  const { confirm, confirmDialog } = useConfirmDialog();
   const [formData, setFormData] = useState<WithholdFormData>({
     reason: "",
-    note: "",
-  });
+    note: "" });
 
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const firstInputRef = useRef<HTMLInputElement>(null);
@@ -54,24 +55,27 @@ export function WithholdMedicationModal({
     setHasUnsavedChanges(hasData);
   }, [formData]);
 
-  const handleClose = useCallback(() => {
+  const handleClose = useCallback(async () => {
     if (hasUnsavedChanges) {
-      const confirmClose = window.confirm(
-        "คุณมีข้อมูลที่ยังไม่ได้บันทึก ต้องการปิดหน้าต่างนี้หรือไม่?"
-      );
+      const confirmClose = await confirm({
+        title: "ยืนยันการปิดหน้าต่าง",
+        message: "คุณมีข้อมูลที่ยังไม่ได้บันทึก ต้องการปิดหน้าต่างนี้หรือไม่?",
+        confirmText: "ปิดหน้าต่าง",
+        cancelText: "กลับไปแก้ไข",
+      });
       if (!confirmClose) return;
     }
     onClose();
     setFormData({ reason: "", note: "" });
     setHasUnsavedChanges(false);
-  }, [hasUnsavedChanges, onClose]);
+  }, [hasUnsavedChanges, onClose, confirm]);
 
   useEffect(() => {
     if (!isOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        handleClose();
+        void handleClose();
       }
 
       if (e.key === "Tab" && modalRef.current) {
@@ -121,27 +125,28 @@ export function WithholdMedicationModal({
 
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) {
-      handleClose();
+      void handleClose();
     }
   };
 
   return (
-    <div 
-      className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 transition-all duration-300"
-      onClick={handleBackdropClick}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="modal-title"
-    >
+    <>
       <div 
-        ref={modalRef}
-        className="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200"
+        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 transition-all duration-200"
+        onClick={handleBackdropClick}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-title"
       >
+        <div 
+          ref={modalRef}
+          className="bg-white rounded-2xl shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200"
+        >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 sticky top-0 bg-white z-10">
-          <h2 id="modal-title" className="text-lg font-bold text-gray-800">งดให้ยา</h2>
+          <h2 id="modal-title" className="text-lg font-semibold text-slate-800">งดให้ยา</h2>
           <button 
-            onClick={handleClose} 
+            onClick={() => void handleClose()} 
             className="text-gray-400 hover:text-gray-600 transition-colors rounded-lg p-1 hover:bg-gray-100"
             aria-label="ปิด"
           >
@@ -153,7 +158,7 @@ export function WithholdMedicationModal({
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
           {/* Patient Info */}
           <div className="bg-gray-50 rounded-lg p-4 flex items-center gap-3">
-            <div className="w-14 h-14 rounded-full border-2 border-blue-400 bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-xl font-bold shrink-0">
+            <div className="w-14 h-14 rounded-full border-2 border-blue-400 bg-linear-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-headline-6 font-bold shrink-0">
               {patientName.charAt(0)}
             </div>
             <div>
@@ -203,7 +208,7 @@ export function WithholdMedicationModal({
               value={formData.note}
               onChange={(e) => setFormData({ ...formData, note: e.target.value })}
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-none"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg placeholder:text-[#CCCCCC] focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-none"
             />
           </div>
 
@@ -211,7 +216,7 @@ export function WithholdMedicationModal({
           <div className="flex items-center justify-end gap-3 pt-2">
             <button
               type="button"
-              onClick={handleClose}
+              onClick={() => void handleClose()}
               className="px-6 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors text-sm font-medium"
             >
               ยกเลิก
@@ -225,6 +230,10 @@ export function WithholdMedicationModal({
           </div>
         </form>
       </div>
-    </div>
+      </div>
+      {confirmDialog}
+    </>
   );
 }
+
+
