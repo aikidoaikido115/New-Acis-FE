@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { WarehouseItem } from "../warehouse.mock";
+import type { WarehouseItem } from "@/services/warehouse.service";
 import {
   WarehouseAlertDialog,
   WarehouseModalFooter,
@@ -14,8 +14,7 @@ import {
   warehouseLabelClassName,
   warehouseReadOnlyInputClassName,
   warehouseSuccessButtonClassName,
-  warehouseTextareaClassName,
-} from "../../../shared/warehouse/modal";
+  warehouseTextareaClassName } from "../../../shared/warehouse/modal";
 
 interface EditItemModalProps {
   item: WarehouseItem;
@@ -59,8 +58,7 @@ export function EditItemModal({ item, onClose, onConfirm }: EditItemModalProps) 
       name: formData.name.trim(),
       description: formData.description.trim(),
       unit: formData.unit.trim(),
-      minimumQuantity: formData.minimumQuantity ?? 0,
-    });
+      minimumQuantity: formData.minimumQuantity ?? 0 });
     onClose();
   };
 
@@ -86,7 +84,7 @@ export function EditItemModal({ item, onClose, onConfirm }: EditItemModalProps) 
                 className={warehouseInputClassName}
               >
                 <option value="MED">ยาและเวชภัณฑ์</option>
-                <option value="EQU">อุปกรณ์การแพทย์</option>
+                <option value="EQU">อุปกรณ์</option>
                 <option value="CON">ของใช้ประจำวัน</option>
               </select>
             </div>
@@ -149,8 +147,7 @@ export function EditItemModal({ item, onClose, onConfirm }: EditItemModalProps) 
                 onChange={(e) =>
                   setFormData((prev) => ({
                     ...prev,
-                    minimumQuantity: Number(e.target.value || 0),
-                  }))
+                    minimumQuantity: Number(e.target.value || 0) }))
                 }
                 className={`${warehouseInputClassName} ${showValidation && (formData.minimumQuantity ?? 0) < 0 ? "border-[#FF7A7A]" : ""}`}
               />
