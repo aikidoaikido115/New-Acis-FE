@@ -12,8 +12,8 @@ interface ContactInformationModalProps {
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="grid grid-cols-[140px_1fr] items-start gap-4">
-      <p className="text-[16px] font-semibold text-[#2A2A2A]">{label}</p>
-      <p className="text-[16px] text-[#2E2E2E]">{value}</p>
+      <p className="text-body-large font-semibold text-[#2A2A2A]">{label}</p>
+      <p className="text-body-large text-[#2E2E2E]">{value}</p>
     </div>
   );
 }
@@ -51,8 +51,8 @@ export function ContactInformationModal({ contact, onClose }: ContactInformation
               </div>
             )}
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-              <p className="text-[24px] font-bold text-[#1F1F1F]">{contact.firstName}</p>
-              <p className="text-[24px] font-bold text-[#1F1F1F]">{contact.lastName || "-"}</p>
+              <p className="text-headline-5 font-bold text-[#1F1F1F]">{contact.firstName}</p>
+              <p className="text-headline-5 font-bold text-[#1F1F1F]">{contact.lastName || "-"}</p>
             </div>
           </div>
 
@@ -67,7 +67,7 @@ export function ContactInformationModal({ contact, onClose }: ContactInformation
         </div>
 
         <div className="space-y-5 px-12 py-7">
-          <h3 className="text-[18px] font-semibold text-[#262626]">ข้อมูลผู้ใช้</h3>
+          <h3 className="text-headline-7 font-semibold text-[#262626]">ข้อมูลผู้ใช้</h3>
           <InfoRow label="ชื่อเล่น" value={contact.nickname} />
           <InfoRow label="อีเมล" value={contact.email} />
           <InfoRow label="เบอร์โทรศัพท์" value={contact.phone} />

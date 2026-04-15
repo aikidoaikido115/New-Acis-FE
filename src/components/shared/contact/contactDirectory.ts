@@ -13,23 +13,19 @@ const CONTACTS: Record<string, ContactInfo> = {
     lastName: "สุขใจ",
     nickname: "หญิง",
     email: "somying@nurseeldermis.local",
-    phone: "081-234-5678",
-  },
+    phone: "-" },
   "สมหมาย": {
     firstName: "สมหมาย",
     lastName: "ทองดี",
     nickname: "หมาย",
     email: "sommai@nurseeldermis.local",
-    phone: "089-111-2244",
-  },
+    phone: "-" },
   "ผู้ใช้ปัจจุบัน": {
     firstName: "ผู้ใช้",
     lastName: "ปัจจุบัน",
     nickname: "Current",
     email: "current.user@nurseeldermis.local",
-    phone: "-",
-  },
-};
+    phone: "-" } };
 
 export function resolveContactInfo(name: string): ContactInfo {
   const trimmedName = name.trim();
@@ -43,6 +39,5 @@ export function resolveContactInfo(name: string): ContactInfo {
     lastName: "",
     nickname: trimmedName || "-",
     email: "-",
-    phone: "-",
-  };
+    phone: "-" };
 }
