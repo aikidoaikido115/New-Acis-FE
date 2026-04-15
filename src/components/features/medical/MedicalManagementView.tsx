@@ -1,19 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { Calendar, ArrowLeft, Search, ChevronDown, Download, Plus } from "lucide-react";
+import { Calendar, ArrowLeft, Search, ChevronDown, Download, Plus, Sunrise, Sun, Sunset, MoonStar } from "lucide-react";
 import { MedicationCard } from "./MedicationCard";
 import { PatientProfileCard } from "./PatientProfileCard";
 import { RoutineMedsTable } from "./tables/RoutineMedsTable";
+import { CombinedMedsTable } from "./tables/CombinedMedsTable";
 import { HistoryTable } from "./tables/HistoryTable";
 import { Pagination } from "@/components/ui/pagination";
 import { AddMedicationModal } from "./modals";
 import {
   mockPatientMedications,
   mockRoutineMedications,
+  mockPrnMedicationsByPatientId,
   mockMedicationHistory,
-  TimeSlot,
-} from "./medical.mock";
+  TimeSlot } from "./medical.mock";
 
 type ViewType = "main" | "details" | "history";
 
@@ -29,6 +30,7 @@ export function MedicalManagementView() {
   const [detailsTab, setDetailsTab] = useState<"meds" | "history">("meds");
   const [currentPage, setCurrentPage] = useState(1);
   const [showAddMedicationModal, setShowAddMedicationModal] = useState(false);
+  const [medsDisplayMode, setMedsDisplayMode] = useState<"split" | "combined">("split");
 
   // Calculate stats
   const pendingCount = mockPatientMedications.reduce((acc, p) => acc + p.pendingCount, 0);
@@ -53,128 +55,148 @@ export function MedicalManagementView() {
   });
 
   const selectedPatient = mockPatientMedications.find((p) => p.id === selectedPatientId);
+  const selectedPrnMedications = selectedPatientId
+    ? (mockPrnMedicationsByPatientId[selectedPatientId] ?? [])
+    : [];
+
+  const getTimeSlotIcon = (slot: TimeSlot) => {
+    switch (slot) {
+      case "เช้า":
+        return <Sunrise className="w-4 h-4" />;
+      case "กลางวัน":
+        return <Sun className="w-4 h-4" />;
+      case "เย็น":
+        return <Sunset className="w-4 h-4" />;
+      case "ก่อนนอน":
+        return <MoonStar className="w-4 h-4" />;
+      default:
+        return null;
+    }
+  };
 
   // View 1: Main Medication Management
   const renderMainView = () => (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-800">จัดการยา</h1>
+        <h1 className="text-headline-5 font-bold text-gray-800">จัดการยา</h1>
         <div className="flex items-center gap-2 px-4 py-2 border-2 border-blue-500 rounded-lg bg-white">
-          <span className="text-sm font-medium text-blue-500">{selectedDate}</span>
+          <span className="text-body-small font-medium text-blue-500">{selectedDate}</span>
           <Calendar className="w-4 h-4 text-blue-500" />
         </div>
       </div>
 
       {/* Top Filters - Time Slots and Stats */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-        <div className="flex items-center justify-between">
-          {/* Time Slot Pills */}
-          <div className="flex items-center gap-2">
-            {(["เช้า", "กลางวัน", "เย็น", "ก่อนนอน"] as TimeSlot[]).map((slot) => (
-              <button
-                key={slot}
-                onClick={() => setSelectedTimeSlot(slot)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                  selectedTimeSlot === slot
-                    ? "bg-blue-500 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                {slot}
-              </button>
-            ))}
-          </div>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex items-center gap-3 flex-wrap">
+          {(["เช้า", "กลางวัน", "เย็น", "ก่อนนอน"] as TimeSlot[]).map((slot) => (
+            <button
+              key={slot}
+              onClick={() => setSelectedTimeSlot(slot)}
+              className={`px-4 py-2 rounded-full text-body-small font-medium transition-colors inline-flex items-center gap-2 ${
+                selectedTimeSlot === slot
+                  ? "bg-blue-500 text-white"
+                  : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              {getTimeSlotIcon(slot)}
+              {slot}
+            </button>
+          ))}
+        </div>
 
-          {/* Stats */}
-          <div className="flex items-center gap-6">
-            <span className="text-sm">
-              <span className="text-yellow-600 font-semibold">รอให้ยา {pendingCount}</span>
-            </span>
-            <span className="text-sm">
-              <span className="text-green-600 font-semibold">ให้แล้ว {completedCount}</span>
-            </span>
+        <div className="flex items-center gap-3">
+          <div className="min-w-40 px-6 py-3 bg-white border border-gray-300 rounded-lg text-center text-body-large font-semibold text-yellow-600">
+            รอให้ยา <span className="ml-1">{pendingCount}</span>
+          </div>
+          <div className="min-w-40 px-6 py-3 bg-white border border-gray-300 rounded-lg text-center text-body-large font-semibold text-green-600">
+            ให้ยาแล้ว <span className="ml-1">{completedCount}</span>
           </div>
         </div>
       </div>
 
       {/* Secondary Filters */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-        <div className="flex items-center justify-between gap-4">
-          {/* Left side filters */}
-          <div className="flex items-center gap-4 flex-1">
-            {/* Search */}
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="ค้นหาชื่อ..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-              />
-            </div>
-
-            <span className="text-sm text-gray-600">ชั้น</span>
-
-            {/* Floor Dropdown */}
-            <div className="relative">
-              <select
-                value={selectedFloor}
-                onChange={(e) => setSelectedFloor(e.target.value)}
-                className="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white cursor-pointer text-black"
-              >
-                <option>ทุกชั้น</option>
-                <option>1</option>
-                <option>2</option>
-                <option>3</option>
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-            </div>
-
-            <span className="text-sm text-gray-600">การช่วยเหลือตัวเอง</span>
-
-            {/* Help Level Dropdown */}
-            <div className="relative">
-              <select
-                value={selectedHelpLevel}
-                onChange={(e) => setSelectedHelpLevel(e.target.value)}
-                className="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white cursor-pointer text-black"
-              >
-                <option>ทั้งหมด</option>
-                <option>ช่วยเหลือตัวเองได้</option>
-                <option>ต้องการความช่วยเหลือ</option>
-                <option>ติดเตียง</option>
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-            </div>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        {/* Left side filters */}
+        <div className="flex items-center gap-4 flex-1 flex-wrap">
+          {/* Search */}
+          <div className="relative flex-1 max-w-md min-w-60">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="ค้นหาชื่อ..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-400 bg-white shadow-sm rounded-lg placeholder:text-[#CCCCCC] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-body-small text-black"
+            />
           </div>
 
-          {/* History Button */}
-          <button
-            onClick={() => setCurrentView("history")}
-            className="px-4 py-2 border-2 border-blue-500 text-blue-500 rounded-lg text-sm font-medium hover:bg-blue-50 transition-colors"
-          >
-            ประวัติการให้ยา
-          </button>
+          <span className="text-body-small text-gray-600">ชั้น</span>
+
+          {/* Floor Dropdown */}
+          <div className="relative">
+            <select
+              value={selectedFloor}
+              onChange={(e) => setSelectedFloor(e.target.value)}
+              className="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-body-small bg-white cursor-pointer text-black"
+            >
+              <option>ทุกชั้น</option>
+              <option>1</option>
+              <option>2</option>
+              <option>3</option>
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+          </div>
+
+          <span className="text-body-small text-gray-600">การช่วยเหลือตัวเอง</span>
+
+          {/* Help Level Dropdown */}
+          <div className="relative">
+            <select
+              value={selectedHelpLevel}
+              onChange={(e) => setSelectedHelpLevel(e.target.value)}
+              className="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-body-small bg-white cursor-pointer text-black"
+            >
+              <option>ทั้งหมด</option>
+              <option>ช่วยเหลือตัวเองได้</option>
+              <option>ต้องการความช่วยเหลือ</option>
+              <option>ติดเตียง</option>
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+          </div>
         </div>
+
+        {/* History Button */}
+        <button
+          onClick={() => setCurrentView("history")}
+          className="px-4 py-2 border-2 border-gray-300 bg-gray-100 text-gray-700 rounded-lg text-body-small font-medium hover:bg-gray-200 transition-colors"
+        >
+          [ ประวัติการให้ยา ]
+        </button>
       </div>
 
       {/* Patient Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredPatients.map((patient) => (
-          <MedicationCard
-            key={patient.id}
-            patient={patient}
-            onViewDetails={(id) => {
-              setSelectedPatientId(id);
-              setCurrentView("details");
-            }}
-            onGiveAllMeds={(id) => {
-              console.log("Give all meds for patient:", id);
-            }}
-          />
-        ))}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {filteredPatients.length === 0 ? (
+          <div className="md:col-span-2 rounded-lg border border-gray-200 bg-white py-12 px-4 text-center">
+            <div className="text-sm text-gray-600">ไม่พบรายชื่อผู้พัก</div>
+            <div className="text-xs text-gray-400 mt-1">ลองเปลี่ยนคำค้นหา หรือปรับตัวกรองชั้นและการช่วยเหลือตัวเอง</div>
+          </div>
+        ) : (
+          filteredPatients.map((patient) => (
+            <MedicationCard
+              key={patient.id}
+              patient={patient}
+              onViewDetails={(id) => {
+                setSelectedPatientId(id);
+                setCurrentView("details");
+              }}
+              onGiveAllMeds={(id) => {
+                console.log("Give all meds for patient:", id);
+              }}
+            />
+          ))
+        )}
       </div>
     </div>
   );
@@ -188,22 +210,22 @@ export function MedicalManagementView() {
         className="flex items-center gap-2 text-blue-500 hover:text-blue-700 transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
-        <span className="text-sm font-medium">ย้อนกลับ</span>
+        <span className="text-body-small font-medium">ย้อนกลับ</span>
       </button>
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">ข้อมูลและประวัติการให้ยา</h1>
-          <p className="text-sm text-gray-500">{selectedPatient?.name}</p>
+          <h1 className="text-headline-5 font-bold text-gray-800">ข้อมูลและประวัติการให้ยา</h1>
+          <p className="text-body-small text-gray-500 mt-3">{selectedPatient?.name}</p>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col items-end gap-3">
           {/* Tab Toggle */}
           <div className="flex bg-gray-100 rounded-lg p-1">
             <button
               onClick={() => setDetailsTab("meds")}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              className={`px-4 py-2 rounded-md text-body-small font-medium transition-colors ${
                 detailsTab === "meds"
                   ? "bg-blue-500 text-white"
                   : "bg-transparent text-gray-600 hover:text-gray-900"
@@ -213,7 +235,7 @@ export function MedicalManagementView() {
             </button>
             <button
               onClick={() => setDetailsTab("history")}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              className={`px-4 py-2 rounded-md text-body-small font-medium transition-colors ${
                 detailsTab === "history"
                   ? "bg-blue-500 text-white"
                   : "bg-transparent text-gray-600 hover:text-gray-900"
@@ -225,7 +247,7 @@ export function MedicalManagementView() {
 
           {/* Date Picker */}
           <div className="flex items-center gap-2 px-4 py-2 border-2 border-blue-500 rounded-lg bg-white">
-            <span className="text-sm font-medium text-blue-500">{selectedDate}</span>
+            <span className="text-body-small font-medium text-blue-500">{selectedDate}</span>
             <Calendar className="w-4 h-4 text-blue-500" />
           </div>
         </div>
@@ -236,7 +258,6 @@ export function MedicalManagementView() {
         <PatientProfileCard
           name={selectedPatient.name}
           room={selectedPatient.room}
-          birthDate="น.ศ.1956.03.01(67ปี)"
           allergies={selectedPatient.allergies}
           chronicDiseases={["ความดันโลหิตสูง", "โรคหัวใจ", "เบาหวาน Type 2"]}
         />
@@ -251,41 +272,84 @@ export function MedicalManagementView() {
             placeholder="ค้นหาชื่อยา..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+            className="w-full pl-10 pr-4 py-2 border border-gray-400 bg-white shadow-sm rounded-lg placeholder:text-[#CCCCCC] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-body-small text-black"
           />
         </div>
         <button
           onClick={() => setShowAddMedicationModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors whitespace-nowrap"
+          className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg text-body-small font-medium hover:bg-blue-600 transition-colors whitespace-nowrap"
         >
           <Plus className="w-4 h-4" />
           <span>เพิ่มยาใหม่</span>
         </button>
       </div>
 
-      {/* Content Layout - Two Columns */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left Column - Routine Meds */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">ยาประจำ</h3>
-          <RoutineMedsTable
-            medications={mockRoutineMedications}
-            onAddMed={() => console.log("Add med")}
-            onEditMed={(id) => console.log("Edit med:", id)}
-            onDeleteMed={(id) => console.log("Delete med:", id)}
-            patientName={selectedPatient?.name}
-            patientRoom={selectedPatient?.room}
-          />
-        </div>
+      <div className="flex items-center gap-2">
+        <span className="text-body-small text-gray-600">มุมมองตารางยา:</span>
+        <button
+          type="button"
+          onClick={() => setMedsDisplayMode("split")}
+          className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
+            medsDisplayMode === "split"
+              ? "bg-blue-500 text-white"
+              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+          }`}
+        >
+          แยกประเภท
+        </button>
+        <button
+          type="button"
+          onClick={() => setMedsDisplayMode("combined")}
+          className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
+            medsDisplayMode === "combined"
+              ? "bg-blue-500 text-white"
+              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+          }`}
+        >
+          ตารางรวม
+        </button>
+      </div>
 
-        {/* Right Column - PRN Meds */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">ยาตามอาการ / ชั่วคราว</h3>
-          <div className="flex items-center justify-center h-64 border-2 border-dashed border-gray-300 rounded-lg">
-            <p className="text-gray-400 text-sm">ไม่มียาตามการ</p>
+      {medsDisplayMode === "split" ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Left Column - Routine Meds */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h3 className="text-headline-7 font-semibold text-gray-800 mb-4">ยาประจำ</h3>
+            <RoutineMedsTable
+              medications={mockRoutineMedications}
+              onAddMed={() => console.log("Add med")}
+              onEditMed={(id) => console.log("Edit med:", id)}
+              onDeleteMed={(id) => console.log("Delete med:", id)}
+              patientName={selectedPatient?.name}
+              patientRoom={selectedPatient?.room}
+            />
+          </div>
+
+          {/* Right Column - PRN Meds */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h3 className="text-headline-7 font-semibold text-gray-800 mb-4">ยาตามอาการ / ชั่วคราว</h3>
+            <RoutineMedsTable
+              medications={selectedPrnMedications}
+              onAddMed={() => console.log("Add PRN med")}
+              onEditMed={(id) => console.log("Edit PRN med:", id)}
+              onDeleteMed={(id) => console.log("Delete PRN med:", id)}
+              patientName={selectedPatient?.name}
+              patientRoom={selectedPatient?.room}
+              emptyMessage="ไม่พบรายการยาตามอาการ / ชั่วคราว"
+            />
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <h3 className="text-headline-7 font-semibold text-gray-800 mb-4">ตารางยารวม</h3>
+          <CombinedMedsTable
+            routineMedications={mockRoutineMedications}
+            prnMedications={selectedPrnMedications}
+            onEditMed={(id) => console.log("Edit med:", id)}
+            onDeleteMed={(id) => console.log("Delete med:", id)}
+          />
+        </div>
+      )}
 
       {/* Add Medication Modal */}
       <AddMedicationModal
@@ -308,71 +372,70 @@ export function MedicalManagementView() {
         className="flex items-center gap-2 text-blue-500 hover:text-blue-700 transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
-        <span className="text-sm font-medium">ย้อนกลับ</span>
+        <span className="text-body-small font-medium">ย้อนกลับ</span>
       </button>
 
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-800">ประวัติการให้ยา</h1>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 px-4 py-2 border-2 border-blue-500 rounded-lg bg-white">
-            <span className="text-sm font-medium text-blue-500">{selectedDate}</span>
-            <Calendar className="w-4 h-4 text-blue-500" />
-          </div>
-          <button className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors">
-            <Download className="w-4 h-4" />
-            <span>พิมพ์ / Export PDF</span>
-          </button>
-        </div>
+        <h1 className="text-headline-5 font-bold text-gray-800">ประวัติการให้ยา</h1>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-        <div className="flex items-center gap-4">
-          {/* Search */}
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="ค้นหาชื่อ..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-            />
+      <div className="flex flex-wrap items-center gap-4">
+        {/* Search */}
+        <div className="relative flex-1 max-w-md min-w-60">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="ค้นหาชื่อ..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-400 bg-white shadow-sm rounded-lg placeholder:text-[#CCCCCC] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-body-small text-black"
+          />
+        </div>
+
+        <span className="text-body-small text-gray-600">ชั้น</span>
+
+        {/* Floor Dropdown */}
+        <div className="relative">
+          <select
+            value={selectedFloor}
+            onChange={(e) => setSelectedFloor(e.target.value)}
+            className="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-body-small bg-white cursor-pointer text-black"
+          >
+            <option>ทุกชั้น</option>
+            <option>1</option>
+            <option>2</option>
+            <option>3</option>
+          </select>
+          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+        </div>
+
+        <span className="text-body-small text-gray-600">สถานะ</span>
+
+        {/* Status Dropdown */}
+        <div className="relative">
+          <select
+            value={selectedStatus}
+            onChange={(e) => setSelectedStatus(e.target.value)}
+            className="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-body-small bg-white cursor-pointer text-black"
+          >
+            <option>ทั้งหมด</option>
+            <option>ให้แล้ว</option>
+            <option>งด</option>
+          </select>
+          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+        </div>
+
+        <div className="ml-auto flex items-center gap-4">
+          <div className="flex items-center gap-2 px-4 py-2 border-2 border-blue-500 rounded-lg bg-white">
+            <span className="text-body-small font-medium text-blue-500">{selectedDate}</span>
+            <Calendar className="w-4 h-4 text-blue-500" />
           </div>
-
-          <span className="text-sm text-gray-600">ชั้น</span>
-
-          {/* Floor Dropdown */}
-          <div className="relative">
-            <select
-              value={selectedFloor}
-              onChange={(e) => setSelectedFloor(e.target.value)}
-              className="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white cursor-pointer text-black"
-            >
-              <option>ทุกชั้น</option>
-              <option>1</option>
-              <option>2</option>
-              <option>3</option>
-            </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-          </div>
-
-          <span className="text-sm text-gray-600">สถานะ</span>
-
-          {/* Status Dropdown */}
-          <div className="relative">
-            <select
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-              className="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white cursor-pointer text-black"
-            >
-              <option>ทั้งหมด</option>
-              <option>ให้แล้ว</option>
-              <option>งด</option>
-            </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-          </div>
+          <button className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg text-body-small font-medium hover:bg-blue-600 transition-colors whitespace-nowrap">
+            <Download className="w-4 h-4" />
+            <span>พิมพ์ / Export PDF</span>
+          </button>
         </div>
       </div>
 

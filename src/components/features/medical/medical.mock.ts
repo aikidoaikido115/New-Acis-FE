@@ -52,8 +52,7 @@ export const mockPatientMedications: PatientMedication[] = [
       { id: 1, name: "Metformin 500 mg", dosage: "รอบเช้าหลังอาหาร", status: "รอให้" },
       { id: 2, name: "Amlodipine 5 mg", dosage: "รอบเช้าก่อนอาหาร", status: "รอให้" },
     ],
-    pendingCount: 2,
-  },
+    pendingCount: 2 },
   {
     id: 2,
     name: "สมหญิง คชรีเมือง",
@@ -65,8 +64,7 @@ export const mockPatientMedications: PatientMedication[] = [
       { id: 3, name: "Metformin 500 mg", dosage: "รอบเช้าหลังอาหาร", status: "ให้ยา" },
       { id: 4, name: "Amlodipine 5 mg", dosage: "รอบเช้าก่อนอาหาร", status: "ให้ยา" },
     ],
-    pendingCount: 0,
-  },
+    pendingCount: 0 },
   {
     id: 3,
     name: "สมศรี ใจดีมาก",
@@ -78,8 +76,7 @@ export const mockPatientMedications: PatientMedication[] = [
       { id: 5, name: "Metformin 500 mg", dosage: "รอบเช้าหลังอาหาร", status: "รอให้" },
       { id: 6, name: "Amlodipine 5 mg", dosage: "รอบเช้าก่อนอาหาร", status: "งด" },
     ],
-    pendingCount: 1,
-  },
+    pendingCount: 1 },
   {
     id: 4,
     name: "บุญจันทร์ รักษาดี",
@@ -92,8 +89,7 @@ export const mockPatientMedications: PatientMedication[] = [
       { id: 8, name: "Aspirin 81 mg", dosage: "รอบเช้าหลังอาหาร", status: "รอให้" },
       { id: 9, name: "Omeprazole 20 mg", dosage: "รอบเช้าก่อนอาหาร", status: "รอให้" },
     ],
-    pendingCount: 3,
-  },
+    pendingCount: 3 },
   {
     id: 5,
     name: "วิไล สุขสันต์",
@@ -104,8 +100,7 @@ export const mockPatientMedications: PatientMedication[] = [
     medications: [
       { id: 10, name: "Metformin 500 mg", dosage: "รอบเช้าหลังอาหาร", status: "ให้ยา" },
     ],
-    pendingCount: 0,
-  },
+    pendingCount: 0 },
   {
     id: 6,
     name: "ประสิทธิ์ มั่งคั่ง",
@@ -117,8 +112,7 @@ export const mockPatientMedications: PatientMedication[] = [
       { id: 11, name: "Lisinopril 10 mg", dosage: "รอบเช้าก่อนอาหาร", status: "รอให้" },
       { id: 12, name: "Furosemide 40 mg", dosage: "รอบเช้าหลังอาหาร", status: "รอให้" },
     ],
-    pendingCount: 2,
-  },
+    pendingCount: 2 },
 ];
 
 // Mock routine medications for a specific patient
@@ -129,6 +123,14 @@ export const mockRoutineMedications: RoutineMedication[] = [
   { id: 4, name: "Atorvastatin", dose: "20mg", frequency: "1 ครั้ง (ก่อนนอน)", note: "ก่อนนอน" },
 ];
 
+// Mock PRN medications by patient id
+export const mockPrnMedicationsByPatientId: Partial<Record<number, RoutineMedication[]>> = {
+  3: [
+    { id: 301, name: "Paracetamol", dose: "500mg", frequency: "ทุก 6 ชม. เมื่อปวด", note: "หลังอาหาร" },
+    { id: 302, name: "Dimenhydrinate", dose: "50mg", frequency: "เมื่อเวียนศีรษะ", note: "หลีกเลี่ยงก่อนนอน" },
+  ],
+};
+
 // Mock medication history
 export const mockMedicationHistory: MedicationHistory[] = [
   {
@@ -138,8 +140,7 @@ export const mockMedicationHistory: MedicationHistory[] = [
     medication: "Metformin 500 mg",
     status: "ให้แล้ว",
     note: "-",
-    givenBy: "สมหมาย",
-  },
+    givenBy: "สมหมาย" },
   {
     id: 2,
     time: "11:30",
@@ -147,8 +148,7 @@ export const mockMedicationHistory: MedicationHistory[] = [
     medication: "Metformin 500 mg",
     status: "ให้แล้ว",
     note: "-",
-    givenBy: "สมหมาย",
-  },
+    givenBy: "สมหมาย" },
   {
     id: 3,
     time: "10:30",
@@ -156,8 +156,7 @@ export const mockMedicationHistory: MedicationHistory[] = [
     medication: "Metformin 500 mg",
     status: "ให้แล้ว",
     note: "-",
-    givenBy: "สมหมาย",
-  },
+    givenBy: "สมหมาย" },
   {
     id: 4,
     time: "09:30",
@@ -165,8 +164,7 @@ export const mockMedicationHistory: MedicationHistory[] = [
     medication: "Metformin 500 mg",
     status: "งด",
     note: "ผู้สูงอายุขอไม่รับ",
-    givenBy: "สมหมาย",
-  },
+    givenBy: "สมหมาย" },
   {
     id: 5,
     time: "09:45",
@@ -174,8 +172,7 @@ export const mockMedicationHistory: MedicationHistory[] = [
     medication: "Metformin 500 mg",
     status: "งด",
     note: "ผู้สูงอายุไม่อยู่",
-    givenBy: "สมหมาย",
-  },
+    givenBy: "สมหมาย" },
   {
     id: 6,
     time: "08:30",
@@ -183,8 +180,7 @@ export const mockMedicationHistory: MedicationHistory[] = [
     medication: "Metformin 500 mg",
     status: "งด",
     note: "ซื้อของลงลาคาล",
-    givenBy: "สมหมาย",
-  },
+    givenBy: "สมหมาย" },
   {
     id: 7,
     time: "08:30",
@@ -192,8 +188,7 @@ export const mockMedicationHistory: MedicationHistory[] = [
     medication: "Metformin 900 mg",
     status: "ให้แล้ว",
     note: "-",
-    givenBy: "สมหมาย",
-  },
+    givenBy: "สมหมาย" },
   {
     id: 8,
     time: "08:30",
@@ -201,8 +196,7 @@ export const mockMedicationHistory: MedicationHistory[] = [
     medication: "Metformin 900 mg",
     status: "งด",
     note: "ป่วย",
-    givenBy: "สมหมาย",
-  },
+    givenBy: "สมหมาย" },
   {
     id: 9,
     time: "08:30",
@@ -210,6 +204,5 @@ export const mockMedicationHistory: MedicationHistory[] = [
     medication: "Metformin 900 mg",
     status: "งด",
     note: "ป่วย",
-    givenBy: "สมหมาย",
-  },
+    givenBy: "สมหมาย" },
 ];
