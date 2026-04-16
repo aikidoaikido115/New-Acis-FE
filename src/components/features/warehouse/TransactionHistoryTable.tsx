@@ -1,33 +1,33 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Calendar, Search, ChevronDown } from "lucide-react";
 import { Pagination } from "@/components/ui/pagination";
+import { useToast } from "@/components/ui/toast";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import {
+  warehouseService,
+  type WarehouseApprovalStatus as ApprovalStatus,
+  type WarehouseTransaction as Transaction,
+  type WarehouseTransactionType as TransactionType } from "@/services/warehouse.service";
 import {
   ApproveTransactionsModal,
   RejectTransactionsModal,
-  TransactionDetailLogModal,
-} from "./modals";
+  TransactionDetailLogModal } from "./modals";
 import { ContactInformationModal } from "@/components/shared/contact/ContactInformationModal";
 import { resolveContactInfo } from "@/components/shared/contact/contactDirectory";
-import {
-  mockTransactions,
-  ITEMS_PER_PAGE,
-  type Transaction,
-  type ApprovalStatus,
-  type TransactionType,
-} from "./warehouse.mock";
+
+const ITEMS_PER_PAGE = 15;
 
 const STATUS_STYLES: Record<ApprovalStatus, string> = {
   รออนุมัติ: "bg-yellow-100 text-yellow-700 border border-yellow-300",
   อนุมัติ: "bg-green-100 text-green-700",
-  ไม่อนุมัติ: "bg-red-100 text-red-600",
-};
+  ไม่อนุมัติ: "bg-red-100 text-red-600" };
 
 function ApprovalBadge({ status }: { status: ApprovalStatus }) {
   return (
     <span
-      className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${STATUS_STYLES[status]}`}
+      className={`inline-flex px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${STATUS_STYLES[status]}`}
     >
       {status}
     </span>
@@ -38,7 +38,11 @@ function ApprovalBadge({ status }: { status: ApprovalStatus }) {
 type CheckedMap = Record<string, boolean>;
 
 export function TransactionHistoryTable() {
-  const [transactions, setTransactions] = useState<Transaction[]>(mockTransactions);
+  const { showToast } = useToast();
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [detailLoadingId, setDetailLoadingId] = useState<string | null>(null);
   const [checkedMap, setCheckedMap] = useState<CheckedMap>({});
   const [currentPage, setCurrentPage] = useState(1);
   const [showApproveModal, setShowApproveModal] = useState(false);
@@ -49,24 +53,89 @@ export function TransactionHistoryTable() {
   // Filters
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [startDateInputType, setStartDateInputType] = useState<"text" | "date">("text");
-  const [endDateInputType, setEndDateInputType] = useState<"text" | "date">("text");
   const [searchItem, setSearchItem] = useState("");
   const [searchUser, setSearchUser] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<"" | ApprovalStatus>("");
   const [selectedType, setSelectedType] = useState<"" | TransactionType>("");
+  const debouncedSearchItem = useDebouncedValue(searchItem, 400);
+  const debouncedSearchUser = useDebouncedValue(searchUser, 400);
+  const startDateInputRef = useRef<HTMLInputElement>(null);
+  const endDateInputRef = useRef<HTMLInputElement>(null);
 
-  const filtered = useMemo(() => {
-    return transactions.filter((tx) => {
-      const matchesItem =
-        tx.itemName.toLowerCase().includes(searchItem.toLowerCase()) ||
-        tx.itemCode.toLowerCase().includes(searchItem.toLowerCase());
-      const matchesUser = tx.operator.toLowerCase().includes(searchUser.toLowerCase());
-      const matchesStatus = selectedStatus === "" || tx.approvalStatus === selectedStatus;
-      const matchesType = selectedType === "" || tx.type === selectedType;
-      return matchesItem && matchesUser && matchesStatus && matchesType;
+  const loadTransactions = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const data = await warehouseService.getTransactions({
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
+        searchItem: debouncedSearchItem.trim() || undefined,
+        searchUser: debouncedSearchUser.trim() || undefined,
+        status: selectedStatus || undefined,
+        type: selectedType || undefined,
+      });
+      setTransactions(data);
+    } catch {
+      setError("ไม่สามารถโหลดประวัติการทำรายการได้");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [startDate, endDate, debouncedSearchItem, debouncedSearchUser, selectedStatus, selectedType]);
+
+  useEffect(() => {
+    void loadTransactions();
+  }, [loadTransactions]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [startDate, endDate, searchItem, searchUser, selectedStatus, selectedType]);
+
+  useEffect(() => {
+    setCheckedMap((prev) => {
+      const pendingIds = new Set(
+        transactions
+          .filter((tx) => tx.approvalStatus === "รออนุมัติ")
+          .map((tx) => tx.id)
+      );
+      const next: CheckedMap = {};
+      for (const [id, checked] of Object.entries(prev)) {
+        if (checked && pendingIds.has(id)) {
+          next[id] = true;
+        }
+      }
+      return next;
     });
-  }, [transactions, searchItem, searchUser, selectedStatus, selectedType]);
+  }, [transactions]);
+
+  const openDatePicker = (inputRef: React.RefObject<HTMLInputElement | null>) => {
+    if (!inputRef.current) {
+      return;
+    }
+
+    // Use native picker when available, fallback to focus for broader compatibility.
+    if (typeof inputRef.current.showPicker === "function") {
+      inputRef.current.showPicker();
+      return;
+    }
+
+    inputRef.current.focus();
+  };
+
+  const formatDateLabel = (value: string) => {
+    if (!value) {
+      return "";
+    }
+
+    const [year, month, day] = value.split("-");
+    if (!year || !month || !day) {
+      return value;
+    }
+
+    return `${day}/${month}/${year}`;
+  };
+
+  const filtered = useMemo(() => transactions, [transactions]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
   const paginated = filtered.slice(
@@ -77,27 +146,34 @@ export function TransactionHistoryTable() {
   const resetPage = () => setCurrentPage(1);
 
   // Checkbox logic
-  const pageIds = paginated.map((tx) => tx.id);
-  const allChecked = pageIds.length > 0 && pageIds.every((id) => checkedMap[id]);
-  const someChecked = pageIds.some((id) => checkedMap[id]);
+  const pendingPageIds = paginated
+    .filter((tx) => tx.approvalStatus === "รออนุมัติ")
+    .map((tx) => tx.id);
+  const allChecked = pendingPageIds.length > 0 && pendingPageIds.every((id) => checkedMap[id]);
+  const someChecked = pendingPageIds.some((id) => checkedMap[id]);
 
   const toggleAll = () => {
     if (allChecked) {
       setCheckedMap((prev) => {
         const next = { ...prev };
-        pageIds.forEach((id) => delete next[id]);
+        pendingPageIds.forEach((id) => delete next[id]);
         return next;
       });
     } else {
       setCheckedMap((prev) => {
         const next = { ...prev };
-        pageIds.forEach((id) => (next[id] = true));
+        pendingPageIds.forEach((id) => (next[id] = true));
         return next;
       });
     }
   };
 
   const toggleOne = (id: string) => {
+    const transaction = transactions.find((tx) => tx.id === id);
+    if (!transaction || transaction.approvalStatus !== "รออนุมัติ") {
+      return;
+    }
+
     setCheckedMap((prev) => {
       const next = { ...prev };
       if (next[id]) {
@@ -109,59 +185,69 @@ export function TransactionHistoryTable() {
     });
   };
 
-  const checkedCount = Object.values(checkedMap).filter(Boolean).length;
-
   const selectedIds = Object.entries(checkedMap)
-    .filter(([, isChecked]) => isChecked)
+    .filter(([id, isChecked]) => {
+      if (!isChecked) {
+        return false;
+      }
+
+      const tx = transactions.find((item) => item.id === id);
+      return tx?.approvalStatus === "รออนุมัติ";
+    })
     .map(([id]) => id);
 
-  const formatDetailDate = (date: Date) => {
-    const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const year = date.getFullYear();
-    const hour = String(date.getHours()).padStart(2, "0");
-    const minute = String(date.getMinutes()).padStart(2, "0");
+  const checkedCount = selectedIds.length;
 
-    return `${day}/${month}/${year} ${hour}:${minute}`;
-  };
-
-  const applyApprovalStatus = (approvalStatus: ApprovalStatus, reason?: string) => {
+  const handleApprove = async () => {
     if (selectedIds.length === 0) {
       return;
     }
 
-    const nowText = formatDetailDate(new Date());
-
-    setTransactions((prev) =>
-      prev.map((transaction) =>
-        selectedIds.includes(transaction.id)
-          ? {
-              ...transaction,
-              approvalStatus,
-              approvedBy: approvalStatus === "อนุมัติ" ? "สมหญิง" : undefined,
-              approvedAt: approvalStatus === "อนุมัติ" ? nowText : undefined,
-              rejectedBy: approvalStatus === "ไม่อนุมัติ" ? "สมหญิง" : undefined,
-              rejectedAt: approvalStatus === "ไม่อนุมัติ" ? nowText : undefined,
-              rejectionReason: approvalStatus === "ไม่อนุมัติ" ? reason : undefined,
-            }
-          : transaction
-      )
-    );
-    setCheckedMap({});
+    try {
+      await warehouseService.approveTransactions(selectedIds);
+      setCheckedMap({});
+      setShowApproveModal(false);
+      await loadTransactions();
+      showToast({
+        type: "success",
+        title: "อนุมัติสำเร็จ",
+        message: `อนุมัติรายการ ${selectedIds.length} รายการเรียบร้อยแล้ว`,
+      });
+    } catch {
+      alert("ไม่สามารถอนุมัติรายการได้");
+    }
   };
 
-  const handleApprove = () => {
-    applyApprovalStatus("อนุมัติ");
-    setShowApproveModal(false);
-  };
-
-  const handleReject = (reason: string) => {
+  const handleReject = async (reason: string) => {
     if (!reason.trim()) {
       return;
     }
 
-    applyApprovalStatus("ไม่อนุมัติ", reason);
-    setShowRejectModal(false);
+    try {
+      await warehouseService.rejectTransactions(selectedIds, reason.trim());
+      setCheckedMap({});
+      setShowRejectModal(false);
+      await loadTransactions();
+      showToast({
+        type: "success",
+        title: "บันทึกสำเร็จ",
+        message: `ไม่อนุมัติรายการ ${selectedIds.length} รายการเรียบร้อยแล้ว`,
+      });
+    } catch {
+      alert("ไม่สามารถไม่อนุมัติรายการได้");
+    }
+  };
+
+  const openTransactionDetail = async (id: string) => {
+    setDetailLoadingId(id);
+    try {
+      const detail = await warehouseService.getTransactionById(id);
+      setDetailTransaction(detail);
+    } catch {
+      alert("ไม่สามารถโหลดรายละเอียดรายการได้");
+    } finally {
+      setDetailLoadingId(null);
+    }
   };
 
   return (
@@ -170,37 +256,61 @@ export function TransactionHistoryTable() {
       <div>
         <div className="flex flex-wrap items-center gap-3 rounded-lg bg-[rgba(204,204,204,0.14)] p-3">
           {/* Start Date */}
-          <div className="relative">
+          <div className="relative cursor-pointer" onClick={() => openDatePicker(startDateInputRef)}>
             <input
-              type={startDateInputType}
+              ref={startDateInputRef}
+              type="date"
               value={startDate}
               onChange={(e) => { setStartDate(e.target.value); resetPage(); }}
-              onFocus={() => setStartDateInputType("date")}
-              onBlur={() => {
-                if (!startDate) setStartDateInputType("text");
-              }}
-              className="pl-3 pr-9 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-700 bg-[rgba(204,204,204,0.16)]"
-              style={{ borderColor: "rgba(204, 204, 204, 1)" }}
-              placeholder="วันที่เริ่มต้น"
+              className="absolute inset-0 w-full h-full opacity-0 pointer-events-none"
+              aria-label="วันที่เริ่มต้น"
             />
-            <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+            <div
+              className="pl-3 pr-9 py-2 border rounded-lg text-body-small bg-[rgba(204,204,204,0.16)]"
+              style={{ borderColor: "rgba(204, 204, 204, 1)", color: startDate ? "rgb(55 65 81)" : "rgb(107 114 128)" }}
+            >
+              {startDate ? formatDateLabel(startDate) : "วันที่เริ่มต้น"}
+            </div>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                openDatePicker(startDateInputRef);
+              }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              aria-label="เลือกวันที่เริ่มต้น"
+            >
+              <Calendar className="w-4 h-4" />
+            </button>
           </div>
 
           {/* End Date */}
-          <div className="relative">
+          <div className="relative cursor-pointer" onClick={() => openDatePicker(endDateInputRef)}>
             <input
-              type={endDateInputType}
+              ref={endDateInputRef}
+              type="date"
               value={endDate}
               onChange={(e) => { setEndDate(e.target.value); resetPage(); }}
-              onFocus={() => setEndDateInputType("date")}
-              onBlur={() => {
-                if (!endDate) setEndDateInputType("text");
-              }}
-              className="pl-3 pr-9 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-700 bg-[rgba(204,204,204,0.16)]"
-              style={{ borderColor: "rgba(204, 204, 204, 1)" }}
-              placeholder="วันที่สิ้นสุด"
+              className="absolute inset-0 w-full h-full opacity-0 pointer-events-none"
+              aria-label="วันที่สิ้นสุด"
             />
-            <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+            <div
+              className="pl-3 pr-9 py-2 border rounded-lg text-body-small bg-[rgba(204,204,204,0.16)]"
+              style={{ borderColor: "rgba(204, 204, 204, 1)", color: endDate ? "rgb(55 65 81)" : "rgb(107 114 128)" }}
+            >
+              {endDate ? formatDateLabel(endDate) : "วันที่สิ้นสุด"}
+            </div>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                openDatePicker(endDateInputRef);
+              }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              aria-label="เลือกวันที่สิ้นสุด"
+            >
+              <Calendar className="w-4 h-4" />
+            </button>
           </div>
 
           {/* Search Item */}
@@ -211,8 +321,7 @@ export function TransactionHistoryTable() {
               placeholder="ค้นหาชื่อสินค้า..."
               value={searchItem}
               onChange={(e) => { setSearchItem(e.target.value); resetPage(); }}
-              className="pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-44 bg-[rgba(204,204,204,0.16)]"
-              style={{ borderColor: "rgba(204, 204, 204, 1)" }}
+              className="pl-10 pr-4 py-2 border border-gray-400 bg-white shadow-sm rounded-lg placeholder:text-[#CCCCCC] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-body-small text-black w-44"
             />
           </div>
 
@@ -224,8 +333,7 @@ export function TransactionHistoryTable() {
               placeholder="ค้นหาผู้ทำรายการ..."
               value={searchUser}
               onChange={(e) => { setSearchUser(e.target.value); resetPage(); }}
-              className="pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-44 bg-[rgba(204,204,204,0.16)]"
-              style={{ borderColor: "rgba(204, 204, 204, 1)" }}
+              className="pl-10 pr-4 py-2 border border-gray-400 bg-white shadow-sm rounded-lg placeholder:text-[#CCCCCC] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-body-small text-black w-44"
             />
           </div>
 
@@ -234,7 +342,7 @@ export function TransactionHistoryTable() {
             <select
               value={selectedStatus}
               onChange={(e) => { setSelectedStatus(e.target.value as "" | ApprovalStatus); resetPage(); }}
-              className="appearance-none pl-4 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-[rgba(204,204,204,0.16)] text-gray-700 cursor-pointer"
+              className="appearance-none pl-4 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-body-small bg-[rgba(204,204,204,0.16)] text-gray-700 cursor-pointer"
               style={{ borderColor: "rgba(204, 204, 204, 1)" }}
             >
               <option value="">สถานะการอนุมัติ</option>
@@ -250,7 +358,7 @@ export function TransactionHistoryTable() {
             <select
               value={selectedType}
               onChange={(e) => { setSelectedType(e.target.value as "" | TransactionType); resetPage(); }}
-              className="appearance-none pl-4 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-[rgba(204,204,204,0.16)] text-gray-700 cursor-pointer"
+              className="appearance-none pl-4 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-body-small bg-[rgba(204,204,204,0.16)] text-gray-700 cursor-pointer"
               style={{ borderColor: "rgba(204, 204, 204, 1)" }}
             >
               <option value="">ประเภทรายการ</option>
@@ -267,21 +375,21 @@ export function TransactionHistoryTable() {
       {/* Bulk Action Bar */}
       {checkedCount > 0 && (
         <div className="rounded-lg px-4 py-2 flex items-center gap-3" style={{ backgroundColor: 'rgba(103, 103, 103, 0.24)' }}>
-          <span className="text-sm text-black font-medium">
+          <span className="text-body-small text-black font-medium">
             เลือก {checkedCount} รายการ
           </span>
           <div className="flex-1" />
           <button
             type="button"
             onClick={() => setShowApproveModal(true)}
-            className="px-3 py-1 bg-green-500 text-white rounded-lg text-xs font-medium hover:bg-green-600 transition-colors"
+            className="px-3 py-1 bg-green-500 text-white rounded-lg text-overline font-medium hover:bg-green-600 transition-colors"
           >
             อนุมัติ ({checkedCount})
           </button>
           <button
             type="button"
             onClick={() => setShowRejectModal(true)}
-            className="px-3 py-1 bg-red-500 text-white rounded-lg text-xs font-medium hover:bg-red-600 transition-colors"
+            className="px-3 py-1 bg-red-500 text-white rounded-lg text-overline font-medium hover:bg-red-600 transition-colors"
           >
             ไม่อนุมัติ ({checkedCount})
           </button>
@@ -302,41 +410,55 @@ export function TransactionHistoryTable() {
                       if (el) el.indeterminate = someChecked && !allChecked;
                     }}
                     onChange={toggleAll}
+                    disabled={pendingPageIds.length === 0}
                     className="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500 cursor-pointer"
                     aria-label="เลือกทั้งหมด"
                   />
                 </th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 w-36">
+                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700 w-36">
                   รหัสการแก้ไข
                 </th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 w-36">
+                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700 w-36">
                   ประเภท
                 </th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 w-28">
+                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700 w-28">
                   รหัสสินค้า
                 </th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
+                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700">
                   ชื่อสินค้า
                 </th>
-                <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700 w-24">
+                <th className="text-center py-3 px-4 text-xs font-semibold text-gray-700 w-24">
                   จำนวน
                 </th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 w-28">
+                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700 w-28">
                   ผู้ทำรายการ
                 </th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 w-40">
+                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700 w-40">
                   วันที่แก้ไข
                 </th>
-                <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700 w-28">
+                <th className="text-center py-3 px-4 text-xs font-semibold text-gray-700 w-28">
                   การอนุมัติ
                 </th>
               </tr>
             </thead>
             <tbody>
-              {paginated.length === 0 ? (
+              {isLoading ? (
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-gray-400 text-sm">
-                    ไม่พบประวัติการทำรายการ
+                  <td colSpan={9} className="py-12 px-4 text-center text-sm text-gray-500">
+                    กำลังโหลดข้อมูล...
+                  </td>
+                </tr>
+              ) : error ? (
+                <tr>
+                  <td colSpan={9} className="py-12 px-4 text-center text-sm text-red-500">
+                    {error}
+                  </td>
+                </tr>
+              ) : paginated.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="py-12 px-4 text-center">
+                    <div className="text-sm text-gray-600">ไม่พบประวัติการทำรายการ</div>
+                    <div className="text-xs text-gray-400 mt-1">ยังไม่มีข้อมูลธุรกรรมตามเงื่อนไขที่เลือก</div>
                   </td>
                 </tr>
               ) : (
@@ -349,20 +471,24 @@ export function TransactionHistoryTable() {
                     style={{ borderBottom: '1px solid rgba(103, 103, 103, 0.48)' }}
                   >
                     <td className="py-3 px-4">
-                      <input
-                        type="checkbox"
-                        checked={!!checkedMap[tx.id]}
-                        onChange={() => toggleOne(tx.id)}
-                        className="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500 cursor-pointer"
-                        aria-label={`เลือกรายการ ${tx.code}`}
-                      />
+                      {tx.approvalStatus === "รออนุมัติ" ? (
+                        <input
+                          type="checkbox"
+                          checked={!!checkedMap[tx.id]}
+                          onChange={() => toggleOne(tx.id)}
+                          className="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500 cursor-pointer"
+                          aria-label={`เลือกรายการ ${tx.code}`}
+                        />
+                      ) : (
+                        <span className="block h-4 w-4" aria-hidden="true" />
+                      )}
                     </td>
-                    <td className="py-3 px-4 text-sm text-gray-700 font-medium">{tx.code}</td>
-                    <td className="py-3 px-4 text-sm text-gray-700">{tx.type}</td>
-                    <td className="py-3 px-4 text-sm text-gray-700">{tx.itemCode}</td>
-                    <td className="py-3 px-4 text-sm text-gray-800 font-medium">{tx.itemName}</td>
-                    <td className="py-3 px-4 text-sm text-gray-700 text-center">{tx.quantity}</td>
-                    <td className="py-3 px-4 text-sm text-blue-600 underline">
+                    <td className="py-3 px-4 text-xs sm:text-sm text-gray-700 font-medium">{tx.code}</td>
+                    <td className="py-3 px-4 text-xs sm:text-sm text-gray-700">{tx.type}</td>
+                    <td className="py-3 px-4 text-xs sm:text-sm text-gray-700">{tx.itemCode}</td>
+                    <td className="py-3 px-4 text-xs sm:text-sm text-gray-800 font-medium">{tx.itemName}</td>
+                    <td className="py-3 px-4 text-xs sm:text-sm text-gray-700 text-center">{tx.quantity}</td>
+                    <td className="py-3 px-4 text-xs sm:text-sm text-blue-600 underline">
                       <button
                         type="button"
                         onClick={() => setActiveContactName(tx.operator)}
@@ -371,15 +497,16 @@ export function TransactionHistoryTable() {
                         {tx.operator}
                       </button>
                     </td>
-                    <td className="py-3 px-4 text-sm text-gray-700">{tx.date}</td>
+                    <td className="py-3 px-4 text-xs sm:text-sm text-gray-700">{tx.date}</td>
                     <td className="py-3 px-4 text-center">
                       {tx.approvalStatus === "รออนุมัติ" ? (
                         <ApprovalBadge status={tx.approvalStatus} />
                       ) : (
                         <button
                           type="button"
-                          onClick={() => setDetailTransaction(tx)}
+                          onClick={() => void openTransactionDetail(tx.id)}
                           className="inline-flex rounded-full"
+                          disabled={detailLoadingId === tx.id}
                         >
                           <ApprovalBadge status={tx.approvalStatus} />
                         </button>

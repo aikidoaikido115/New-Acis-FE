@@ -1,52 +1,89 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Search, Filter, Plus, PackagePlus, PackageMinus, Edit, Trash2, Check } from "lucide-react";
 import { Pagination } from "@/components/ui/pagination";
+import { useToast } from "@/components/ui/toast";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import {
+  warehouseService,
+  type WarehouseCategory as ItemCategory,
+  type WarehouseItem } from "@/services/warehouse.service";
 import {
   AddItemModal,
   EditItemModal,
-  DeleteItemModal,
-} from "./modals";
-import {
-  mockWarehouseItems,
-  ITEMS_PER_PAGE,
-  type WarehouseItem,
-  type ItemCategory,
-} from "./warehouse.mock";
+  DeleteItemModal } from "./modals";
+
+const ITEMS_PER_PAGE = 15;
 
 const CATEGORY_LABELS: Record<ItemCategory, string> = {
-  MED: "ยาและสารละลาย",
-  EQU: "อุปกรณ์การแพทย์",
-  CON: "สิ่งอุปโภค",
-};
+  MED: "ยาและเวชภัณฑ์",
+  EQU: "อุปกรณ์",
+  CON: "ของใช้ประจำวัน" };
 
 type InventoryAdjustMode = "restock" | "withdraw";
 
 export function InventoryTable() {
-  const [items, setItems] = useState<WarehouseItem[]>(mockWarehouseItems);
+  const { showToast } = useToast();
+  const [items, setItems] = useState<WarehouseItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [pendingRequestCountByItemCode, setPendingRequestCountByItemCode] = useState<Record<string, number>>({});
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<"all" | ItemCategory>("all");
   const [showFilter, setShowFilter] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [adjustMode, setAdjustMode] = useState<InventoryAdjustMode | null>(null);
   const [pendingAdjustments, setPendingAdjustments] = useState<Record<string, number>>({});
+  const debouncedSearchTerm = useDebouncedValue(searchTerm, 400);
 
   // Modals
   const [showAdd, setShowAdd] = useState(false);
   const [editItem, setEditItem] = useState<WarehouseItem | null>(null);
   const [deleteItem, setDeleteItem] = useState<WarehouseItem | null>(null);
 
-  const filtered = useMemo(() => {
-    return items.filter((item) => {
-      const matchesSearch =
-        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.code.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesCategory =
-        selectedCategory === "all" || item.category === selectedCategory;
-      return matchesSearch && matchesCategory;
-    });
-  }, [items, searchTerm, selectedCategory]);
+  const loadItems = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await warehouseService.getItems({
+        search: debouncedSearchTerm.trim() || undefined,
+        category: selectedCategory === "all" ? undefined : selectedCategory,
+      });
+      setItems(data);
+
+      try {
+        const pendingTransactions = await warehouseService.getTransactions({
+          status: "รออนุมัติ",
+        });
+
+        const pendingCountByCode = pendingTransactions.reduce<Record<string, number>>((acc, transaction) => {
+          const itemCode = transaction.itemCode?.trim();
+          if (!itemCode) {
+            return acc;
+          }
+
+          acc[itemCode] = (acc[itemCode] ?? 0) + 1;
+          return acc;
+        }, {});
+
+        setPendingRequestCountByItemCode(pendingCountByCode);
+      } catch {
+        setPendingRequestCountByItemCode({});
+      }
+    } catch {
+      setError("ไม่สามารถโหลดรายการสินค้าได้");
+      setPendingRequestCountByItemCode({});
+    } finally {
+      setIsLoading(false);
+    }
+  }, [debouncedSearchTerm, selectedCategory]);
+
+  useEffect(() => {
+    void loadItems();
+  }, [loadItems]);
+
+  const filtered = useMemo(() => items, [items]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
   const paginated = filtered.slice(
@@ -57,22 +94,62 @@ export function InventoryTable() {
   const resetPage = () => setCurrentPage(1);
 
   // Handlers
-  const handleAddItem = (newItemData: Omit<WarehouseItem, "id">) => {
-    const newItem: WarehouseItem = {
-      ...newItemData,
-      id: String(Date.now()),
-    };
-    setItems((prev) => [newItem, ...prev]);
-    resetPage();
+  const handleAddItem = async (newItemData: Omit<WarehouseItem, "id">) => {
+    try {
+      await warehouseService.createItem({
+        name: newItemData.name,
+        description: newItemData.description,
+        quantity: newItemData.quantity,
+        minimumQuantity: newItemData.minimumQuantity ?? 0,
+        unit: newItemData.unit,
+        category: newItemData.category,
+      });
+      resetPage();
+      await loadItems();
+      showToast({
+        type: "success",
+        title: "ส่งคำขอสำเร็จ",
+        message: "ส่งคำขอเพิ่มสินค้าใหม่แล้ว รอการอนุมัติ",
+      });
+    } catch {
+      alert("ไม่สามารถเพิ่มรายการสินค้าได้");
+    }
   };
 
-  const handleEditItem = (updated: WarehouseItem) => {
-    setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
+  const handleEditItem = async (updated: WarehouseItem) => {
+    try {
+      await warehouseService.updateItem(updated.id, {
+        code: updated.code,
+        name: updated.name,
+        description: updated.description,
+        minimumQuantity: updated.minimumQuantity ?? 0,
+        unit: updated.unit,
+        category: updated.category,
+      });
+      await loadItems();
+      showToast({
+        type: "success",
+        title: "บันทึกสำเร็จ",
+        message: "แก้ไขข้อมูลสินค้าเรียบร้อยแล้ว",
+      });
+    } catch {
+      alert("ไม่สามารถแก้ไขรายการสินค้าได้");
+    }
   };
 
-  const handleDeleteItem = (itemId: string) => {
-    setItems((prev) => prev.filter((i) => i.id !== itemId));
-    resetPage();
+  const handleDeleteItem = async (itemId: string) => {
+    try {
+      await warehouseService.deleteItem(itemId);
+      resetPage();
+      await loadItems();
+      showToast({
+        type: "success",
+        title: "ส่งคำขอสำเร็จ",
+        message: "ส่งคำขอนำรายการสินค้าออกแล้ว รอการอนุมัติ",
+      });
+    } catch {
+      alert("ไม่สามารถลบรายการสินค้าได้");
+    }
   };
 
   const setMode = (mode: InventoryAdjustMode) => {
@@ -92,25 +169,43 @@ export function InventoryTable() {
     });
   };
 
-  const applyAdjustmentToItem = (itemId: string, amount: number) => {
+  const applyAdjustmentToItem = async (itemId: string, amount: number) => {
     if (!adjustMode || amount <= 0) {
       return;
     }
 
-    setItems((prev) =>
-      prev.map((i) =>
-        i.id !== itemId
-          ? i
-          : {
-              ...i,
-              quantity:
-                adjustMode === "restock"
-                  ? i.quantity + amount
-                  : Math.max(0, i.quantity - amount),
-            }
-      )
-    );
-    clearAdjustmentValue(itemId);
+    const currentItem = items.find((item) => item.id === itemId);
+    if (!currentItem) {
+      return;
+    }
+
+    if (adjustMode === "withdraw" && amount > currentItem.quantity) {
+      return;
+    }
+
+    try {
+      const updated = await warehouseService.adjustItem(itemId, {
+        mode: adjustMode,
+        quantity: amount,
+      });
+
+      setItems((prev) => prev.map((i) => (i.id === itemId ? updated : i)));
+      clearAdjustmentValue(itemId);
+      showToast({
+        type: "success",
+        title: "ส่งคำขอสำเร็จ",
+        message:
+          adjustMode === "restock"
+            ? "ส่งคำขอเติมสินค้าแล้ว รอการอนุมัติ"
+            : "ส่งคำขอเบิกสินค้าแล้ว รอการอนุมัติ",
+      });
+    } catch {
+      alert(
+        adjustMode === "restock"
+          ? "ไม่สามารถเติมสินค้าได้"
+          : "ไม่สามารถเบิกสินค้าได้"
+      );
+    }
   };
 
   const hasPendingAdjustments = Object.values(pendingAdjustments).some((value) => value > 0);
@@ -119,32 +214,56 @@ export function InventoryTable() {
     adjustMode === "withdraw" &&
     paginated.some((item) => (pendingAdjustments[item.id] ?? 0) > item.quantity);
 
-  const saveAllAdjustments = () => {
+  const saveAllAdjustments = async () => {
     if (!adjustMode) {
       return;
     }
 
-    setItems((prev) =>
-      prev.map((item) => {
-        const amount = pendingAdjustments[item.id] ?? 0;
-        if (amount <= 0) {
-          return item;
+    const entries = Object.entries(pendingAdjustments).filter(([, amount]) => amount > 0);
+    if (entries.length === 0) {
+      return;
+    }
+
+    try {
+      const validEntries = entries.filter(([itemId, amount]) => {
+        const item = items.find((candidate) => candidate.id === itemId);
+        if (!item) {
+          return false;
         }
 
         if (adjustMode === "withdraw" && amount > item.quantity) {
-          return item;
+          return false;
         }
 
-        return {
-          ...item,
-          quantity:
-            adjustMode === "restock"
-              ? item.quantity + amount
-              : Math.max(0, item.quantity - amount),
-        };
-      })
-    );
-    setPendingAdjustments({});
+        return true;
+      });
+
+      await Promise.all(
+        validEntries.map(([itemId, amount]) =>
+          warehouseService.adjustItem(itemId, {
+            mode: adjustMode,
+            quantity: amount,
+          })
+        )
+      );
+
+      setPendingAdjustments({});
+      await loadItems();
+      showToast({
+        type: "success",
+        title: "ส่งคำขอสำเร็จ",
+        message:
+          adjustMode === "restock"
+            ? `ส่งคำขอเติมสินค้า ${validEntries.length} รายการแล้ว รอการอนุมัติ`
+            : `ส่งคำขอเบิกสินค้า ${validEntries.length} รายการแล้ว รอการอนุมัติ`,
+      });
+    } catch {
+      alert(
+        adjustMode === "restock"
+          ? "ไม่สามารถบันทึกการเติมสินค้าได้"
+          : "ไม่สามารถบันทึกการเบิกสินค้าได้"
+      );
+    }
   };
 
   const columnActionTitle =
@@ -155,7 +274,7 @@ export function InventoryTable() {
         : "แก้ไขข้อมูล";
 
   const saveButtonLabel =
-    adjustMode === "restock" ? "บันทึกการเติมของ" : "บันทึกการเบิกของ";
+    adjustMode === "restock" ? "ส่งคำขอเติมของ" : "ส่งคำขอเบิกของ";
 
   const isSaveAllDisabled = !hasPendingAdjustments || (adjustMode === "withdraw" && hasInvalidWithdraw);
 
@@ -163,6 +282,8 @@ export function InventoryTable() {
     const amount = pendingAdjustments[item.id] ?? 0;
     return adjustMode === "withdraw" && amount > item.quantity;
   };
+
+  const getPendingRequestCount = (item: WarehouseItem) => pendingRequestCountByItemCode[item.code] ?? 0;
 
   return (
     <div className="space-y-4">
@@ -180,15 +301,14 @@ export function InventoryTable() {
                 setSearchTerm(e.target.value);
                 resetPage();
               }}
-              className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-[rgba(204,204,204,0.16)]"
-              style={{ borderColor: "rgba(204, 204, 204, 1)" }}
+              className="w-full pl-10 pr-4 py-2 border border-gray-400 bg-white shadow-sm rounded-lg placeholder:text-[#CCCCCC] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-body-small text-black"
             />
           </div>
 
           {/* Filter Toggle */}
           <button
             onClick={() => setShowFilter((v) => !v)}
-            className={`flex items-center gap-2 px-4 py-2 border rounded-lg text-sm font-medium transition-colors ${
+            className={`flex items-center gap-2 px-4 py-2 border rounded-lg text-body-small font-medium transition-colors ${
               showFilter
                 ? "border-blue-500 text-blue-600 bg-blue-50"
                 : "text-gray-700 hover:bg-gray-50"
@@ -204,14 +324,14 @@ export function InventoryTable() {
           {/* Action Buttons */}
           <button
             onClick={() => setShowAdd(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg text-body-small font-medium hover:bg-blue-600 transition-colors"
           >
             <Plus className="w-4 h-4" />
             เพิ่มรายการสินค้า
           </button>
           <button
             onClick={() => setMode("restock")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-body-small font-medium transition-colors ${
               adjustMode === "restock"
                 ? "bg-emerald-700 text-white"
                 : "bg-emerald-600 text-white hover:bg-emerald-700"
@@ -222,7 +342,7 @@ export function InventoryTable() {
           </button>
           <button
             onClick={() => setMode("withdraw")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-body-small font-medium transition-colors ${
               adjustMode === "withdraw"
                 ? "bg-red-600 text-white"
                 : "bg-red-500 text-white hover:bg-red-600"
@@ -236,7 +356,7 @@ export function InventoryTable() {
         {/* Filter Panel */}
         {showFilter && (
           <div className="mt-4 rounded-lg bg-[rgba(204,204,204,0.14)] p-3 flex flex-wrap items-center gap-3">
-            <span className="text-sm text-gray-600 font-medium">ประเภทสินค้า:</span>
+            <span className="text-body-small text-gray-600 font-medium">ประเภทสินค้า:</span>
             {(["all", "MED", "EQU", "CON"] as const).map((cat) => (
               <button
                 key={cat}
@@ -244,7 +364,7 @@ export function InventoryTable() {
                   setSelectedCategory(cat);
                   resetPage();
                 }}
-                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                className={`px-3 py-1.5 rounded-full text-body-small font-medium transition-colors ${
                   selectedCategory === cat
                     ? "bg-blue-500 text-white"
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
@@ -263,22 +383,22 @@ export function InventoryTable() {
           <table className="w-full">
             <thead>
               <tr style={{ backgroundColor: 'rgba(239, 242, 247, 1)', borderBottom: '1px solid rgba(103, 103, 103, 0.48)' }}>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 w-32">
+                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700 w-32">
                   รหัสสินค้า
                 </th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 w-48">
+                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700 w-48">
                   ชื่อสินค้า
                 </th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
+                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700">
                   รายละเอียด
                 </th>
-                <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700 w-24">
+                <th className="text-center py-3 px-4 text-xs font-semibold text-gray-700 w-24">
                   จำนวน
                 </th>
-                <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700 w-24">
+                <th className="text-center py-3 px-4 text-xs font-semibold text-gray-700 w-24">
                   หน่วย
                 </th>
-                <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700 w-28">
+                <th className="text-center py-3 px-4 text-xs font-semibold text-gray-700 w-28">
                   <span
                     style={{
                       color:
@@ -286,8 +406,7 @@ export function InventoryTable() {
                           ? "rgba(63, 140, 100, 1)"
                           : adjustMode === "withdraw"
                             ? "rgba(248, 63, 84, 1)"
-                            : "rgba(126, 143, 164, 1)",
-                    }}
+                            : "rgba(126, 143, 164, 1)" }}
                   >
                     {columnActionTitle}
                   </span>
@@ -295,10 +414,23 @@ export function InventoryTable() {
               </tr>
             </thead>
             <tbody>
-              {paginated.length === 0 ? (
+              {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-gray-400 text-sm">
-                    ไม่พบรายการสินค้า
+                  <td colSpan={6} className="py-12 px-4 text-center text-sm text-gray-500">
+                    กำลังโหลดข้อมูล...
+                  </td>
+                </tr>
+              ) : error ? (
+                <tr>
+                  <td colSpan={6} className="py-12 px-4 text-center text-sm text-red-500">
+                    {error}
+                  </td>
+                </tr>
+              ) : paginated.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-12 px-4 text-center">
+                    <div className="text-sm text-gray-600">ไม่พบรายการสินค้า</div>
+                    <div className="text-xs text-gray-400 mt-1">ลองเปลี่ยนคำค้นหา หรือเพิ่มรายการสินค้าใหม่</div>
                   </td>
                 </tr>
               ) : (
@@ -308,13 +440,22 @@ export function InventoryTable() {
                     className="bg-white hover:bg-gray-50 transition-colors align-middle"
                     style={{ borderBottom: '1px solid rgba(103, 103, 103, 0.48)' }}
                   >
-                    <td className="py-3 px-4 text-sm text-gray-700 font-medium">{item.code}</td>
-                    <td className="py-3 px-4 text-sm text-gray-800 font-medium">{item.name}</td>
-                    <td className="py-3 px-4 text-sm text-gray-500 max-w-xs truncate">
+                    <td className="py-3 px-4 text-xs sm:text-sm text-gray-700 font-medium">{item.code}</td>
+                    <td className="py-3 px-4">
+                      <div className="flex flex-col">
+                        <span className="text-xs sm:text-sm text-gray-800 font-medium">{item.name}</span>
+                        {getPendingRequestCount(item) > 0 ? (
+                          <span className="mt-1 inline-flex w-fit rounded-full bg-yellow-100 px-2 py-0.5 text-[10px] font-semibold text-yellow-700">
+                            รออนุมัติ {getPendingRequestCount(item)} รายการ
+                          </span>
+                        ) : null}
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 text-xs sm:text-sm text-gray-500 max-w-xs truncate">
                       {item.description}
                     </td>
-                    <td className="py-3 px-4 text-sm text-gray-700 text-center">{item.quantity}</td>
-                    <td className="py-3 px-4 text-sm text-gray-700 text-center">{item.unit}</td>
+                    <td className="py-3 px-4 text-xs sm:text-sm text-gray-700 text-center">{item.quantity}</td>
+                    <td className="py-3 px-4 text-xs sm:text-sm text-gray-700 text-center">{item.unit}</td>
                     <td className="py-3 px-4">
                       {adjustMode ? (
                         <div className="flex flex-col items-center gap-1">
@@ -324,7 +465,7 @@ export function InventoryTable() {
                               min={0}
                               value={pendingAdjustments[item.id] ?? 0}
                               onChange={(e) => setAdjustmentValue(item.id, Number(e.target.value || 0))}
-                              className={`h-10 w-34 rounded-lg border bg-white px-3 text-center text-[20px] font-medium text-gray-700 outline-none ${
+                              className={`h-10 w-34 rounded-lg border bg-white px-3 text-center text-headline-6 font-medium text-gray-700 outline-none ${
                                 isWithdrawInvalid(item)
                                   ? "border-red-400 text-red-600"
                                   : "border-gray-300"
@@ -345,7 +486,7 @@ export function InventoryTable() {
                           </div>
 
                           {isWithdrawInvalid(item) ? (
-                            <p className="text-xs text-red-500">เบิกของเกินจำนวนที่มีในคลัง</p>
+                            <p className="text-overline text-red-500">เบิกของเกินจำนวนที่มีในคลัง</p>
                           ) : null}
                         </div>
                       ) : (
@@ -381,7 +522,7 @@ export function InventoryTable() {
             type="button"
             onClick={saveAllAdjustments}
             disabled={isSaveAllDisabled}
-            className={`rounded-lg px-8 py-2 text-sm font-semibold text-white transition ${
+            className={`rounded-lg px-8 py-2 text-body-small font-semibold text-white transition ${
               isSaveAllDisabled
                 ? "cursor-not-allowed bg-gray-300"
                 : adjustMode === "restock"

@@ -1,11 +1,10 @@
 "use client";
 
-import type { Transaction } from "../warehouse.mock";
+import type { WarehouseTransaction as Transaction } from "@/services/warehouse.service";
 import {
   WarehouseModalFrame,
   WarehouseModalHeader,
-  warehouseCancelButtonClassName,
-} from "../../../shared/warehouse/modal";
+  warehouseCancelButtonClassName } from "../../../shared/warehouse/modal";
 
 interface TransactionDetailLogModalProps {
   transaction: Transaction;
@@ -28,8 +27,8 @@ function getApprovalBadgeClass(status: Transaction["approvalStatus"]) {
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="grid grid-cols-[130px_1fr] items-start gap-2">
-      <p className="text-[14px] font-semibold text-[#1F1F1F]">{label}</p>
-      <div className="text-[14px] text-[#2E2E2E]">{value}</div>
+      <p className="text-sm font-semibold text-[#1F1F1F]">{label}</p>
+      <div className="text-sm text-[#2E2E2E]">{value}</div>
     </div>
   );
 }
@@ -37,8 +36,7 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
 export function TransactionDetailLogModal({
   transaction,
   onClose,
-  onContactClick,
-}: TransactionDetailLogModalProps) {
+  onContactClick }: TransactionDetailLogModalProps) {
   const isApproved = transaction.approvalStatus === "อนุมัติ";
 
   const renderPerson = (name?: string) => {
@@ -71,9 +69,9 @@ export function TransactionDetailLogModal({
         <DetailRow label="วันที่แก้ไข" value={transaction.date} />
 
         <div className="grid grid-cols-[130px_1fr] items-center gap-2">
-          <p className="text-[14px] font-semibold text-[#1F1F1F]">การอนุมัติ</p>
+          <p className="text-sm font-semibold text-[#1F1F1F]">การอนุมัติ</p>
           <div>
-            <span className={`inline-flex min-w-[78px] items-center justify-center rounded-md px-3 py-1 text-[13px] font-semibold ${getApprovalBadgeClass(transaction.approvalStatus)}`}>
+            <span className={`inline-flex min-w-[78px] items-center justify-center rounded-md px-3 py-1 text-sm font-semibold ${getApprovalBadgeClass(transaction.approvalStatus)}`}>
               {transaction.approvalStatus}
             </span>
           </div>
