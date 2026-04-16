@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChevronDown, LogOut, Menu, User } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { DEFAULT_PROFILE_IMAGE, resolveProfileImage } from "@/lib/profile-image";
 import { useClickOutside } from "@/hooks/use-click-outside";
 import { NotificationBell } from "@/components/features/nurse/notifications";
 import { KitchenNotificationBell } from "@/components/features/kitchen/notificetions";
@@ -13,6 +14,7 @@ import { authService } from "@/services/auth.service";
 interface NavbarUser {
   firstName: string;
   role?: string;
+  profile_image?: string;
 }
 
 interface AppNavbarProps {
@@ -77,8 +79,8 @@ function ProfileDropdown() {
 
 // Role-based avatar mapping
 const ROLE_AVATAR_MAP: Record<string, string> = {
-  nurse: "/images/nurse.png",
-  kitchen: "/images/kitchen.png",
+  nurse: DEFAULT_PROFILE_IMAGE,
+  kitchen: DEFAULT_PROFILE_IMAGE,
 };
 
 // Role display name mapping
@@ -87,31 +89,27 @@ const ROLE_DISPLAY_MAP: Record<string, string> = {
   kitchen: "เจ้าหน้าที่ครัว",
 };
 
+
 function getRoleAvatar(role?: string): string {
   if (!role) return ROLE_AVATAR_MAP.nurse;
   const lowerRole = role.toLowerCase();
-
   if (lowerRole.includes("kitchen") || lowerRole.includes("โภชนา") || lowerRole.includes("ครัว")) {
     return ROLE_AVATAR_MAP.kitchen;
   }
-
   return ROLE_AVATAR_MAP.nurse;
 }
 
 function getRoleDisplayName(role?: string): string {
   if (!role) return ROLE_DISPLAY_MAP.nurse;
   const lowerRole = role.toLowerCase();
-
   if (lowerRole.includes("kitchen") || lowerRole.includes("โภชนา") || lowerRole.includes("ครัว")) {
     return ROLE_DISPLAY_MAP.kitchen;
   }
-
   return ROLE_DISPLAY_MAP.nurse;
 }
 
 function UserAvatar({ user }: { user: NavbarUser }) {
-  const avatarSrc = getRoleAvatar(user.role);
-
+  const avatarSrc = resolveProfileImage(user.profile_image) || getRoleAvatar(user.role);
   return (
     <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full border border-white/40">
       <Image 

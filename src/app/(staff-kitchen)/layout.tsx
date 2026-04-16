@@ -19,6 +19,7 @@ export default function StaffKitchenLayout({ children }: { children: React.React
           user={{
             firstName: user?.first_name || "ผู้ใช้งาน",
             role: user?.role_name,
+            profile_image: user?.profile_image,
           }}
 
           notificationsCount={0}

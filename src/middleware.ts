@@ -3,9 +3,9 @@ import type { NextRequest } from 'next/server';
 
 // Define route permissions
 const ROLE_ROUTES: Record<string, string[]> = {
-  nurse: ['/dashboard', '/elder-info', '/activity', '/emr', '/medicine', '/warehouse', '/user-manual', '/support-service', '/profile' , '/notification', '/support-tickets'],
-  kitchen: ['/manage-meal', '/user-manual-kitchen', '/support-service-kitchen', '/profile', '/notification'],
-  relative: ['/relative'],
+  nurse: ['/dashboard', '/elder-info', '/activity', '/emr', '/medicine', '/warehouse', '/user-manual', '/support-service', '/profile', '/notification', '/support-tickets', '/change-password'],
+  kitchen: ['/manage-meal', '/user-manual-kitchen', '/support-service-kitchen', '/profile', '/notification', '/change-password'],
+  relative: ['/relative', '/change-password'],
 };
 
 // Public routes that don't require authentication

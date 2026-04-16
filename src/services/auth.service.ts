@@ -1,4 +1,5 @@
 import apiClient, { ApiResponse } from '@/lib/axios.ts/api-client';
+import { resolveProfileImage } from '@/lib/profile-image';
 import type {
   LoginRequest,
   LoginResponse,
@@ -50,7 +51,13 @@ class AuthService {
       if (!token) return null;
       
       const response = await apiClient.get<ApiResponse<User>>('/api/user/');
-      return response.data.result;
+      const result = response.data.result;
+      if (!result) return null;
+
+      return {
+        ...result,
+        profile_image: resolveProfileImage(result.profile_image),
+      };
     } catch {
       return null;
     }
@@ -138,15 +145,21 @@ class AuthService {
     }
     
     const mappedRole = this.resolveInternalRole(profile);
-    
+
+    const profileImage =
+      resolveProfileImage(profile.profile_image) ||
+      resolveProfileImage(apiResult.profile_image) ||
+      '';
+
     const userData: LoginResponse = {
       ...apiResult,
       first_name: profile.first_name || '',
       last_name: profile.last_name || '',
       role_name: mappedRole,
+      profile_image: profileImage,
     };
-    
-    localStorage.setItem('user', JSON.stringify(userData));
+
+    this.setCurrentUser(userData);
 
     const cookieMaxAge = this.getAuthCookieMaxAge(apiResult.token, credentials.remember);
     
@@ -243,6 +256,7 @@ class AuthService {
         // Clear cookies so middleware redirects to login
         document.cookie = 'auth_token=; path=/; max-age=0; SameSite=Lax';
         document.cookie = 'user_role=; path=/; max-age=0; SameSite=Lax';
+        window.dispatchEvent(new Event('auth:user-updated'));
       }
     }
   }
@@ -301,6 +315,35 @@ class AuthService {
     } catch {
       return null;
     }
+  }
+
+  /**
+   * Replace cached user in localStorage and notify listeners
+   */
+  setCurrentUser(user: LoginResponse | null): void {
+    if (typeof window === 'undefined') return;
+    if (!user) {
+      localStorage.removeItem('user');
+      window.dispatchEvent(new Event('auth:user-updated'));
+      return;
+    }
+
+    localStorage.setItem('user', JSON.stringify(user));
+    window.dispatchEvent(new Event('auth:user-updated'));
+  }
+
+  /**
+   * Update cached user fields and notify listeners
+   */
+  updateCachedUser(updates: Partial<LoginResponse>): LoginResponse | null {
+    if (typeof window === 'undefined') return null;
+
+    const current = this.getCurrentUser();
+    if (!current) return null;
+
+    const next = { ...current, ...updates };
+    this.setCurrentUser(next);
+    return next;
   }
 
   /**
