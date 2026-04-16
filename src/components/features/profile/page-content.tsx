@@ -166,7 +166,7 @@ export function ProfilePageContent() {
   })();
 
   return (
-    <div className="min-h-screen bg-[#F5F7FA] flex flex-col items-center pt-6 sm:pt-10 px-6 sm:px-20 lg:px-56 mb-6">
+    <div className="min-h-screen bg-[#F5F7FA] flex flex-col items-center pt-6 sm:pt-10 px-6 sm:px-20 lg:px-56">
 
 
       <div className="w-full max-w-5xl mb-6">

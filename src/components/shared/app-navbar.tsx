@@ -159,7 +159,7 @@ export function AppNavbar({
 
         <div className="flex items-center gap-5">
           {isKitchenStaff ? (
-            <KitchenNotificationBell notificationsCount={notificationsCount} />
+            <KitchenNotificationBell />
           ) : (
             <NotificationBell notificationsCount={notificationsCount} />
           )}

@@ -1,8 +1,11 @@
 "use client";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { NURSE_NOTIFICATIONS } from "@/components/features/nurse/notifications";
-import { KITCHEN_NOTIFICATIONS } from "@/components/features/kitchen/notificetions";
+import {
+  getKitchenNotificationItems,
+  markAllKitchenNotificationsRead,
+} from "@/components/features/kitchen/notificetions";
 import { NOTIFICATION_ICON_MAP, type NotificationItemData } from "@/components/shared/notifications/notification-types";
 
 function isKitchenRole(role?: string): boolean {
@@ -34,7 +37,20 @@ export default function NotificationPage() {
   const { user } = useAuth();
   const roleName = user?.role_name;
   const kitchenRole = isKitchenRole(roleName);
-  const notifications = kitchenRole ? KITCHEN_NOTIFICATIONS : NURSE_NOTIFICATIONS;
+  const [kitchenNotifications, setKitchenNotifications] = useState<NotificationItemData[]>([]);
+
+  useEffect(() => {
+    if (!kitchenRole) return;
+    const loadNotifications = () => {
+      setKitchenNotifications(getKitchenNotificationItems());
+    };
+    markAllKitchenNotificationsRead();
+    loadNotifications();
+    const intervalId = window.setInterval(loadNotifications, 60 * 1000);
+    return () => window.clearInterval(intervalId);
+  }, [kitchenRole]);
+
+  const notifications = kitchenRole ? kitchenNotifications : NURSE_NOTIFICATIONS;
 
   return (
     <div className="min-h-screen bg-[#F5F7FA] flex flex-col items-center pt-10 px-4">
