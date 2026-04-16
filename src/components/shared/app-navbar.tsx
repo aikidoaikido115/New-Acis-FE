@@ -59,7 +59,7 @@ function ProfileDropdown() {
 
   return (
     <div className="absolute right-0 mt-2 w-52 overflow-hidden rounded-xl bg-white text-gray-700 shadow-lg">
-      <Link href="/profile-nurse" className="flex w-full items-center gap-2 px-4 py-3 text-sm transition hover:bg-slate-50">
+      <Link href="/profile" className="flex w-full items-center gap-2 px-4 py-3 text-sm transition hover:bg-slate-50">
         <User size={16} />
         แก้ไขโปรไฟล์
       </Link>
