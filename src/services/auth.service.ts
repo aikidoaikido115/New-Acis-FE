@@ -11,6 +11,34 @@ import type {
 } from '@/types/auth';
 
 class AuthService {
+  private decodeJwtPayload(token: string): { exp?: number } | null {
+    try {
+      const parts = token.split('.');
+      if (parts.length < 2) return null;
+
+      const base64Url = parts[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const paddedBase64 = base64.padEnd(base64.length + (4 - (base64.length % 4 || 4)) % 4, '=');
+      const payload = atob(paddedBase64);
+
+      return JSON.parse(payload);
+    } catch {
+      return null;
+    }
+  }
+
+  private getAuthCookieMaxAge(token: string, remember?: boolean): number {
+    const payload = this.decodeJwtPayload(token);
+    const exp = payload?.exp;
+
+    if (typeof exp === 'number') {
+      const nowInSeconds = Math.floor(Date.now() / 1000);
+      return Math.max(exp - nowInSeconds, 1);
+    }
+
+    return remember ? 60 * 60 * 24 * 2 : 60 * 30;
+  }
+
   /**
    * Fetch user profile from /api/user/
    */
@@ -119,9 +147,11 @@ class AuthService {
     };
     
     localStorage.setItem('user', JSON.stringify(userData));
+
+    const cookieMaxAge = this.getAuthCookieMaxAge(apiResult.token, credentials.remember);
     
-    document.cookie = `auth_token=${apiResult.token}; path=/; max-age=2592000; SameSite=Lax`;
-    document.cookie = `user_role=${mappedRole}; path=/; max-age=2592000; SameSite=Lax`;
+    document.cookie = `auth_token=${apiResult.token}; path=/; max-age=${cookieMaxAge}; SameSite=Lax`;
+    document.cookie = `user_role=${mappedRole}; path=/; max-age=${cookieMaxAge}; SameSite=Lax`;
     
     return userData;
   }
