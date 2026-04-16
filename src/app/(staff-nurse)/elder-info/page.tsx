@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import { residentService } from "@/services/resident.service";
 import { roomService } from "@/services/room.service";
+import { authService } from "@/services/auth.service";
 import { adaptResidentPayload, calculateAge } from "@/utils/resident-adapter";
 import { useToast } from "@/components/ui/toast";
 import type { ResidentFormState, CreateResidentRequest, Resident as ApiResident } from "@/types/resident";
@@ -138,6 +139,24 @@ export default function Page() {
 
       const statusCode = err?.status_code || err?.response?.status || 0;
       let message = "ไม่สามารถโหลดข้อมูลผู้สูงอายุได้";
+
+      // เพิ่ม logic auto-refresh token เมื่อเจอ 401
+      if (statusCode === 401 && authService.refreshToken) {
+        try {
+          await authService.refreshToken();
+          // retry fetch
+          const data = await residentService.getAll();
+          const transformedData = data.map(transformResidentData);
+          setAllResidents(transformedData);
+          setError(null);
+          return;
+        } catch (refreshErr) {
+          message = "เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง";
+          showToast({ type: "error", title: "เซสชันหมดอายุ", message });
+          router.push("/login");
+          return;
+        }
+      }
 
       if (statusCode === 401) {
         message = "เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง";

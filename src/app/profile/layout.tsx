@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { AppFooter } from "@/components/shared/app-footer";
 import { AppNavbar } from "@/components/shared/app-navbar";
@@ -8,26 +8,47 @@ import { useSidebarState } from "@/hooks/useSidebarState";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 
-export default function StaffKitchenLayout({ children }: { children: React.ReactNode }) {
+function isKitchenRole(role?: string): boolean {
+  if (!role) return false;
+  const lowerRole = role.toLowerCase();
+  return lowerRole.includes("kitchen") || lowerRole.includes("ครัว") || lowerRole.includes("โภชนา");
+}
+
+export default function ProfileLayout({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const { isSidebarOpen, setIsSidebarOpen, isSidebarCollapsed, setIsSidebarCollapsed, isReady } = useSidebarState();
 
+  const roleName = user?.role_name;
+  const kitchenRole = isKitchenRole(roleName);
+
   return (
-    <ProtectedRoute allowedRoles={["kitchen", "Kitchen", "KITCHEN", "ครัว", "โภชนา"]}>
+    <ProtectedRoute
+      allowedRoles={[
+        "nurse",
+        "medical_staff",
+        "Nurse",
+        "NURSE",
+        "kitchen",
+        "kitchen_staff",
+        "Kitchen",
+        "KITCHEN",
+        "ครัว",
+        "โภชนา",
+      ]}
+    >
       <div className="min-h-screen bg-slate-50 flex flex-col">
         <AppNavbar
           user={{
             firstName: user?.first_name || "ผู้ใช้งาน",
-            role: user?.role_name,
+            role: roleName,
           }}
-
-          notificationsCount={0}
+          notificationsCount={kitchenRole ? 0 : 3}
           onToggleSidebar={() => setIsSidebarOpen(true)}
         />
 
         <div className="flex flex-1 pt-16">
           <AppSidebar
-            role="kitchen"
+            role={kitchenRole ? "kitchen" : "nurse"}
             isOpen={isSidebarOpen}
             isCollapsed={isSidebarCollapsed}
             isReady={isReady}
@@ -45,6 +66,7 @@ export default function StaffKitchenLayout({ children }: { children: React.React
             {children}
           </main>
         </div>
+
         <div className={cn("mt-auto transition-[margin-left] duration-300", isSidebarCollapsed ? "lg:ml-16" : "lg:ml-72")}>
           <AppFooter />
         </div>

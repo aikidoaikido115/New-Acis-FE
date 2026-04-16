@@ -165,6 +165,37 @@ class AuthService {
   }
 
   /**
+   * Update authenticated user profile (multipart)
+   */
+  async updateProfile(data: {
+    username?: string;
+    first_name?: string;
+    last_name?: string;
+    nickname?: string;
+    phone?: string;
+    gender?: string;
+    profile_image?: File;
+  }): Promise<User> {
+    const formData = new FormData();
+
+    if (data.username) formData.append('username', data.username);
+    if (data.first_name) formData.append('first_name', data.first_name);
+    if (data.last_name) formData.append('last_name', data.last_name);
+    if (data.nickname) formData.append('nickname', data.nickname);
+    if (data.phone) formData.append('phone', data.phone);
+    if (data.gender) formData.append('gender', data.gender);
+    if (data.profile_image) formData.append('profile_image', data.profile_image);
+
+    const response = await apiClient.patch<ApiResponse<User>>('/api/user', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    return response.data.result;
+  }
+
+  /**
    * Logout user
    */
   async logout(): Promise<void> {

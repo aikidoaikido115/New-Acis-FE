@@ -173,6 +173,7 @@ export default function SupportPage() {
                   required
                 />
                 {validationErrors.name && <p className="mt-2 text-caption text-red-600">{validationErrors.name}</p>}
+
               </div>
 
               <div>
@@ -188,6 +189,7 @@ export default function SupportPage() {
                   required
                 />
                 {validationErrors.email && <p className="mt-2 text-caption text-red-600">{validationErrors.email}</p>}
+
               </div>
             </div>
 
@@ -204,6 +206,7 @@ export default function SupportPage() {
                 required
               />
               {validationErrors.subject && <p className="mt-2 text-caption text-red-600">{validationErrors.subject}</p>}
+
             </div>
 
             <div>
@@ -220,6 +223,7 @@ export default function SupportPage() {
               />
               {validationErrors.message && <p className="mt-2 text-caption text-red-600">{validationErrors.message}</p>}
               <p className="mt-3 text-caption text-gray-500">กรุณาอธิบายปัญหาอย่างละเอียด เพื่อให้ทีมงานสามารถช่วยเหลือได้อย่างรวดเร็ว</p>
+
             </div>
 
             <div className="border-t border-[rgba(103,103,103,0.54)] pt-6"></div>
@@ -256,6 +260,7 @@ export default function SupportPage() {
           <div className="bg-yellow-50 border border-yellow-100 rounded-xl p-6 shadow-sm">
             <h3 className="text-headline-7 font-semibold text-yellow-800 mb-2">อีเมล</h3>
             <p className="text-body-small text-yellow-700 leading-relaxed break-all">{SUPPORT_CONTACT_CONFIG.supportEmail}</p>
+
           </div>
         </div>
       </div>

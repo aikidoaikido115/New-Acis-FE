@@ -3,8 +3,8 @@ import type { NextRequest } from 'next/server';
 
 // Define route permissions
 const ROLE_ROUTES: Record<string, string[]> = {
-  nurse: ['/dashboard', '/elder-info', '/activity', '/emr', '/medicine', '/warehouse', '/user-manual', '/support-service', '/support-tickets'],
-  kitchen: ['/manage-meal', '/user-manual-kitchen', '/support-service-kitchen'],
+  nurse: ['/dashboard', '/elder-info', '/activity', '/emr', '/medicine', '/warehouse', '/user-manual', '/support-service', '/profile' , '/notification', '/support-tickets'],
+  kitchen: ['/manage-meal', '/user-manual-kitchen', '/support-service-kitchen', '/profile', '/notification'],
   relative: ['/relative'],
 };
 
