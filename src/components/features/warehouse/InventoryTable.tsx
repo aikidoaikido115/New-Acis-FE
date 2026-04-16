@@ -225,21 +225,27 @@ export function InventoryTable() {
     }
 
     try {
-      for (const [itemId, amount] of entries) {
+      const validEntries = entries.filter(([itemId, amount]) => {
         const item = items.find((candidate) => candidate.id === itemId);
         if (!item) {
-          continue;
+          return false;
         }
 
         if (adjustMode === "withdraw" && amount > item.quantity) {
-          continue;
+          return false;
         }
 
-        await warehouseService.adjustItem(itemId, {
-          mode: adjustMode,
-          quantity: amount,
-        });
-      }
+        return true;
+      });
+
+      await Promise.all(
+        validEntries.map(([itemId, amount]) =>
+          warehouseService.adjustItem(itemId, {
+            mode: adjustMode,
+            quantity: amount,
+          })
+        )
+      );
 
       setPendingAdjustments({});
       await loadItems();
@@ -248,8 +254,8 @@ export function InventoryTable() {
         title: "ส่งคำขอสำเร็จ",
         message:
           adjustMode === "restock"
-            ? `ส่งคำขอเติมสินค้า ${entries.length} รายการแล้ว รอการอนุมัติ`
-            : `ส่งคำขอเบิกสินค้า ${entries.length} รายการแล้ว รอการอนุมัติ`,
+            ? `ส่งคำขอเติมสินค้า ${validEntries.length} รายการแล้ว รอการอนุมัติ`
+            : `ส่งคำขอเบิกสินค้า ${validEntries.length} รายการแล้ว รอการอนุมัติ`,
       });
     } catch {
       alert(
