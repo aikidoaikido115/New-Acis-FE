@@ -40,7 +40,8 @@ export function LoginForm() {
         ...(isEmail
           ? { email: formData.usernameOrEmail }
           : { username: formData.usernameOrEmail }),
-        password: formData.password };
+        password: formData.password,
+        remember: rememberMe };
 
       const userData = await authService.login(credentials);
       
