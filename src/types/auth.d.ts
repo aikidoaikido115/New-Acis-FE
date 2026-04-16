@@ -3,6 +3,7 @@ export interface LoginRequest {
   username?: string;
   email?: string;
   password: string;
+  remember?: boolean;
 }
 
 export interface RegisterRequest {
