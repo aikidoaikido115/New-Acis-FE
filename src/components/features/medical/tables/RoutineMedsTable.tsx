@@ -2,14 +2,15 @@
 
 import { Edit, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { RoutineMedication } from "../medical.mock";
+import type { RoutineMedication } from "../medical.types";
 import { AddMedicationModal, EditMedicationModal, DeleteMedicationModal } from "../modals";
+import type { EditMedicationFormData } from "../modals/EditMedicationModal";
 
 interface RoutineMedsTableProps {
   medications: RoutineMedication[];
   onAddMed: () => void;
-  onEditMed: (medId: number) => void;
-  onDeleteMed: (medId: number) => void;
+  onEditMed: (medication: RoutineMedication, data: EditMedicationFormData) => void;
+  onDeleteMed: (medId: string) => void;
   patientName?: string;
   patientRoom?: string;
   emptyMessage?: string;
@@ -107,7 +108,7 @@ export function RoutineMedsTable({
       />
 
       {/* Edit Medication Modal */}
-      {selectedMedication && (
+      {showEditModal && selectedMedication && (
         <EditMedicationModal
           isOpen={showEditModal}
           onClose={() => {
@@ -115,8 +116,7 @@ export function RoutineMedsTable({
             setSelectedMedication(null);
           }}
           onSubmit={(data) => {
-            console.log("Edit medication:", data);
-            onEditMed(selectedMedication.id);
+            onEditMed(selectedMedication, data);
           }}
           medication={selectedMedication}
           patientName={patientName}
@@ -125,7 +125,7 @@ export function RoutineMedsTable({
       )}
 
       {/* Delete Medication Modal */}
-      {selectedMedication && (
+      {showDeleteModal && selectedMedication && (
         <DeleteMedicationModal
           isOpen={showDeleteModal}
           onClose={() => {

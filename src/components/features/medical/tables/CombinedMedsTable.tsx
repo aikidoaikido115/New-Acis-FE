@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Edit, Trash2 } from "lucide-react";
-import { RoutineMedication } from "../medical.mock";
+import type { RoutineMedication } from "../medical.types";
 
 type MedTypeFilter = "all" | "routine" | "prn";
 
@@ -14,8 +14,8 @@ type CombinedMedication = RoutineMedication & {
 interface CombinedMedsTableProps {
   routineMedications: RoutineMedication[];
   prnMedications: RoutineMedication[];
-  onEditMed: (medId: number) => void;
-  onDeleteMed: (medId: number) => void;
+  onEditMed: (medId: string) => void;
+  onDeleteMed: (medId: string) => void;
 }
 
 export function CombinedMedsTable({

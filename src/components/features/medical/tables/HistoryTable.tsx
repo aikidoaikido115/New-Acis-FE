@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MedicationHistory } from "../medical.mock";
+import type { MedicationHistory } from "../medical.types";
 import { ContactInformationModal } from "@/components/shared/contact/ContactInformationModal";
 import { resolveContactInfo } from "@/components/shared/contact/contactDirectory";
 
@@ -44,6 +44,10 @@ export function HistoryTable({ history }: HistoryTableProps) {
                   {entry.status === "ให้แล้ว" ? (
                     <span className="inline-flex px-3 py-1 bg-green-100 text-green-600 rounded-full text-xs sm:text-sm font-medium">
                       ให้แล้ว
+                    </span>
+                  ) : entry.status === "รอให้" ? (
+                    <span className="inline-flex px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs sm:text-sm font-medium">
+                      รอให้
                     </span>
                   ) : (
                     <span className="inline-flex px-3 py-1 bg-red-100 text-red-600 rounded-full text-xs sm:text-sm font-medium">
