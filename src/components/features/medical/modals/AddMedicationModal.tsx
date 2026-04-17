@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import { X, Calendar, Clock } from "lucide-react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { X, Clock } from "lucide-react";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DatePicker } from "@/components/ui/date-picker";
 
 interface AddMedicationModalProps {
   isOpen: boolean;
@@ -13,29 +14,102 @@ interface AddMedicationModalProps {
 export interface AddMedicationFormData {
   medicationName: string;
   dosage: string;
-  frequency: string;
+  amount: string;
+  amountUnit: string;
+  frequencyPerDay: number;
   route: "เช้า" | "กลางวัน" | "เย็น" | "ก่อนนอน";
-  timing: "ประจำ" | "ชั่วคราว";
+  medicationType: "ประจำ" | "ชั่วคราว";
+  administrationTiming: "ก่อนอาหาร" | "หลังอาหาร" | "พร้อมอาหาร" | "ก่อนนอน";
   note: string;
   startDate: string;
   endDate: string;
 }
 
+type AddMedicationFormErrors = Partial<Record<keyof AddMedicationFormData | "customAmountUnit", string>>;
+
+const OTHER_UNIT_VALUE = "__other__";
+const STANDARD_AMOUNT_UNITS = ["เม็ด", "แคปซูล", "มล.", "หยด", "พัฟ", "ซอง", "ขวด", "IU"] as const;
+
+const DEFAULT_FORM_DATA: AddMedicationFormData = {
+  medicationName: "",
+  dosage: "",
+  amount: "1",
+  amountUnit: "เม็ด",
+  frequencyPerDay: 1,
+  route: "เช้า",
+  medicationType: "ประจำ",
+  administrationTiming: "หลังอาหาร",
+  note: "",
+  startDate: "",
+  endDate: "",
+};
+
+const DOSE_PATTERN = /^([0-9]+(?:\.[0-9]+)?)\s*(mcg|mg|g|kg|ml|l|iu)$/i;
+
+const parseDateInput = (value: string): Date | null => {
+  const raw = value.trim();
+  if (!raw) {
+    return null;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    const [yearText, monthText, dayText] = raw.split("-");
+    const year = Number(yearText);
+    const month = Number(monthText);
+    const day = Number(dayText);
+    const date = new Date(year, month - 1, day);
+    if (date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day) {
+      return date;
+    }
+    return null;
+  }
+
+  const thaiDate = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!thaiDate) {
+    return null;
+  }
+
+  const day = Number(thaiDate[1]);
+  const month = Number(thaiDate[2]);
+  const rawYear = Number(thaiDate[3]);
+  const year = rawYear > 2400 ? rawYear - 543 : rawYear;
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day) {
+    return date;
+  }
+
+  return null;
+};
+
+const formatDateAsIso = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const baseInputClassName =
+  "w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-black placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500";
+
+const baseSelectClassName =
+  "w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500";
+
+const fullWidthDatePickerClassName = "w-full [&>button]:w-full [&>button]:justify-between";
+
 export function AddMedicationModal({ isOpen, onClose, onSubmit }: AddMedicationModalProps) {
   const { confirm, confirmDialog } = useConfirmDialog();
-  const [formData, setFormData] = useState<AddMedicationFormData>({
-    medicationName: "",
-    dosage: "",
-    frequency: "",
-    route: "เช้า",
-    timing: "ประจำ",
-    note: "",
-    startDate: "",
-    endDate: "" });
+  const [formData, setFormData] = useState<AddMedicationFormData>(DEFAULT_FORM_DATA);
+  const [amountUnitOption, setAmountUnitOption] = useState<string>(DEFAULT_FORM_DATA.amountUnit);
+  const [errors, setErrors] = useState<AddMedicationFormErrors>({});
 
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const firstInputRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
+
+  const resetForm = useCallback(() => {
+    setFormData(DEFAULT_FORM_DATA);
+    setAmountUnitOption(DEFAULT_FORM_DATA.amountUnit);
+    setErrors({});
+  }, []);
 
   // Auto-focus first input when modal opens
   useEffect(() => {
@@ -44,16 +118,97 @@ export function AddMedicationModal({ isOpen, onClose, onSubmit }: AddMedicationM
     }
   }, [isOpen]);
 
-  // Track unsaved changes
-  useEffect(() => {
-    const hasData = !!(
-      formData.medicationName || 
-      formData.dosage || 
-      formData.frequency ||
-      formData.note
-    );
-    setHasUnsavedChanges(hasData);
-  }, [formData]);
+  const hasUnsavedChanges = useMemo(
+    () =>
+      !!(
+        formData.medicationName !== DEFAULT_FORM_DATA.medicationName ||
+        formData.dosage !== DEFAULT_FORM_DATA.dosage ||
+        formData.amount !== DEFAULT_FORM_DATA.amount ||
+        formData.amountUnit !== DEFAULT_FORM_DATA.amountUnit ||
+        formData.frequencyPerDay !== DEFAULT_FORM_DATA.frequencyPerDay ||
+        formData.route !== DEFAULT_FORM_DATA.route ||
+        formData.medicationType !== DEFAULT_FORM_DATA.medicationType ||
+        formData.administrationTiming !== DEFAULT_FORM_DATA.administrationTiming ||
+        formData.note !== DEFAULT_FORM_DATA.note ||
+        formData.startDate !== DEFAULT_FORM_DATA.startDate ||
+        formData.endDate !== DEFAULT_FORM_DATA.endDate
+      ),
+    [formData]
+  );
+
+  const clearFieldError = useCallback((field: keyof AddMedicationFormErrors) => {
+    setErrors((prev) => {
+      if (!prev[field]) {
+        return prev;
+      }
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  }, []);
+
+  const updateField = useCallback(
+    <K extends keyof AddMedicationFormData>(field: K, value: AddMedicationFormData[K]) => {
+      setFormData((prev) => ({ ...prev, [field]: value }));
+      clearFieldError(field);
+    },
+    [clearFieldError]
+  );
+
+  const validateForm = useCallback((): boolean => {
+    const nextErrors: AddMedicationFormErrors = {};
+
+    if (!formData.medicationName.trim()) {
+      nextErrors.medicationName = "กรุณาระบุชื่อยา";
+    }
+
+    if (!DOSE_PATTERN.test(formData.dosage.trim())) {
+      nextErrors.dosage = "รูปแบบไม่ถูกต้อง เช่น 500 mg หรือ 5 mL";
+    }
+
+    if (!formData.amount.trim()) {
+      nextErrors.amount = "กรุณาระบุจำนวนต่อครั้ง";
+    }
+
+    if (!formData.amountUnit.trim()) {
+      nextErrors.amountUnit = "กรุณาเลือกหรือระบุหน่วยยา";
+      if (amountUnitOption === OTHER_UNIT_VALUE) {
+        nextErrors.customAmountUnit = "กรุณาระบุหน่วยยา";
+      }
+    }
+
+    if (!Number.isFinite(formData.frequencyPerDay) || formData.frequencyPerDay < 1) {
+      nextErrors.frequencyPerDay = "ความถี่ต้องมากกว่าหรือเท่ากับ 1";
+    }
+
+    if (formData.medicationType === "ชั่วคราว") {
+      if (!formData.startDate.trim()) {
+        nextErrors.startDate = "กรุณาระบุวันเริ่ม";
+      }
+
+      if (!formData.endDate.trim()) {
+        nextErrors.endDate = "กรุณาระบุวันสิ้นสุด";
+      }
+
+      const startDate = parseDateInput(formData.startDate);
+      const endDate = parseDateInput(formData.endDate);
+
+      if (formData.startDate.trim() && !startDate) {
+        nextErrors.startDate = "รูปแบบวันที่ไม่ถูกต้อง (YYYY-MM-DD หรือ DD/MM/YYYY)";
+      }
+
+      if (formData.endDate.trim() && !endDate) {
+        nextErrors.endDate = "รูปแบบวันที่ไม่ถูกต้อง (YYYY-MM-DD หรือ DD/MM/YYYY)";
+      }
+
+      if (startDate && endDate && startDate.getTime() > endDate.getTime()) {
+        nextErrors.endDate = "วันสิ้นสุดต้องไม่ก่อนวันเริ่ม";
+      }
+    }
+
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  }, [amountUnitOption, formData]);
 
   // Handle close with confirmation
   const handleClose = useCallback(async () => {
@@ -67,18 +222,8 @@ export function AddMedicationModal({ isOpen, onClose, onSubmit }: AddMedicationM
       if (!confirmClose) return;
     }
     onClose();
-    // Reset form
-    setFormData({
-      medicationName: "",
-      dosage: "",
-      frequency: "",
-      route: "เช้า",
-      timing: "ประจำ",
-      note: "",
-      startDate: "",
-      endDate: "" });
-    setHasUnsavedChanges(false);
-  }, [hasUnsavedChanges, onClose, confirm]);
+    resetForm();
+  }, [hasUnsavedChanges, onClose, confirm, resetForm]);
 
   // Handle keyboard events (ESC to close, trap focus)
   useEffect(() => {
@@ -130,9 +275,38 @@ export function AddMedicationModal({ isOpen, onClose, onSubmit }: AddMedicationM
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
-    setHasUnsavedChanges(false);
+    if (!validateForm()) {
+      return;
+    }
+
+    onSubmit({
+      ...formData,
+      medicationName: formData.medicationName.trim(),
+      dosage: formData.dosage.trim(),
+      amount: formData.amount.trim(),
+      amountUnit: formData.amountUnit.trim(),
+      note: formData.note.trim(),
+      frequencyPerDay: Math.max(1, Math.floor(formData.frequencyPerDay)),
+    });
     onClose();
+    resetForm();
+  };
+
+  const handleAmountUnitSelect = (value: string) => {
+    setAmountUnitOption(value);
+    clearFieldError("amountUnit");
+    clearFieldError("customAmountUnit");
+
+    if (value === OTHER_UNIT_VALUE) {
+      updateField("amountUnit", "");
+      return;
+    }
+
+    updateField("amountUnit", value);
+  };
+
+  const adjustFrequency = (delta: number) => {
+    updateField("frequencyPerDay", Math.max(1, formData.frequencyPerDay + delta));
   };
 
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -179,26 +353,131 @@ export function AddMedicationModal({ isOpen, onClose, onSubmit }: AddMedicationM
               type="text"
               placeholder="ชื่อยา"
               value={formData.medicationName}
-              onChange={(e) => setFormData({ ...formData, medicationName: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg placeholder:text-[#CCCCCC] focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              onChange={(e) => updateField("medicationName", e.target.value)}
+              className={baseInputClassName}
               required
             />
+            {errors.medicationName ? <p className="mt-1 text-xs text-red-500">{errors.medicationName}</p> : null}
           </div>
 
           {/* Dosage */}
           <div>
             <label htmlFor="med-dosage" className="block text-sm font-medium text-gray-700 mb-1">
-              ขนาด / โดส <span className="text-red-500">*</span>
+              ขนาดยา (Dosage) <span className="text-red-500">*</span>
             </label>
             <input
               id="med-dosage"
               type="text"
               placeholder="เช่น 500 mg"
               value={formData.dosage}
-              onChange={(e) => setFormData({ ...formData, dosage: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg placeholder:text-[#CCCCCC] focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              onChange={(e) => updateField("dosage", e.target.value)}
+              className={baseInputClassName}
               required
             />
+            <p className="mt-1 text-xs text-gray-500">รองรับหน่วย: mcg, mg, g, kg, mL, L, IU</p>
+            {errors.dosage ? <p className="mt-1 text-xs text-red-500">{errors.dosage}</p> : null}
+          </div>
+
+          {/* Amount + Unit */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="med-amount" className="block text-sm font-medium text-gray-700 mb-1">
+                จำนวนต่อครั้ง <span className="text-red-500">*</span>
+              </label>
+              <input
+                id="med-amount"
+                type="text"
+                placeholder="เช่น 1"
+                value={formData.amount}
+                onChange={(e) => updateField("amount", e.target.value)}
+                className={baseInputClassName}
+                required
+              />
+              {errors.amount ? <p className="mt-1 text-xs text-red-500">{errors.amount}</p> : null}
+            </div>
+            <div>
+              <label htmlFor="med-amount-unit" className="block text-sm font-medium text-gray-700 mb-1">
+                หน่วย <span className="text-red-500">*</span>
+              </label>
+              <select
+                id="med-amount-unit"
+                value={amountUnitOption}
+                onChange={(e) => handleAmountUnitSelect(e.target.value)}
+                className={baseSelectClassName}
+              >
+                {STANDARD_AMOUNT_UNITS.map((unit) => (
+                  <option key={unit} value={unit}>
+                    {unit}
+                  </option>
+                ))}
+                <option value={OTHER_UNIT_VALUE}>อื่นๆ</option>
+              </select>
+              {amountUnitOption === OTHER_UNIT_VALUE ? (
+                <input
+                  type="text"
+                  placeholder="ระบุหน่วยยา"
+                  value={formData.amountUnit}
+                  onChange={(e) => updateField("amountUnit", e.target.value)}
+                  className={`mt-2 ${baseInputClassName}`}
+                />
+              ) : null}
+              {errors.amountUnit || errors.customAmountUnit ? (
+                <p className="mt-1 text-xs text-red-500">{errors.customAmountUnit || errors.amountUnit}</p>
+              ) : null}
+            </div>
+          </div>
+
+          {/* Frequency Per Day */}
+          <div>
+            <label htmlFor="med-frequency" className="block text-sm font-medium text-gray-700 mb-1">
+              ความถี่ต่อวัน (ครั้ง/วัน) <span className="text-red-500">*</span>
+            </label>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => adjustFrequency(-1)}
+                disabled={formData.frequencyPerDay <= 1}
+                className="h-10 w-10 rounded-lg border border-gray-300 text-lg font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                aria-label="ลดความถี่"
+              >
+                -
+              </button>
+              <input
+                id="med-frequency"
+                type="number"
+                min={1}
+                step={1}
+                value={formData.frequencyPerDay}
+                onChange={(e) => updateField("frequencyPerDay", Math.max(1, Number(e.target.value) || 1))}
+                className={baseInputClassName}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => adjustFrequency(1)}
+                className="h-10 w-10 rounded-lg border border-gray-300 text-lg font-semibold text-gray-700 hover:bg-gray-50"
+                aria-label="เพิ่มความถี่"
+              >
+                +
+              </button>
+            </div>
+            <div className="mt-2 flex items-center gap-2">
+              {[1, 2, 3, 4].map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => updateField("frequencyPerDay", value)}
+                  className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                    formData.frequencyPerDay === value
+                      ? "bg-blue-500 text-white border-blue-500"
+                      : "bg-white text-black border-gray-300 hover:bg-gray-50"
+                  }`}
+                >
+                  {value} ครั้ง
+                </button>
+              ))}
+            </div>
+            {errors.frequencyPerDay ? <p className="mt-1 text-xs text-red-500">{errors.frequencyPerDay}</p> : null}
           </div>
 
           {/* Frequency/Route - Icon Buttons */}
@@ -211,11 +490,11 @@ export function AddMedicationModal({ isOpen, onClose, onSubmit }: AddMedicationM
                 <button
                   key={route}
                   type="button"
-                  onClick={() => setFormData({ ...formData, route })}
+                  onClick={() => updateField("route", route)}
                   className={`flex flex-col items-center justify-center px-3 py-2 border rounded-lg text-sm font-medium transition-colors ${
                     formData.route === route
                       ? "bg-blue-500 text-white border-blue-500"
-                      : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                      : "bg-white text-black border-gray-300 hover:bg-gray-50"
                   }`}
                 >
                   <Clock className="w-5 h-5 mb-1" />
@@ -225,7 +504,7 @@ export function AddMedicationModal({ isOpen, onClose, onSubmit }: AddMedicationM
             </div>
           </div>
 
-          {/* Timing - Radio Buttons */}
+          {/* Medication Type */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               ประเภทยา <span className="text-red-500">*</span>
@@ -234,9 +513,9 @@ export function AddMedicationModal({ isOpen, onClose, onSubmit }: AddMedicationM
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="radio"
-                  name="timing"
-                  checked={formData.timing === "ประจำ"}
-                  onChange={() => setFormData({ ...formData, timing: "ประจำ" })}
+                  name="medication-type"
+                  checked={formData.medicationType === "ประจำ"}
+                  onChange={() => updateField("medicationType", "ประจำ")}
                   className="w-4 h-4 text-blue-500 focus:ring-blue-500"
                 />
                 <span className="text-sm text-gray-700">ประจำ</span>
@@ -244,14 +523,34 @@ export function AddMedicationModal({ isOpen, onClose, onSubmit }: AddMedicationM
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="radio"
-                  name="timing"
-                  checked={formData.timing === "ชั่วคราว"}
-                  onChange={() => setFormData({ ...formData, timing: "ชั่วคราว" })}
+                  name="medication-type"
+                  checked={formData.medicationType === "ชั่วคราว"}
+                  onChange={() => updateField("medicationType", "ชั่วคราว")}
                   className="w-4 h-4 text-blue-500 focus:ring-blue-500"
                 />
                 <span className="text-sm text-gray-700">ชั่วคราว</span>
               </label>
             </div>
+          </div>
+
+          {/* Administration Timing */}
+          <div>
+            <label htmlFor="med-admin-timing" className="block text-sm font-medium text-gray-700 mb-1">
+              เวลาให้ยา (Timing) <span className="text-red-500">*</span>
+            </label>
+            <select
+              id="med-admin-timing"
+              value={formData.administrationTiming}
+              onChange={(e) =>
+                updateField("administrationTiming", e.target.value as AddMedicationFormData["administrationTiming"])
+              }
+              className={baseSelectClassName}
+            >
+              <option value="ก่อนอาหาร">ก่อนอาหาร</option>
+              <option value="หลังอาหาร">หลังอาหาร</option>
+              <option value="พร้อมอาหาร">พร้อมอาหาร</option>
+              <option value="ก่อนนอน">ก่อนนอน</option>
+            </select>
           </div>
 
           {/* Note */}
@@ -263,48 +562,38 @@ export function AddMedicationModal({ isOpen, onClose, onSubmit }: AddMedicationM
               id="med-note"
               placeholder="หมายเหตุ..."
               value={formData.note}
-              onChange={(e) => setFormData({ ...formData, note: e.target.value })}
+              onChange={(e) => updateField("note", e.target.value)}
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg placeholder:text-[#CCCCCC] focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-none"
+              className={`${baseInputClassName} resize-none`}
             />
           </div>
 
           {/* Start and End Date - Only show when "ชั่วคราว" is selected */}
-          {formData.timing === "ชั่วคราว" && (
+          {formData.medicationType === "ชั่วคราว" && (
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label htmlFor="med-start-date" className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   วันเริ่ม <span className="text-red-500">*</span>
                 </label>
-                <div className="relative">
-                  <input
-                    id="med-start-date"
-                    type="text"
-                    placeholder="11/02/2566"
-                    value={formData.startDate}
-                    onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg placeholder:text-[#CCCCCC] focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                    required
-                  />
-                  <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                </div>
+                <DatePicker
+                  value={parseDateInput(formData.startDate)}
+                  onChange={(date) => updateField("startDate", date ? formatDateAsIso(date) : "")}
+                  placeholder="DD/MM/YYYY"
+                  className={fullWidthDatePickerClassName}
+                />
+                {errors.startDate ? <p className="mt-1 text-xs text-red-500">{errors.startDate}</p> : null}
               </div>
               <div>
-                <label htmlFor="med-end-date" className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   วันสิ้นสุด <span className="text-red-500">*</span>
                 </label>
-                <div className="relative">
-                  <input
-                    id="med-end-date"
-                    type="text"
-                    placeholder="15/02/2566"
-                    value={formData.endDate}
-                    onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg placeholder:text-[#CCCCCC] focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                    required
-                  />
-                  <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                </div>
+                <DatePicker
+                  value={parseDateInput(formData.endDate)}
+                  onChange={(date) => updateField("endDate", date ? formatDateAsIso(date) : "")}
+                  placeholder="DD/MM/YYYY"
+                  className={fullWidthDatePickerClassName}
+                />
+                {errors.endDate ? <p className="mt-1 text-xs text-red-500">{errors.endDate}</p> : null}
               </div>
             </div>
           )}

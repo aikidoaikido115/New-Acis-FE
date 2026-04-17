@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { X } from "lucide-react";
-import { Medication } from "../medical.mock";
+import type { Medication } from "../medical.types";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface GiveAllMedicationsModalProps {

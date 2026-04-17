@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useCallback } from "react";
 import { X, AlertTriangle } from "lucide-react";
-import { RoutineMedication } from "../medical.mock";
+import type { RoutineMedication } from "../medical.types";
 
 interface DeleteMedicationModalProps {
   isOpen: boolean;
@@ -119,7 +119,7 @@ export function DeleteMedicationModal({
         <div className="p-4 space-y-4">
           {/* Patient Info */}
           <div className="bg-gray-50 rounded-lg p-4 flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full border-2 border-blue-400 bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-headline-7 font-bold shrink-0">
+            <div className="w-12 h-12 rounded-full border-2 border-blue-400 bg-linear-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-headline-7 font-bold shrink-0">
               {patientName.charAt(0)}
             </div>
             <div>
