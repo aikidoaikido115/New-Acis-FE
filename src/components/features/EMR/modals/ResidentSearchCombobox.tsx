@@ -2,39 +2,48 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, UserRound, X } from "lucide-react";
+import { useClickOutside } from "@/hooks/use-click-outside";
 import type { Resident } from "@/types/resident";
 import type { Room } from "@/types/room";
 
 interface ResidentSearchComboboxProps {
-  residents: Resident[];
-  rooms: Room[];
+  residents?: Resident[];
+  rooms?: Room[];
+  options?: ResidentComboboxOption[];
   value: string;
   onChange: (residentId: string) => void;
   onClear: () => void;
   autoFocus?: boolean;
+  label?: string;
+  placeholder?: string;
 }
 
-interface ResidentOption {
+export interface ResidentComboboxOption {
   id: string;
   fullName: string;
-  nickname: string;
-  roomNumber: string;
-  floorLabel: string;
+  nickname?: string;
+  roomNumber?: string;
+  floorLabel?: string;
+  subLabel?: string;
   searchText: string;
-  floorValue: string;
+  floorValue?: string;
 }
 
 export function ResidentSearchCombobox({
-  residents,
-  rooms,
+  residents = [],
+  rooms = [],
+  options,
   value,
   onChange,
   onClear,
   autoFocus = false,
+  label = "ผู้ป่วย",
+  placeholder = "ค้นหาชื่อผู้ป่วย...",
 }: ResidentSearchComboboxProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [floorFilter, setFloorFilter] = useState<string>("all");
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -47,7 +56,11 @@ export function ResidentSearchCombobox({
     );
   }, [rooms]);
 
-  const options = useMemo<ResidentOption[]>(() => {
+  const mappedOptions = useMemo<ResidentComboboxOption[]>(() => {
+    if (options && options.length > 0) {
+      return options;
+    }
+
     return residents
       .map((resident) => {
         const id = resident.resident_id || resident.id;
@@ -65,37 +78,38 @@ export function ResidentSearchCombobox({
           nickname,
           roomNumber,
           floorLabel,
+          subLabel: `${roomNumber} | ${floorLabel}`,
           searchText,
           floorValue,
         };
       })
       .filter((resident) => !!resident.id);
-  }, [residents, roomById]);
+  }, [options, residents, roomById]);
 
   const selectedResident = useMemo(() => {
-    return options.find((resident) => resident.id === value) || null;
-  }, [options, value]);
+    return mappedOptions.find((resident) => resident.id === value) || null;
+  }, [mappedOptions, value]);
 
   const floorOptions = useMemo(() => {
     const floors = Array.from(
       new Set(
-        options
+        mappedOptions
           .map((option) => option.floorValue)
-          .filter((option) => option !== "")
+          .filter((option): option is string => typeof option === "string" && option !== "")
       )
     ).sort((a, b) => Number(a) - Number(b));
 
     return floors;
-  }, [options]);
+  }, [mappedOptions]);
 
   const filteredResidents = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
-    return options.filter((resident) => {
+    return mappedOptions.filter((resident) => {
       const matchesFloor = floorFilter === "all" || resident.floorValue === floorFilter;
       const matchesQuery = !normalizedQuery || resident.searchText.includes(normalizedQuery);
       return matchesFloor && matchesQuery;
     });
-  }, [options, query, floorFilter]);
+  }, [mappedOptions, query, floorFilter]);
 
   useEffect(() => {
     if (autoFocus && !selectedResident && inputRef.current) {
@@ -104,26 +118,91 @@ export function ResidentSearchCombobox({
   }, [autoFocus, selectedResident]);
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
+    if (!isOpen) {
+      setHighlightedIndex(-1);
+      return;
+    }
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+    if (filteredResidents.length === 0) {
+      setHighlightedIndex(-1);
+      return;
+    }
+
+    setHighlightedIndex((prev) => {
+      if (prev < 0 || prev >= filteredResidents.length) {
+        return 0;
+      }
+      return prev;
+    });
+  }, [isOpen, filteredResidents]);
+
+  useClickOutside(() => setIsOpen(false), containerRef);
 
   const handleSelect = (residentId: string) => {
     onChange(residentId);
     setQuery("");
     setIsOpen(false);
+    setHighlightedIndex(-1);
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!isOpen && (event.key === "ArrowDown" || event.key === "ArrowUp")) {
+      if (filteredResidents.length > 0) {
+        setIsOpen(true);
+      }
+      return;
+    }
+
+    if (!isOpen) {
+      return;
+    }
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      if (filteredResidents.length === 0) {
+        return;
+      }
+      setHighlightedIndex((prev) => {
+        if (prev < 0) {
+          return 0;
+        }
+        return Math.min(prev + 1, filteredResidents.length - 1);
+      });
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      if (filteredResidents.length === 0) {
+        return;
+      }
+      setHighlightedIndex((prev) => {
+        if (prev <= 0) {
+          return 0;
+        }
+        return prev - 1;
+      });
+      return;
+    }
+
+    if (event.key === "Enter") {
+      if (highlightedIndex >= 0 && filteredResidents[highlightedIndex]) {
+        event.preventDefault();
+        handleSelect(filteredResidents[highlightedIndex].id);
+      }
+      return;
+    }
+
+    if (event.key === "Escape") {
+      setIsOpen(false);
+      setHighlightedIndex(-1);
+    }
   };
 
   return (
     <div className="space-y-2">
       <label htmlFor="resident-search" className="block text-sm font-medium text-gray-700">
-        ผู้ป่วย
+        {label}
       </label>
 
       {selectedResident ? (
@@ -135,7 +214,7 @@ export function ResidentSearchCombobox({
             <div className="min-w-0">
               <p className="truncate text-sm font-medium text-blue-900">{selectedResident.fullName}</p>
               <p className="truncate text-xs text-blue-700">
-                {selectedResident.roomNumber} | {selectedResident.floorLabel}
+                {selectedResident.subLabel || [selectedResident.roomNumber, selectedResident.floorLabel].filter(Boolean).join(" | ")}
               </p>
             </div>
           </div>
@@ -158,32 +237,35 @@ export function ResidentSearchCombobox({
               type="text"
               value={query}
               onFocus={() => setIsOpen(true)}
+              onKeyDown={handleKeyDown}
               onChange={(event) => {
                 setQuery(event.target.value);
                 setIsOpen(true);
               }}
-              placeholder="ค้นหาชื่อผู้ป่วย..."
-              className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder={placeholder}
+              className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm text-black placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
 
             {isOpen ? (
               <div className="absolute left-0 right-0 top-full z-50 mt-2 max-h-60 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg">
                 {filteredResidents.length > 0 ? (
-                  filteredResidents.map((resident) => (
+                  filteredResidents.map((resident, index) => (
                     <button
                       key={resident.id}
                       type="button"
                       onClick={() => handleSelect(resident.id)}
-                      className="w-full border-b border-gray-100 px-3 py-2 text-left last:border-b-0 hover:bg-gray-50"
+                      className={`w-full border-b border-gray-100 px-3 py-2 text-left last:border-b-0 ${
+                        index === highlightedIndex ? "bg-blue-50" : "hover:bg-gray-50"
+                      }`}
                     >
-                      <p className="text-sm font-medium text-gray-800">{resident.fullName}</p>
-                      <p className="text-xs text-gray-500">
-                        {resident.roomNumber} | {resident.floorLabel}
+                      <p className="text-sm font-medium text-black">{resident.fullName}</p>
+                      <p className="text-xs text-slate-500">
+                        {resident.subLabel || [resident.roomNumber, resident.floorLabel].filter(Boolean).join(" | ")}
                       </p>
                     </button>
                   ))
                 ) : (
-                  <p className="px-3 py-4 text-center text-sm text-gray-500">ไม่พบผู้ป่วยตามเงื่อนไข</p>
+                  <p className="px-3 py-4 text-center text-sm text-slate-500">ไม่พบผู้ป่วยตามเงื่อนไข</p>
                 )}
               </div>
             ) : null}
@@ -193,7 +275,7 @@ export function ResidentSearchCombobox({
             <select
               value={floorFilter}
               onChange={(event) => setFloorFilter(event.target.value)}
-              className="w-full rounded-lg border border-gray-300 bg-white px-2 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-lg border border-gray-300 bg-white px-2 py-2 text-sm text-black focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
               aria-label="กรองตามชั้น"
             >
               <option value="all">ทุกชั้น</option>
