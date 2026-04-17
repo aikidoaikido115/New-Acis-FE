@@ -36,31 +36,77 @@ export function VitalSignsTable({ selectedFloor = "all", selectedStatus = "all" 
   const pageSize = 10;
 
   useEffect(() => {
+    let isCancelled = false;
+
     const loadData = async () => {
       setIsLoading(true);
       setError(null);
       try {
         const floorNumber = selectedFloor !== "all" ? Number(selectedFloor) : undefined;
-        const [vitalSigns, residentData, roomData] = await Promise.all([
+        const baseOverviewQuery = {
+          floor: Number.isFinite(floorNumber) ? floorNumber : undefined,
+          vitalsign_status: selectedStatus,
+        };
+
+        const [firstOverview, residentData, roomData] = await Promise.all([
           vitalSignService.getOverview({
-            floor: Number.isFinite(floorNumber) ? floorNumber : undefined,
-            vitalsign_status: selectedStatus,
+            ...baseOverviewQuery,
+            page: 1,
+            page_size: 100,
           }),
           residentService.getAll(),
           roomService.getAll(),
         ]);
 
-        setRecords(vitalSigns || []);
+        let allVitalSigns = firstOverview.items || [];
+        const responsePageSize = firstOverview.pagination.page_size > 0 ? firstOverview.pagination.page_size : 100;
+        const totalPages = Math.max(firstOverview.pagination.total_pages || 1, 1);
+
+        if (totalPages > 1) {
+          const pageRequests: Promise<Awaited<ReturnType<typeof vitalSignService.getOverview>>>[] = [];
+          for (let page = 2; page <= totalPages; page += 1) {
+            pageRequests.push(
+              vitalSignService.getOverview({
+                ...baseOverviewQuery,
+                page,
+                page_size: responsePageSize,
+              })
+            );
+          }
+
+          const remainingPages = await Promise.all(pageRequests);
+          allVitalSigns = remainingPages.reduce<VitalSign[]>((acc, pageResult) => {
+            if (pageResult.items?.length) {
+              acc.push(...pageResult.items);
+            }
+            return acc;
+          }, [...allVitalSigns]);
+        }
+
+        if (isCancelled) {
+          return;
+        }
+
+        setRecords(allVitalSigns);
         setResidents(residentData || []);
         setRooms(roomData || []);
       } catch {
+        if (isCancelled) {
+          return;
+        }
         setError("ไม่สามารถโหลดข้อมูลสัญญาณชีพได้");
       } finally {
-        setIsLoading(false);
+        if (!isCancelled) {
+          setIsLoading(false);
+        }
       }
     };
 
     void loadData();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [selectedFloor, selectedStatus]);
 
   useEffect(() => {
