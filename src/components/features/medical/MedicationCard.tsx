@@ -2,32 +2,39 @@
 
 import { useState } from "react";
 import { ChevronDown, ChevronRight, AlertTriangle, FileText, Clock3 } from "lucide-react";
-import { PatientMedication, Medication } from "./medical.mock";
 import { WithholdMedicationModal, GiveAllMedicationsModal } from "./modals";
+import type { GiveAllFormData } from "./modals/GiveAllMedicationsModal";
+import type { WithholdFormData } from "./modals/WithholdMedicationModal";
+import type { Medication, PatientMedication } from "./medical.types";
 
 interface MedicationCardProps {
   patient: PatientMedication;
-  onViewDetails: (patientId: number) => void;
-  onGiveAllMeds: (patientId: number) => void;
+  onViewDetails: (patientId: string) => void;
+  onGiveAllMeds: (patientId: string, payload: GiveAllFormData) => Promise<void>;
+  onGiveMedication: (medication: Medication) => Promise<void>;
+  onWithholdMedication: (medication: Medication, payload: WithholdFormData) => Promise<void>;
 }
 
-export function MedicationCard({ patient, onViewDetails, onGiveAllMeds }: MedicationCardProps) {
+export function MedicationCard({
+  patient,
+  onViewDetails,
+  onGiveAllMeds,
+  onGiveMedication,
+  onWithholdMedication,
+}: MedicationCardProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [showWithholdModal, setShowWithholdModal] = useState(false);
   const [showGiveAllModal, setShowGiveAllModal] = useState(false);
   const [selectedMedication, setSelectedMedication] = useState<Medication | null>(null);
-  const [medications, setMedications] = useState<Medication[]>(patient.medications);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleGiveMedication = (med: Medication) => {
-    setMedications((prev) =>
-      prev.map((item) =>
-        item.id === med.id
-          ? {
-              ...item,
-              status: "ให้ยา" }
-          : item
-      )
-    );
+  const handleGiveMedication = async (med: Medication) => {
+    setIsSubmitting(true);
+    try {
+      await onGiveMedication(med);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleWithholdMedication = (med: Medication) => {
@@ -40,7 +47,7 @@ export function MedicationCard({ patient, onViewDetails, onGiveAllMeds }: Medica
     setShowGiveAllModal(true);
   };
 
-  const pendingMedications = medications.filter((med) => med.status === "รอให้");
+  const pendingMedications = patient.medications.filter((med) => med.status === "รอให้");
   const pendingCount = pendingMedications.length;
 
   return (
@@ -98,7 +105,7 @@ export function MedicationCard({ patient, onViewDetails, onGiveAllMeds }: Medica
         {isExpanded ? (
           <div className="border-t border-gray-200 p-4 space-y-3">
             {/* Medication List */}
-            {medications.map((med) => (
+            {patient.medications.map((med) => (
               <div key={med.id} className="flex items-center justify-between py-2">
                 <div className="flex-1">
                   <p className="text-body-small font-medium text-gray-800">{med.name}</p>
@@ -110,10 +117,11 @@ export function MedicationCard({ patient, onViewDetails, onGiveAllMeds }: Medica
                   {med.status === "รอให้" && (
                     <>
                       <button
-                        onClick={(e) => {
+                        onClick={async (e) => {
                           e.stopPropagation();
-                          handleGiveMedication(med);
+                          await handleGiveMedication(med);
                         }}
+                        disabled={isSubmitting}
                         className="px-3 py-1 bg-blue-500 text-white rounded-full text-body-small font-medium hover:bg-blue-600 transition-colors"
                       >
                         ให้ยา
@@ -123,6 +131,7 @@ export function MedicationCard({ patient, onViewDetails, onGiveAllMeds }: Medica
                           e.stopPropagation();
                           handleWithholdMedication(med);
                         }}
+                        disabled={isSubmitting}
                         className="px-3 py-1 bg-white text-red-600 border border-red-300 rounded-full text-body-small font-medium hover:bg-red-50 transition-colors"
                       >
                         งด
@@ -155,6 +164,7 @@ export function MedicationCard({ patient, onViewDetails, onGiveAllMeds }: Medica
               {pendingCount > 0 && (
                 <button
                   onClick={handleGiveAllClick}
+                  disabled={isSubmitting}
                   className="px-4 py-2 bg-blue-500 text-white rounded-lg text-body-small font-medium hover:bg-blue-600 transition-colors"
                 >
                   ให้ยาทั้งหมด ({pendingCount})
@@ -195,6 +205,7 @@ export function MedicationCard({ patient, onViewDetails, onGiveAllMeds }: Medica
               {pendingCount > 0 && (
                 <button
                   onClick={handleGiveAllClick}
+                  disabled={isSubmitting}
                   className="px-4 py-2 bg-blue-500 text-white rounded-lg text-body-small font-medium hover:bg-blue-600 transition-colors"
                 >
                   ให้ยาทั้งหมด ({pendingCount})
@@ -214,18 +225,16 @@ export function MedicationCard({ patient, onViewDetails, onGiveAllMeds }: Medica
               setSelectedMedication(null);
             }}
             onSubmit={(data) => {
-              console.log("Withhold medication:", data);
-              setMedications((prev) =>
-                prev.map((item) =>
-                  item.id === selectedMedication.id
-                    ? {
-                        ...item,
-                        status: "งด" }
-                    : item
-                )
-              );
-              setShowWithholdModal(false);
-              setSelectedMedication(null);
+              void (async () => {
+                setIsSubmitting(true);
+                try {
+                  await onWithholdMedication(selectedMedication, data);
+                  setShowWithholdModal(false);
+                  setSelectedMedication(null);
+                } finally {
+                  setIsSubmitting(false);
+                }
+              })();
             }}
             patientName={patient.name}
             patientRoom={patient.room}
@@ -238,22 +247,19 @@ export function MedicationCard({ patient, onViewDetails, onGiveAllMeds }: Medica
         isOpen={showGiveAllModal}
         onClose={() => setShowGiveAllModal(false)}
         onSubmit={(data) => {
-          console.log("Give all medications:", data);
-          setMedications((prev) =>
-            prev.map((item) =>
-              item.status === "รอให้"
-                ? {
-                    ...item,
-                    status: "ให้ยา" }
-                : item
-            )
-          );
-          setShowGiveAllModal(false);
-          onGiveAllMeds(patient.id);
+          void (async () => {
+            setIsSubmitting(true);
+            try {
+              await onGiveAllMeds(patient.id, data);
+              setShowGiveAllModal(false);
+            } finally {
+              setIsSubmitting(false);
+            }
+          })();
         }}
         patientName={patient.name}
         patientRoom={patient.room}
-        medications={medications}
+        medications={patient.medications}
       />
     </>
   );
