@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, Calendar } from "lucide-react";
+import { ChevronDown } from "lucide-react";
+import { DatePicker } from "@/components/ui/date-picker";
 import { VitalSignsTable } from "./tables/VitalSignsTable";
 import { DoctorOrderTable } from "./tables/DoctorOrderTable";
 import { NurseNoteTable } from "./tables/NurseNoteTable";
@@ -16,7 +17,10 @@ export function OverviewView() {
   const [selectedFloor, setSelectedFloor] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState<VitalSignStatus>("all");
   const [selectedHelpLevel, setSelectedHelpLevel] = useState("ทุกช่วย");
-  const selectedDate = "31/12/2568"; // Fixed date for now, can be made dynamic later
+  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
+
+  const overviewDatePickerClassName =
+    "w-[200px] [&>button]:w-full [&>button]:justify-between [&>button]:border-2 [&>button]:border-blue-500 [&>button]:hover:bg-blue-50";
 
   const tabs = [
     { id: "vital_signs" as SubTab, label: "สัญญาณชีพ" },
@@ -82,10 +86,12 @@ export function OverviewView() {
           </div>
 
           {/* Date Picker */}
-          <button className="flex items-center gap-2 px-4 py-2 border-2 border-blue-500 rounded-lg text-blue-500 hover:bg-blue-50 transition-colors">
-            <span className="text-body-small font-medium">{selectedDate}</span>
-            <Calendar className="w-4 h-4" />
-          </button>
+          <DatePicker
+            value={selectedDate}
+            onChange={setSelectedDate}
+            placeholder="เลือกวันที่"
+            className={overviewDatePickerClassName}
+          />
       </div>
 
       {/* Sub-tabs Navigation */}
