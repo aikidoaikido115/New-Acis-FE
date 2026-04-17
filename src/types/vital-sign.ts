@@ -1,3 +1,5 @@
+import type { ApiPagination } from './drug-plan';
+
 export interface VitalSign {
   vital_sign_id: string;
   resident_id: string;
@@ -16,4 +18,11 @@ export interface VitalSignOverviewQuery {
   floor?: number;
   label_ids?: string[];
   vitalsign_status?: "all" | "normal" | "abnormal";
+  page?: number;
+  page_size?: number;
+}
+
+export interface VitalSignOverviewResult {
+  items: VitalSign[];
+  pagination: ApiPagination;
 }
