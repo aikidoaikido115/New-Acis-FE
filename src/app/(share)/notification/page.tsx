@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { NURSE_NOTIFICATIONS } from "@/components/features/nurse/notifications";
+import { NURSE_NOTIFICATIONS } from "@/components/shared/notifications/notifications";
 import {
   getKitchenNotificationItems,
   markAllKitchenNotificationsRead,

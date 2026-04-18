@@ -11,11 +11,11 @@ import { useToast } from "@/components/ui/toast";
 import type { ResidentFormState, CreateResidentRequest, Resident as ApiResident } from "@/types/resident";
 import type { Resident } from "@/types/elder";
 import type { Room } from "@/types/room";
-import { ResidentFormModal } from "@/components/features/nurse/elder-info/ResidentFormModal";
-import { RelativeViewModal } from "@/components/features/nurse/elder-info/RelativeViewModal";
-import { ElderTableFilter } from "@/components/features/nurse/elder-info/info-table-filter";
-import { ElderTable } from "@/components/features/nurse/elder-info/elder-table";
-import { ElderTablePagination } from "@/components/features/nurse/pagination";
+import { ResidentFormModal } from "@/components/features/elder-info/ResidentFormModal";
+import { RelativeViewModal } from "@/components/features/elder-info/RelativeViewModal";
+import { ElderTableFilter } from "@/components/features/elder-info/info-table-filter";
+import { ElderTable } from "@/components/features/elder-info/elder-table";
+import { ElderTablePagination } from "@/components/features/elder-info/pagination";
 
 const ITEMS_PER_PAGE = 10;
 

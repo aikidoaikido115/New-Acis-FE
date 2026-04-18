@@ -1,13 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { InventoryTable } from "./InventoryTable";
 import { TransactionHistoryTable } from "./TransactionHistoryTable";
 
 type TabView = "inventory" | "history";
 
 export function WarehouseView() {
-  const [activeTab, setActiveTab] = useState<TabView>("inventory");
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get("tab") === "history" ? "history" : "inventory";
+  const [activeTab, setActiveTab] = useState<TabView>(initialTab);
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">

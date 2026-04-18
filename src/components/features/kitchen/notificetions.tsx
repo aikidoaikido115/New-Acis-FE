@@ -79,7 +79,7 @@ const formatRelativeTime = (target: Date) => {
   const diffMinutes = Math.floor(diffMs / (1000 * 60));
   if (diffMinutes < 60) return `${diffMinutes} นาทีที่แล้ว`;
   const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) return `${diffHours} ชั่วโมงแล้ว`;
+  if (diffHours < 24) return `${diffHours} ชั่วโมงที่แล้ว`;
   return target.toLocaleDateString("th-TH", { day: "numeric", month: "short" });
 };
 

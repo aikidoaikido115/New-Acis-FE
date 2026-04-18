@@ -64,7 +64,7 @@ function NotificationDropdown({
   }, [isLoading, onLoadMore]);
 
   return (
-    <div className="absolute mt-2 w-[calc(100vw-2rem)] max-w-sm sm:w-86 sm:max-w-none max-h-96 overflow-hidden rounded-xl bg-white text-gray-800 shadow-xl left-1/2 -translate-x-[71%] sm:left-auto sm:translate-x-0 sm:right-0">
+    <div className="absolute mt-2 left-1/2 -translate-x-1/2 w-[95vw] max-w-xs sm:left-auto sm:translate-x-0 sm:right-0 sm:w-86 sm:max-w-none max-h-96 overflow-hidden rounded-xl bg-white text-gray-800 shadow-xl">
       {/* Header */}
       <div className="border-b border-gray-200 px-4 py-3 flex items-center justify-between">
         <h3 className="text-sm font-bold text-gray-900">การแจ้งเตือน</h3>
@@ -146,13 +146,13 @@ export function NotificationBell({
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
         className={cn(
-          "relative inline-flex h-9 w-9 items-center justify-center rounded-lg text-white transition hover:bg-white/20",
+          "relative inline-flex h-10 w-10 items-center justify-center rounded-lg text-white transition hover:bg-white/20 sm:h-9 sm:w-9",
           isOpen && "bg-white/10"
         )}
         aria-label="Notifications"
         aria-expanded={isOpen}
       >
-        <Bell size={18} />
+        <Bell size={20} className="sm:size-[18px]" />
         {notificationsCount > 0 && (
           <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-400 px-1 text-[10px] font-semibold text-white">
             {notificationsCount > 9 ? "9+" : notificationsCount}

@@ -224,13 +224,9 @@ export function DatePicker({ value, onChange, placeholder = "เลือกว�
         <Calendar className="h-4 w-4" />
         <span className={value ? "text-black" : "text-slate-400"}>{value ? formatThaiDate(value) : placeholder}</span>
       </button>
-
+      
       {isOpen && typeof document !== "undefined" && createPortal(
-        <div
-          ref={popupRef}
-          style={popupStyle}
-          className="rounded-xl border border-slate-200 bg-white p-4 shadow-lg"
-        >
+        <div  ref={popupRef} style={popupStyle} className="absolute left-0 right-auto sm:right-0 sm:left-auto top-full z-20 mt-2 w-72 rounded-xl border border-slate-200 bg-white p-4 shadow-lg">
           {/* Days View */}
           {viewMode === "days" && (
             <>

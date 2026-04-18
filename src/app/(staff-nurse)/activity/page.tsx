@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { Calendar, Plus } from "lucide-react";
-import { ActivityCalendar } from "@/components/features/nurse/activity/activity-calendar";
-import { ActivityFormModal, type ActivityFormData } from "@/components/features/nurse/activity/activity-form-modal";
+import { ActivityCalendar } from "@/components/features/activity/activity-calendar";
+import { ActivityFormModal, type ActivityFormData } from "@/components/features/activity/activity-form-modal";
 
 const DAYS_FULL = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
 const MONTHS = [

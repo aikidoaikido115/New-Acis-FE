@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { DEFAULT_PROFILE_IMAGE, resolveProfileImage } from "@/lib/profile-image";
 import { useClickOutside } from "@/hooks/use-click-outside";
-import { NotificationBell } from "@/components/features/nurse/notifications";
+import { NotificationBell } from "@/components/shared/notifications/notifications";
 import { KitchenNotificationBell } from "@/components/features/kitchen/notificetions";
 import { authService } from "@/services/auth.service";
 

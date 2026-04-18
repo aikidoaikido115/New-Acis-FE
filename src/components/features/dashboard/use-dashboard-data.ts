@@ -1,0 +1,272 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { roomService } from "@/services/room.service";
+import { residentService } from "@/services/resident.service";
+import { warehouseService } from "@/services/warehouse.service";
+import { vitalSignService } from "@/services/vital-sign.service";
+import { drugPlanService } from "@/services/drug-plan.service";
+import type { GenderStats, ResidentStats } from "@/types/dashboard";
+import type { Room } from "@/types/room";
+import type { Resident } from "@/types/resident";
+import type { DrugPlan } from "@/types/drug-plan";
+import {
+  DEFAULT_MEDICINE_STATUS,
+  DEFAULT_VITAL_STATS,
+  INVENTORY_ITEMS,
+  buildMedicineValue,
+  computeResidentAndGenderStats,
+  filterByDate,
+  filterResidents,
+  formatThaiDate,
+  getScheduleItemsForDate,
+  isSameDay,
+  resolveTimeOfDayKey,
+  toDateInputValue,
+  type InventoryStatKey,
+} from "@/components/features/dashboard/dashboard-utils";
+
+export type StatCardItem = { label: string; value: number };
+export type VitalStatItem = { label: string; value: number; variant: "normal" | "warning" | "danger" };
+export type MedicineStatusItem = { label: string; value: string };
+export type ScheduleItemWithBadge = {
+  time: string;
+  title: string;
+  detail: string;
+  location: string;
+  badge: string;
+};
+export type InventoryCardItem = {
+  key: InventoryStatKey;
+  label: string;
+  href: string;
+  count: number;
+  valueClass: string;
+  linkLabel: string;
+};
+
+const logApiError = (label: string, error: unknown) => {
+  if (error && typeof error === "object") {
+    const message = "message" in error ? String((error as { message?: string }).message || "") : undefined;
+    const status = "status_code" in error ? (error as { status_code?: number }).status_code : undefined;
+    console.error(label, { message, status, error });
+    return;
+  }
+
+  console.error(label, error);
+};
+
+export function useDashboardData() {
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [activityDate, setActivityDate] = useState(new Date());
+  const [selectedFloor, setSelectedFloor] = useState("all");
+  const [isLoading, setIsLoading] = useState(true);
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [residents, setResidents] = useState<Resident[]>([]);
+  const [vitalStats, setVitalStats] = useState<VitalStatItem[]>(DEFAULT_VITAL_STATS);
+  const [medicineStatus, setMedicineStatus] = useState<MedicineStatusItem[]>(DEFAULT_MEDICINE_STATUS);
+  const [lowStockCount, setLowStockCount] = useState(0);
+  const [pendingWithdrawCount, setPendingWithdrawCount] = useState(0);
+  const [pendingRestockCount, setPendingRestockCount] = useState(0);
+
+  const normalizedFloor = useMemo(() => {
+    const floorNumber = selectedFloor !== "all" ? Number(selectedFloor) : undefined;
+    return Number.isFinite(floorNumber) ? floorNumber : undefined;
+  }, [selectedFloor]);
+
+  const residentById = useMemo(() => {
+    return new Map(
+      residents.map((resident) => {
+        const id = resident.resident_id || resident.id;
+        return [id, resident] as const;
+      })
+    );
+  }, [residents]);
+
+  const filteredResidents = useMemo(
+    () => filterResidents(residents, normalizedFloor, selectedDate),
+    [residents, normalizedFloor, selectedDate]
+  );
+
+  const { residentStats, genderStats } = useMemo(
+    () => computeResidentAndGenderStats(filteredResidents),
+    [filteredResidents]
+  );
+
+  const scheduleBadge = useMemo(
+    () => (isSameDay(activityDate, new Date()) ? "วันนี้" : formatThaiDate(activityDate)),
+    [activityDate]
+  );
+
+  const scheduleItems = useMemo<ScheduleItemWithBadge[]>(
+    () => getScheduleItemsForDate(activityDate).map((item) => ({ ...item, badge: scheduleBadge })),
+    [activityDate, scheduleBadge]
+  );
+
+  const inventoryCards = useMemo<InventoryCardItem[]>(() => {
+    const countMap: Record<InventoryStatKey, number> = {
+      lowStock: lowStockCount,
+      pendingWithdraw: pendingWithdrawCount,
+      pendingRestock: pendingRestockCount,
+    };
+
+    return INVENTORY_ITEMS.map((item) => {
+      const count = countMap[item.key] || 0;
+      const valueClass = count > 0 ? "text-red-500" : "text-slate-500";
+      const linkLabel = item.href === "/warehouse" ? "หน้าสินค้าคงคลัง" : "หน้าประวัติการทำรายการ";
+      return { ...item, count, valueClass, linkLabel };
+    });
+  }, [lowStockCount, pendingWithdrawCount, pendingRestockCount]);
+
+  const statCards = useMemo<StatCardItem[]>(
+    () => [
+      { label: "ผู้สูงอายุทั้งหมด", value: residentStats.total },
+      { label: "ผู้สูงอายุทั่วไป", value: residentStats.general },
+      { label: "ผู้สูงอายุช่วยเหลือตนเองได้บางส่วน", value: residentStats.partial_assist },
+      { label: "ผู้สูงอายุติดเตียง", value: residentStats.bedridden },
+    ],
+    [residentStats]
+  );
+
+  const refreshResidents = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [roomsRes, residentsRes] = await Promise.all([roomService.getAll(), residentService.getAll()]);
+      setRooms(roomsRes || []);
+      setResidents(residentsRes || []);
+    } catch (error) {
+      logApiError("Failed to fetch resident data:", error);
+      setRooms([]);
+      setResidents([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const loadInventoryItems = useCallback(async () => {
+    try {
+      const items = await warehouseService.getItems();
+      const lowStock = items.filter((item) => {
+        const minimum = item.minimumQuantity ?? 0;
+        return minimum > 0 && item.quantity <= minimum;
+      }).length;
+      setLowStockCount(lowStock);
+    } catch (error) {
+      logApiError("Failed to fetch warehouse items:", error);
+      setLowStockCount(0);
+    }
+  }, []);
+
+  const loadPendingTransactions = useCallback(async () => {
+    try {
+      const dateKey = toDateInputValue(selectedDate);
+      const pendingTransactions = await warehouseService.getTransactions({
+        status: "รออนุมัติ",
+        startDate: dateKey,
+        endDate: dateKey,
+      });
+      setPendingWithdrawCount(pendingTransactions.filter((tx) => tx.type === "เบิกสินค้า").length);
+      setPendingRestockCount(pendingTransactions.filter((tx) => tx.type === "เติมสินค้า").length);
+    } catch (error) {
+      logApiError("Failed to fetch warehouse transactions:", error);
+      setPendingWithdrawCount(0);
+      setPendingRestockCount(0);
+    }
+  }, [selectedDate]);
+
+  const loadVitalStats = useCallback(async () => {
+    try {
+      const [allVitals, normalVitals, abnormalVitals] = await Promise.all([
+        vitalSignService.getOverview({ floor: normalizedFloor, vitalsign_status: "all" }),
+        vitalSignService.getOverview({ floor: normalizedFloor, vitalsign_status: "normal" }),
+        vitalSignService.getOverview({ floor: normalizedFloor, vitalsign_status: "abnormal" }),
+      ]);
+
+      const allByDate = filterByDate(allVitals, selectedDate);
+      const normalByDate = filterByDate(normalVitals, selectedDate);
+      const abnormalByDate = filterByDate(abnormalVitals, selectedDate);
+      const warningCount = Math.max(0, allByDate.length - normalByDate.length - abnormalByDate.length);
+
+      setVitalStats([
+        { label: "ปกติ", value: normalByDate.length, variant: "normal" },
+        { label: "เสี่ยงสูง", value: warningCount, variant: "warning" },
+        { label: "ผิดปกติ", value: abnormalByDate.length, variant: "danger" },
+      ]);
+    } catch (error) {
+      logApiError("Failed to fetch vital sign stats:", error);
+      setVitalStats(DEFAULT_VITAL_STATS);
+    }
+  }, [normalizedFloor, selectedDate]);
+
+  const loadMedicineStatus = useCallback(async () => {
+    try {
+      const plans = await drugPlanService.getOverview();
+      const filteredByDate = filterByDate(plans, selectedDate);
+      const filteredByFloor = normalizedFloor === undefined
+        ? filteredByDate
+        : filteredByDate.filter((plan: DrugPlan) => {
+            const residentId = plan.PersonalDrug?.resident_id;
+            const resident = residentId ? residentById.get(residentId) : undefined;
+            return resident?.floor === normalizedFloor;
+          });
+
+      const counts = {
+        morning: { total: 0, taken: 0 },
+        noon: { total: 0, taken: 0 },
+        evening: { total: 0, taken: 0 },
+      };
+
+      filteredByFloor.forEach((plan) => {
+        const timeOfDay = plan.PersonalDrug?.time_of_day || plan.PersonalDrug?.timing || "";
+        const key = resolveTimeOfDayKey(timeOfDay);
+        if (!key) return;
+        counts[key].total += 1;
+        if (plan.is_taken) counts[key].taken += 1;
+      });
+
+      setMedicineStatus([
+        { label: "มื้อเช้า", value: buildMedicineValue(counts.morning.total, counts.morning.taken) },
+        { label: "มื้อกลางวัน", value: buildMedicineValue(counts.noon.total, counts.noon.taken) },
+        { label: "มื้อเย็น", value: buildMedicineValue(counts.evening.total, counts.evening.taken) },
+      ]);
+    } catch (error) {
+      logApiError("Failed to fetch medicine status:", error);
+      setMedicineStatus(DEFAULT_MEDICINE_STATUS);
+    }
+  }, [selectedDate, normalizedFloor, residentById]);
+
+  useEffect(() => {
+    void refreshResidents();
+    void loadInventoryItems();
+  }, [refreshResidents, loadInventoryItems]);
+
+  useEffect(() => {
+    void loadPendingTransactions();
+  }, [loadPendingTransactions]);
+
+  useEffect(() => {
+    void loadVitalStats();
+  }, [loadVitalStats]);
+
+  useEffect(() => {
+    void loadMedicineStatus();
+  }, [loadMedicineStatus]);
+
+  return {
+    selectedDate,
+    setSelectedDate,
+    activityDate,
+    setActivityDate,
+    selectedFloor,
+    setSelectedFloor,
+    isLoading,
+    rooms,
+    statCards,
+    genderStats,
+    vitalStats,
+    medicineStatus,
+    scheduleItems,
+    inventoryCards,
+    refreshResidents,
+  };
+}
