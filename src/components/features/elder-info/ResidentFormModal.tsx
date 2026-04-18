@@ -1,7 +1,9 @@
 "use client";
+import { useEffect, useMemo, useState } from "react";
 import { Modal }             from "@/components/ui/modal";
 import { DatePicker }        from "@/components/ui/date-picker";
 import { Dropdown }          from "@/components/ui/dropdown";
+import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
 import { Input }             from "@/components/ui/input";
 import { Button }            from "@/components/ui/button";
 import { Textarea }          from "@/components/ui/textarea";
@@ -19,7 +21,7 @@ import { ProfileImageUpload }   from "./resident-form/ProfileImageUpload";
 import { MedicationTable }      from "./resident-form/MedicationTable";
 import { EmergencyContactList } from "./resident-form/EmergencyContactList";
 import {
-  STATUS_OPTIONS, GENDER_OPTIONS, FLOOR_OPTIONS, CARE_LEVEL_OPTIONS,
+  STATUS_OPTIONS, GENDER_OPTIONS, FLOOR_OPTIONS, CARE_LEVEL_OPTIONS, EMERGENCY_HOSPITAL_MASTERS,
 } from "./resident-form/constants";
 
 // ── Shared styles ─────────────────────────────────────────────────
@@ -57,18 +59,92 @@ interface ResidentFormModalProps {
   rooms?: Room[];
   initialValues?: ResidentFormState;
   mode?: "create" | "edit";
+  medicationOptions: Array<{ value: string; label: string; name: string; dose?: string }>;
+  onCreateMedicationOption?: (name: string, dose: string) => Promise<{ value: string; label: string; name: string; dose?: string } | null>;
+  onCreateRoomOption?: (roomNumber: string, floor: string) => Promise<{ value: string; label: string } | null>;
 }
 
 // ── Component ─────────────────────────────────────────────────────
-export function ResidentFormModal({ isOpen, onClose, onSubmit, isLoading = false, rooms = [], initialValues, mode = "create" }: ResidentFormModalProps) {
+export function ResidentFormModal({ isOpen, onClose, onSubmit, isLoading = false, rooms = [], initialValues, mode = "create", medicationOptions, onCreateMedicationOption, onCreateRoomOption }: ResidentFormModalProps) {
   const form = useResidentForm(onSubmit, onClose, initialValues);
-  const { formData, set } = form;
+  const { formData, set, updateMedication, resetForm } = form;
+
+  const [hospitalOptions, setHospitalOptions] = useState(() => [...EMERGENCY_HOSPITAL_MASTERS]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      resetForm();
+    }
+  }, [isOpen, resetForm]);
+
+  useEffect(() => {
+    if (!formData.emergencyHospital) return;
+    setHospitalOptions((prev) => {
+      if (prev.some((item) => item.value === formData.emergencyHospital)) return prev;
+      return [
+        ...prev,
+        {
+          value: formData.emergencyHospital,
+          label: formData.emergencyHospital,
+          phone: formData.emergencyHospitalPhone || "",
+        },
+      ];
+    });
+  }, [formData.emergencyHospital, formData.emergencyHospitalPhone]);
 
   const roomOptions = rooms.map((room) => {
     const value = (room as { room_id?: string | number; id?: string | number }).room_id ?? room.id ?? "";
     const label = room.room_number || `ห้อง ${value || ""}`;
     return { value: String(value), label };
   });
+
+  const emergencyHospitalOptions = useMemo(
+    () => hospitalOptions.map(({ value, label }) => ({ value, label })),
+    [hospitalOptions]
+  );
+
+  const handleEmergencyHospitalSelect = (value: string) => {
+    const selected = hospitalOptions.find((item) => item.value === value);
+    if (!selected) return;
+    set({ emergencyHospital: selected.value, emergencyHospitalPhone: selected.phone });
+  };
+
+  const handleEmergencyHospitalCreate = (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    setHospitalOptions((prev) => {
+      if (prev.some((item) => item.value === trimmed)) return prev;
+      return [...prev, { value: trimmed, label: trimmed, phone: "" }];
+    });
+    set({ emergencyHospital: trimmed, emergencyHospitalPhone: "" });
+  };
+
+  const handleCreateMedication = async (idx: number, name: string) => {
+    const dose = formData.medications[idx]?.dose?.trim();
+    if (!dose) {
+      alert("กรุณากรอกปริมาณ/ขนาดก่อนเพิ่มยาใหม่");
+      return;
+    }
+    const created = await onCreateMedicationOption?.(name, dose);
+    if (!created) return;
+    updateMedication(idx, {
+      dmId: created.value,
+      name: created.name,
+      dose: formData.medications[idx]?.dose || created.dose || "",
+    });
+  };
+
+  const handleCreateRoom = async (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    if (!formData.floor) {
+      alert("กรุณาเลือกชั้นก่อนเพิ่มห้อง");
+      return;
+    }
+    const created = await onCreateRoomOption?.(trimmed, formData.floor);
+    if (!created) return;
+    set({ roomId: created.value });
+  };
 
   return (
     <Modal
@@ -87,6 +163,7 @@ export function ResidentFormModal({ isOpen, onClose, onSubmit, isLoading = false
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h3 className="text-base font-semibold text-slate-800">ข้อมูลพื้นฐาน</h3>
             <div className="w-full sm:w-auto sm:min-w-40 "> 
+              <Label icon={null} text="สถานะ" required />
               <Dropdown options={STATUS_OPTIONS} value={formData.status} onChange={(val) => set({ status: val })} placeholder="เลือกสถานะ" className="w-full" />
             </div>
           </div>
@@ -113,53 +190,67 @@ export function ResidentFormModal({ isOpen, onClose, onSubmit, isLoading = false
                 </div>
               </div>
 
-              {/* Row 2: วันเกิด / เลขบัตร */}
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              {/* Row 2: วันเกิด / ชื่อเล่น / เลขบัตร */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div>
                   <Label icon={<Calendar size={14} />} text="วันเกิด" required />
                   <DatePicker value={formData.dateOfBirth ? new Date(formData.dateOfBirth) : null} onChange={(d) => form.handleDateChange("dateOfBirth", d)} placeholder="DD/MM/YYYY" />
                 </div>
                 <div>
-                  <Label icon={<CreditCard size={14} />} text="เลขบัตรประชาชน" />
-                  <Input type="text" name="idCardNumber" value={formData.idCardNumber} onChange={form.handleIdCardChange} placeholder="กรอกเลขบัตรประชาชน 13 หลัก" className={inputClass} maxLength={13} />
-                </div>
-              </div>
-
-              {/* Row 3: จุดประสงค์ / วันที่เข้า–ออก */}
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div>
-                  <Label icon={<Home size={14} />} text="จุดประสงค์การเข้าพัก" required />
-                  <Textarea name="purpose" value={formData.purpose} onChange={form.handleChange} placeholder="กรอกจุดประสงค์การเข้าพัก" className={cn(inputClass, "h-[72px] resize-none")} required />
-                </div>
-                <div>
-                  <Label icon={<Calendar size={14} />} text="วันที่เข้าพัก - วันที่คาดว่าจะออก" />
-                  <div className="flex items-center gap-2">
-                    <DatePicker value={formData.admitDate ? new Date(formData.admitDate) : null} onChange={(d) => form.handleDateChange("admitDate", d)} placeholder="DD/MM/YYYY" />
-                    <span className="text-slate-400">-</span>
-                    <DatePicker value={formData.expectedDischargeDate ? new Date(formData.expectedDischargeDate) : null} onChange={(d) => form.handleDateChange("expectedDischargeDate", d)} placeholder="DD/MM/YYYY" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Row 4: ชื่อเล่น / ห้อง / ชั้น */}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <div>
                   <Label icon={<User size={14} />} text="ชื่อเล่น" />
                   <Input type="text" name="nickname" value={formData.nickname} onChange={form.handleChange} placeholder="กรอกชื่อเล่น" className={inputClass} />
                 </div>
                 <div>
-                  <Label icon={<Home size={14} />} text="ห้อง" required />
-                  <Dropdown
-                    options={roomOptions}
-                    value={formData.roomId}
-                    onChange={(val) => set({ roomId: val })}
-                    placeholder="เลือกห้อง"
-                    className="w-full"
-                  />
+                  <Label icon={<CreditCard size={14} />} text="เลขบัตรประชาชน" />
+                  <Input type="text" name="idCardNumber" value={formData.idCardNumber} onChange={form.handleIdCardChange} placeholder="กรอกเลขบัตรประชาชน (ถ้ามี)" className={inputClass} maxLength={13} />
+                </div>
+              </div>
+
+              {/* Row 3: จุดประสงค์ / วันที่เข้า–ออก + ห้อง/ชั้น */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                  <Label icon={<Home size={14} />} text="จุดประสงค์การเข้าพัก" required />
+                  <Textarea name="purpose" value={formData.purpose} onChange={form.handleChange} placeholder="กรอกจุดประสงค์การเข้าพัก" className={cn(inputClass, "h-20 resize-none")} required />
                 </div>
                 <div>
-                  <Label icon={<Layers size={14} />} text="ชั้น" />
-                  <Dropdown options={FLOOR_OPTIONS} value={formData.floor} onChange={(val) => set({ floor: val })} placeholder="เลือกชั้น" className="w-full" />
+                  <div className="space-y-4">
+                    <div>
+                      <Label icon={<Calendar size={14} />} text="วันที่เข้าพัก - วันที่คาดว่าจะออก" />
+                      <div className="flex items-center gap-2">
+                        <DatePicker value={formData.admitDate ? new Date(formData.admitDate) : null} onChange={(d) => form.handleDateChange("admitDate", d)} placeholder="DD/MM/YYYY" />
+                        <span className="text-slate-400">-</span>
+                        <DatePicker value={formData.expectedDischargeDate ? new Date(formData.expectedDischargeDate) : null} onChange={(d) => form.handleDateChange("expectedDischargeDate", d)} placeholder="DD/MM/YYYY" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <div>
+                        <Label icon={<Home size={14} />} text="ห้อง" />
+                        <SearchableDropdown
+                          options={roomOptions}
+                          value={formData.roomId}
+                          onChange={(val) => {
+                            const matchedRoom = rooms.find((room) => {
+                              const id = (room as { room_id?: string | number; id?: string | number }).room_id ?? room.id;
+                              return String(id || "") === val;
+                            });
+                            set({
+                              roomId: val,
+                              floor: matchedRoom ? String(matchedRoom.floor) : formData.floor,
+                            });
+                          }}
+                          placeholder="เลือกห้อง"
+                          className="w-full"
+                          allowCreate={Boolean(onCreateRoomOption)}
+                          onCreate={handleCreateRoom}
+                          createLabel="เพิ่มห้อง"
+                        />
+                      </div>
+                      <div>
+                        <Label icon={<Layers size={14} />} text="ชั้น" />
+                        <Dropdown options={FLOOR_OPTIONS} value={formData.floor} onChange={(val) => set({ floor: val })} placeholder="เลือกชั้น" className="w-full" />
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -172,8 +263,14 @@ export function ResidentFormModal({ isOpen, onClose, onSubmit, isLoading = false
           <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
               <Label icon={<Heart size={14} />} text="โรคประจำตัว (แยกแต่ละบรรทัด)" />
-              <Textarea name="chronicDiseases" value={formData.chronicDiseases} onChange={form.handleChange} placeholder="กรอกโรคประจำตัว แยกแต่ละบรรทัด" className={cn(inputClass, "h-24 resize-none")} />
-            </div>
+                <Textarea 
+                  name="chronicDiseases" 
+                  value={formData.chronicDiseases} 
+                  onChange={form.handleChange} 
+                  placeholder={`กรอกโรคประจำตัว แยกแต่ละบรรทัด เช่น\nเบาหวาน\nความดัน\nโรคหัวใจ`} 
+                  className={cn(inputClass, "h-24 resize-none")} 
+                />            
+              </div>
             <div>
               <Label icon={<Heart size={14} />} text="หมายเหตุ" />
               <Textarea name="chronicDiseasesNote" value={formData.chronicDiseasesNote} onChange={form.handleChange} placeholder="กรอกหมายเหตุ" className={cn(inputClass, "h-24 resize-none")} />
@@ -185,27 +282,47 @@ export function ResidentFormModal({ isOpen, onClose, onSubmit, isLoading = false
             <Label icon={<Pill size={14} />} text="ยาที่ใช้ประจำ" />
             <MedicationTable
               medications={formData.medications}
+              medicationOptions={medicationOptions}
               onUpdate={form.updateMedication}
               onAdd={form.addMedication}
               onRemove={form.removeMedication}
+              onCreateMedication={handleCreateMedication}
             />
           </div>
 
           {/* ประวัติผ่าตัด */}
           <div className="mb-4">
             <Label icon={<Scissors size={14} />} text="ประวัติการผ่าตัด (แยกแต่ละบรรทัด)" />
-            <Textarea name="surgicalHistory" value={formData.surgicalHistory} onChange={form.handleChange} placeholder="กรอกประวัติการผ่าตัด แยกแต่ละบรรทัด" className={cn(inputClass, "h-20 resize-none")} />
+            <Textarea
+              name="surgicalHistory"
+              value={formData.surgicalHistory}
+              onChange={form.handleChange}
+              placeholder={`กรอกประวัติการผ่าตัด แยกแต่ละบรรทัด เช่น\nผ่าตัดต้อกระจก\nผ่าตัดเข่า\nผ่าตัดไส้ติ่ง`}
+              className={cn(inputClass, "h-20 resize-none")}
+            />
           </div>
 
           {/* แพ้ยา / แพ้อาหาร */}
           <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
               <Label icon={<AlertTriangle size={14} />} text="แพ้ยา (แยกแต่ละบรรทัด)" />
-              <Textarea name="drugAllergies" value={formData.drugAllergies} onChange={form.handleChange} placeholder="กรอกยาที่แพ้ แยกแต่ละบรรทัด" className={cn(inputClass, "h-20 resize-none")} />
+              <Textarea
+                name="drugAllergies"
+                value={formData.drugAllergies}
+                onChange={form.handleChange}
+                placeholder={`กรอกยาที่แพ้ แยกแต่ละบรรทัด เช่น\nเพนิซิลลิน\nซัลฟา\nแอสไพริน`}
+                className={cn(inputClass, "h-20 resize-none")}
+              />
             </div>
             <div>
               <Label icon={<AlertTriangle size={14} />} text="แพ้อาหาร (แยกแต่ละบรรทัด)" />
-              <Textarea name="foodAllergies" value={formData.foodAllergies} onChange={form.handleChange} placeholder="กรอกอาหารที่แพ้ แยกแต่ละบรรทัด" className={cn(inputClass, "h-20 resize-none")} />
+              <Textarea
+                name="foodAllergies"
+                value={formData.foodAllergies}
+                onChange={form.handleChange}
+                placeholder={`กรอกอาหารที่แพ้ แยกแต่ละบรรทัด เช่น\nกุ้ง\nปู\nถั่วลิสง`}
+                className={cn(inputClass, "h-20 resize-none")}
+              />
             </div>
           </div>
 
@@ -235,10 +352,24 @@ export function ResidentFormModal({ isOpen, onClose, onSubmit, isLoading = false
 
         {/* ══ Section 3: ความปลอดภัยฉุกเฉิน ═════════════════════════ */}
         <SectionCard title="ความปลอดภัยฉุกเฉิน">
-          <div className="mb-4 grid grid-cols-1 gap-4 ">
-            <div>
+
+          <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-10">
+            <div className="md:col-span-6">
               <Label icon={<Building2 size={14} />} text="โรงพยาบาลกรณีฉุกเฉิน" required />
-              <Input type="text" name="emergencyHospital" value={formData.emergencyHospital} onChange={form.handleChange} placeholder="กรอกโรงพยาบาล" className={inputClass} required />
+              <SearchableDropdown
+                options={emergencyHospitalOptions}
+                value={formData.emergencyHospital}
+                onChange={handleEmergencyHospitalSelect}
+                onCreate={handleEmergencyHospitalCreate}
+                allowCreate
+                createLabel="เพิ่มโรงพยาบาล"
+                placeholder="เลือกโรงพยาบาล"
+                className="w-full text-black"
+              />
+            </div>
+            <div className="md:col-span-4">
+              <Label icon={<Phone size={14} />} text="เบอร์โรงพยาบาลกรณีฉุกเฉิน" />
+              <Input type="text" name="emergencyHospitalPhone" value={formData.emergencyHospitalPhone} onChange={form.handlePhoneChange} placeholder="กรอกเบอร์โรงพยาบาล" className={inputClass} maxLength={10} />
             </div>
           </div>
 

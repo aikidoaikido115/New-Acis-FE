@@ -65,7 +65,7 @@ export default function PatientDetailPage() {
           ...(foodAllergyRes?.data.result || []),
           ...(drugAllergyRes?.data.result || []),
         ]
-          .map((item) => item.allergy_name)
+          .map((item: any) => item?.allergy?.allergy_name || item?.drug_allergy?.allergy_name || item?.allergy_name)
           .filter(Boolean);
 
         setAllergies(Array.from(new Set(combined)));
@@ -92,8 +92,8 @@ export default function PatientDetailPage() {
   }, [room]);
 
   const chronicDiseases = useMemo(() => {
-    if (!resident?.chronic_diseases) return [];
-    return resident.chronic_diseases
+    if (!resident?.pre_existing_conditions) return [];
+    return resident.pre_existing_conditions
       .split(/[;,]/)
       .map((text) => text.trim())
       .filter(Boolean);
@@ -126,7 +126,7 @@ export default function PatientDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-[1400px] mx-auto space-y-4">
+      <div className="max-w-screen-2xl mx-auto space-y-4">
         <button
           onClick={() => router.back()}
           className="flex items-center gap-2 text-blue-500 hover:text-blue-700 transition-colors"

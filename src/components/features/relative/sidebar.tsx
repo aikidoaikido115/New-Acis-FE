@@ -20,7 +20,6 @@ export function RelativeSidebar({ isOpen = true, onClose }: RelativeSidebarProps
       await authService.logout();
       router.push('/relative/login');
     } catch (error) {
-      console.error('Logout error:', error);
       // Force navigate even if API fails
       router.push('/relative/login');
     }

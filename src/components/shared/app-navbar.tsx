@@ -54,7 +54,6 @@ function ProfileDropdown() {
       await authService.logout();
       router.push('/login');
     } catch (error) {
-      console.error('Logout error:', error);
       // Force navigate even if API fails
       router.push('/login');
     }

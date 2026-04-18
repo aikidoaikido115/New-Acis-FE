@@ -48,7 +48,6 @@ export function ProfilePageContent() {
           }
         }
       } catch (e) {
-        console.error("Failed to fetch user:", e);
         setUser(null);
       } finally {
         setLoading(false);
@@ -90,7 +89,6 @@ export function ProfilePageContent() {
       setFileInputKey((prev) => prev + 1);
       showToast({ message: "อัปเดตรูปโปรไฟล์แล้ว", type: "success", title: "สำเร็จ" });
     } catch (error) {
-      console.error("Avatar upload failed:", error);
       setAvatarPreview(user?.profile_image ?? null);
       setAvatarChanged(false);
       showToast({ message: "อัปโหลดรูปไม่สำเร็จ", type: "error", title: "ผิดพลาด" });
@@ -140,7 +138,6 @@ export function ProfilePageContent() {
       setInitialForm(mapped);
       showToast({ message: "ข้อมูลโปรไฟล์ของคุณถูกอัปเดตแล้ว", type: "success", title: "บันทึกสำเร็จ" });
     } catch (error) {
-      console.error("Update failed:", error);
       showToast({ message: "เกิดข้อผิดพลาด กรุณาลองอีกครั้ง", type: "error", title: "บันทึกไม่สำเร็จ" });
     } finally {
       setSaving(false);

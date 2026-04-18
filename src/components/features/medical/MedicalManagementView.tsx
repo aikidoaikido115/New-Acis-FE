@@ -162,7 +162,7 @@ const normalizeDose = (doseInput: string): string => {
   const match = dose.match(pattern);
 
   if (!match) {
-    throw new Error("กรุณากรอกโดสเป็นรูปแบบเช่น 500 mg หรือ 5 mL");
+    throw new Error("กรุณากรอกปริมาณ/ขนาด เป็นรูปแบบเช่น 500 mg หรือ 5 cc หรือ 2 tab ");
   }
 
   const amount = match[1];

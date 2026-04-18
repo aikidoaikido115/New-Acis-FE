@@ -5,6 +5,7 @@ export interface PersonalDrug {
   id?: string;
   pd_id?: string;
   resident_id?: string;
+  dm_id?: string;
   amount?: string;
   amount_unit?: string;
   frequency?: number;

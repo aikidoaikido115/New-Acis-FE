@@ -1,5 +1,4 @@
 "use client";
-
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import type { ResidentFormState, Medication, EmergencyContact } from "@/types/resident";
 import { INITIAL_FORM_STATE, INITIAL_MEDICATION, INITIAL_EMERGENCY_CONTACT } from "./constants";
@@ -110,32 +109,37 @@ export function useResidentForm(
       alert("กรุณาเลือกสถานะ");
       return;
     }
-    if (!formData.profileImage && !formData.profileImagePreview) {
-      alert("กรุณาอัปโหลดรูปโปรไฟล์");
-      return;
-    }
     if (!formData.dateOfBirth) {
       alert("กรุณากรอกวันเกิด");
       return;
     }
-    if (!formData.roomId) {
-      alert("กรุณาเลือกห้อง");
+    if (!formData.gender) {
+      alert("กรุณาเลือกเพศ");
+      return;
+    }
+
+    if (
+      formData.emergencyHospitalPhone &&
+      (formData.emergencyHospitalPhone.length < 4 || formData.emergencyHospitalPhone.length > 10)
+    ) {
+      alert("เบอร์โรงพยาบาลกรณีฉุกเฉินต้องมี 4-10 หลัก");
       return;
     }
 
     try {
       await onSubmit(formData);
-      setFormData(INITIAL_FORM_STATE);
-      setFullNameInput("");
     } catch (err) {
       // keep form data for correction
-      console.error("Submit failed, keeping form data", err);
     }
   };
 
-  const handleClose = () => {
+  const resetForm = () => {
     setFormData(INITIAL_FORM_STATE);
     setFullNameInput("");
+  };
+
+  const handleClose = () => {
+    resetForm();
     onClose();
   };
 
@@ -162,5 +166,6 @@ export function useResidentForm(
     removeContact,
     handleSubmit,
     handleClose,
+    resetForm,
   };
 }

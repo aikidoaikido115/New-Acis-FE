@@ -1,5 +1,4 @@
 "use client";
-
 import { Camera, X } from "lucide-react";
 import type { RefObject, ChangeEvent } from "react";
 

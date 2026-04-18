@@ -1,5 +1,4 @@
 "use client";
-
 import { Plus, Trash2 } from "lucide-react";
 import { Input }               from "@/components/ui/input";
 import type { EmergencyContact } from "@/types/resident";

@@ -77,6 +77,8 @@ function SectionCard({ title, children }: SectionCardProps) {
   );
 }
 
+const toTelHref = (phone: string) => phone.replace(/[^0-9+]/g, "");
+
 const mockPatientInfo: PatientInfo = {
   fullName: 'สมชาย ศรีบุญเมือง',
   nickname: 'พล',
@@ -227,7 +229,7 @@ export default function RelativePatientInfoPage() {
                       <thead className="bg-gray-50 text-gray-500">
                         <tr>
                           <th className="text-left px-3 py-2 font-medium">ชื่อยา</th>
-                          <th className="text-left px-3 py-2 font-medium">โดส</th>
+                          <th className="text-left px-3 py-2 font-medium">ปริมาณ/ขนาด</th>
                           <th className="text-left px-3 py-2 font-medium">ความถี่/วัน</th>
                           <th className="text-left px-3 py-2 font-medium">หมายเหตุ</th>
                         </tr>
@@ -340,10 +342,14 @@ export default function RelativePatientInfoPage() {
                   </div>
                   <div className="flex items-center justify-between bg-red-50 border border-red-100 px-4 py-3 rounded-lg">
                     <span className="text-sm text-gray-700">{patientInfo.emergencyHospital}</span>
-                    <span className="inline-flex items-center gap-2 text-sm text-red-600">
+                    <a
+                      href={`tel:${toTelHref(patientInfo.emergencyHospitalPhone)}`}
+                      className="inline-flex items-center gap-2 text-sm text-red-600 hover:underline"
+                      aria-label={`โทรหา ${patientInfo.emergencyHospital}`}
+                    >
                       <Phone size={16} />
                       {patientInfo.emergencyHospitalPhone}
-                    </span>
+                    </a>
                   </div>
                 </div>
 
@@ -362,10 +368,14 @@ export default function RelativePatientInfoPage() {
                           <p className="text-sm text-gray-700">{contact.name}</p>
                           <p className="text-xs text-gray-500">{contact.relation}</p>
                         </div>
-                        <span className="inline-flex items-center gap-2 text-sm text-blue-600">
+                        <a
+                          href={`tel:${toTelHref(contact.phone)}`}
+                          className="inline-flex items-center gap-2 text-sm text-blue-600 hover:underline"
+                          aria-label={`โทรหา ${contact.name}`}
+                        >
                           <Phone size={16} />
                           {contact.phone}
-                        </span>
+                        </a>
                       </div>
                     ))}
                   </div>

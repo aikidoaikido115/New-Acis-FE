@@ -1,5 +1,4 @@
 "use client";
-
 import { useState, useRef, useEffect } from "react";
 import { Eye, Pencil, MoreVertical } from "lucide-react";
 import type { ResidentDisplayData } from "@/types/elder";

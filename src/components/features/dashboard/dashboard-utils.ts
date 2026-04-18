@@ -64,8 +64,8 @@ export const formatThaiDate = (date: Date) => `${date.getDate()} ${MONTHS_TH[dat
 export const formatThaiMonthYear = (date: Date) => `${MONTHS_TH[date.getMonth()]} ${date.getFullYear() + 543}`;
 
 export const isResidentActiveOnDate = (resident: Resident, date: Date) => {
-  const admitDate = parseDateSafe(resident.admit_date);
-  const dischargeDate = parseDateSafe(resident.expected_discharge_date);
+  const admitDate = parseDateSafe(resident.check_in_date);
+  const dischargeDate = parseDateSafe(resident.expected_check_out_date);
   const target = startOfDay(date);
 
   if (admitDate && admitDate > target) return false;

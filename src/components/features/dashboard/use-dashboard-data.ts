@@ -1,11 +1,11 @@
 "use client";
-
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { roomService } from "@/services/room.service";
 import { residentService } from "@/services/resident.service";
 import { warehouseService } from "@/services/warehouse.service";
 import { vitalSignService } from "@/services/vital-sign.service";
 import { drugPlanService } from "@/services/drug-plan.service";
+import { useAuth } from "@/hooks/useAuth";
 import type { GenderStats, ResidentStats } from "@/types/dashboard";
 import type { Room } from "@/types/room";
 import type { Resident } from "@/types/resident";
@@ -57,6 +57,7 @@ const logApiError = (label: string, error: unknown) => {
 };
 
 export function useDashboardData() {
+  const { isAuthenticated } = useAuth();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [activityDate, setActivityDate] = useState(new Date());
   const [selectedFloor, setSelectedFloor] = useState("all");
@@ -129,6 +130,12 @@ export function useDashboardData() {
   );
 
   const refreshResidents = useCallback(async () => {
+    if (!isAuthenticated) {
+      setIsLoading(false);
+      setRooms([]);
+      setResidents([]);
+      return;
+    }
     setIsLoading(true);
     try {
       const [roomsRes, residentsRes] = await Promise.all([roomService.getAll(), residentService.getAll()]);
@@ -144,6 +151,10 @@ export function useDashboardData() {
   }, []);
 
   const loadInventoryItems = useCallback(async () => {
+    if (!isAuthenticated) {
+      setLowStockCount(0);
+      return;
+    }
     try {
       const items = await warehouseService.getItems();
       const lowStock = items.filter((item) => {
@@ -158,6 +169,11 @@ export function useDashboardData() {
   }, []);
 
   const loadPendingTransactions = useCallback(async () => {
+    if (!isAuthenticated) {
+      setPendingWithdrawCount(0);
+      setPendingRestockCount(0);
+      return;
+    }
     try {
       const dateKey = toDateInputValue(selectedDate);
       const pendingTransactions = await warehouseService.getTransactions({
@@ -175,6 +191,10 @@ export function useDashboardData() {
   }, [selectedDate]);
 
   const loadVitalStats = useCallback(async () => {
+    if (!isAuthenticated) {
+      setVitalStats(DEFAULT_VITAL_STATS);
+      return;
+    }
     try {
       const [allVitals, normalVitals, abnormalVitals] = await Promise.all([
         vitalSignService.getOverview({ floor: normalizedFloor, vitalsign_status: "all" }),
@@ -199,6 +219,10 @@ export function useDashboardData() {
   }, [normalizedFloor, selectedDate]);
 
   const loadMedicineStatus = useCallback(async () => {
+    if (!isAuthenticated) {
+      setMedicineStatus(DEFAULT_MEDICINE_STATUS);
+      return;
+    }
     try {
       const plans = await drugPlanService.getOverview();
       const filteredByDate = filterByDate(plans, selectedDate);
@@ -238,19 +262,19 @@ export function useDashboardData() {
   useEffect(() => {
     void refreshResidents();
     void loadInventoryItems();
-  }, [refreshResidents, loadInventoryItems]);
+  }, [isAuthenticated, refreshResidents, loadInventoryItems]);
 
   useEffect(() => {
     void loadPendingTransactions();
-  }, [loadPendingTransactions]);
+  }, [isAuthenticated, loadPendingTransactions]);
 
   useEffect(() => {
     void loadVitalStats();
-  }, [loadVitalStats]);
+  }, [isAuthenticated, loadVitalStats]);
 
   useEffect(() => {
     void loadMedicineStatus();
-  }, [loadMedicineStatus]);
+  }, [isAuthenticated, loadMedicineStatus]);
 
   return {
     selectedDate,

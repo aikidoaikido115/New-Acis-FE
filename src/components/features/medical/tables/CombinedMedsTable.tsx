@@ -95,7 +95,7 @@ export function CombinedMedsTable({
             <tr className="border-b border-[#CFD5DC]">
               <th className="text-left py-3 px-4 text-xs font-medium text-gray-500">ประเภท</th>
               <th className="text-left py-3 px-4 text-xs font-medium text-gray-500">ชื่อยา</th>
-              <th className="text-left py-3 px-4 text-xs font-medium text-gray-500">โดส</th>
+              <th className="text-left py-3 px-4 text-xs font-medium text-gray-500">ปริมาณ/ขนาด</th>
               <th className="text-left py-3 px-4 text-xs font-medium text-gray-500">ความถี่/วัน</th>
               <th className="text-left py-3 px-4 text-xs font-medium text-gray-500">หมายเหตุ</th>
               <th className="text-left py-3 px-4 text-xs font-medium text-gray-500">จัดการ</th>
