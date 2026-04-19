@@ -3,6 +3,13 @@ import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import type { ResidentFormState, Medication, EmergencyContact } from "@/types/resident";
 import { INITIAL_FORM_STATE, INITIAL_MEDICATION, INITIAL_EMERGENCY_CONTACT } from "./constants";
 
+const toLocalDateString = (value: Date) => {
+  const year = value.getFullYear();
+  const month = `${value.getMonth() + 1}`.padStart(2, "0");
+  const day = `${value.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 export function useResidentForm(
   onSubmit: (data: ResidentFormState) => Promise<void>,
   onClose: () => void,
@@ -53,7 +60,7 @@ export function useResidentForm(
   };
 
   const handleDateChange = (field: keyof ResidentFormState, date: Date | null) => {
-    set({ [field]: date ? date.toISOString().split("T")[0] : "" } as Partial<ResidentFormState>);
+    set({ [field]: date ? toLocalDateString(date) : "" } as Partial<ResidentFormState>);
   };
 
   // ── Profile image handlers ───────────────────────────────────

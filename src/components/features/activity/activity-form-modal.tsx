@@ -1,17 +1,26 @@
 "use client";
-
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { DatePicker } from "@/components/ui/date-picker";
+import { Dropdown } from "@/components/ui/dropdown";
+import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
+import type { Activity, CreateActivityRequest } from "@/types/activity";
 
 interface ActivityFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: ActivityFormData) => void;
   defaultDate?: Date;
+  activityOptions?: Activity[];
+  onCreateActivityOption?: (payload: CreateActivityRequest) => Promise<Activity | null>;
+  initialValues?: Partial<ActivityFormData>;
+  mode?: "create" | "edit";
 }
 
 export interface ActivityFormData {
+  activityId?: string;
   name: string;
   type: string;
   date: string;
@@ -22,17 +31,21 @@ export interface ActivityFormData {
 }
 
 const ACTIVITY_TYPES = [
-  { value: "meal", label: "รับประทานอาหาร" },
-  { value: "outing", label: "ไปเที่ยว" },
-  { value: "other", label: "สังสรรค์ / กิจกรรมอื่นๆ" },
+  { value: "กิจกรรมกระตุ้นสมอง", label: "กิจกรรมกระตุ้นสมอง" },
+  { value: "กิจกรรมสร้างสรรค์", label: "กิจกรรมสร้างสรรค์" },
+  { value: "กิจกรรมทางกาย", label: "กิจกรรมทางกาย" },
+  { value: "กิจกรรมสังคม", label: "กิจกรรมสังคม" },
+  { value: "กิจกรรมด้านจิตใจ/ศาสนา", label: "กิจกรรมด้านจิตใจ/ศาสนา" },
+  { value: "กิจกรรมบันเทิง", label: "กิจกรรมบันเทิง" },
 ];
 
-function formatDateForInput(date: Date): string {
-  const day = String(date.getDate()).padStart(2, "0");
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const year = date.getFullYear();
-  return `${day}/${month}/${year + 543}`;
-}
+const TIME_OPTIONS = Array.from({ length: (22 - 6 + 1) * 2 }, (_, index) => {
+  const baseHour = 6;
+  const hours = baseHour + Math.floor(index / 2);
+  const minutes = index % 2 === 0 ? "00" : "30";
+  const value = `${String(hours).padStart(2, "0")}:${minutes}`;
+  return { value, label: value };
+});
 
 function formatDateForValue(date: Date): string {
   const day = String(date.getDate()).padStart(2, "0");
@@ -41,25 +54,54 @@ function formatDateForValue(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-export function ActivityFormModal({ isOpen, onClose, onSubmit, defaultDate }: ActivityFormModalProps) {
-  const [formData, setFormData] = useState<ActivityFormData>({
-    name: "",
-    type: "",
-    date: defaultDate ? formatDateForValue(defaultDate) : "",
-    startTime: "09:00",
-    endTime: "11:00",
-    location: "",
-    description: "",
-  });
+function parseLocalDate(value?: string): Date | null {
+  if (!value) return null;
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day) return null;
+  return new Date(year, month - 1, day);
+}
+
+function normalizeOptionalValue(value: string) {
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
+export function ActivityFormModal({
+  isOpen,
+  onClose,
+  onSubmit,
+  defaultDate,
+  activityOptions = [],
+  onCreateActivityOption,
+  initialValues,
+  mode = "create",
+}: ActivityFormModalProps) {
+  const buildInitialFormData = (values?: Partial<ActivityFormData>): ActivityFormData => {
+    const hasDate = values && Object.prototype.hasOwnProperty.call(values, "date");
+    const resolvedDate = hasDate
+      ? values?.date ?? ""
+      : defaultDate
+      ? formatDateForValue(defaultDate)
+      : "";
+
+    return {
+      activityId: values?.activityId || "",
+      name: values?.name || "",
+      type: values?.type || "",
+      date: resolvedDate,
+      startTime: values?.startTime || "",
+      endTime: values?.endTime || "",
+      location: values?.location || "",
+      description: values?.description || "",
+    };
+  };
+
+  const [formData, setFormData] = useState<ActivityFormData>(() => buildInitialFormData(initialValues));
 
   useEffect(() => {
-    if (isOpen && defaultDate) {
-      setFormData((prev) => ({
-        ...prev,
-        date: formatDateForValue(defaultDate),
-      }));
-    }
-  }, [isOpen, defaultDate]);
+    if (!isOpen) return;
+    setFormData(buildInitialFormData(initialValues));
+  }, [isOpen, initialValues, defaultDate]);
 
   const handleChange = (field: keyof ActivityFormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -67,22 +109,77 @@ export function ActivityFormModal({ isOpen, onClose, onSubmit, defaultDate }: Ac
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!formData.activityId && !formData.name.trim()) {
+      alert("กรุณาเลือกหรือเพิ่มกิจกรรม");
+      return;
+    }
+
+    if (!formData.type.trim()) {
+      alert("กรุณาเลือกประเภทกิจกรรม");
+      return;
+    }
+
     onSubmit(formData);
     handleClose();
   };
 
   const handleClose = () => {
-    setFormData({
-      name: "",
-      type: "",
-      date: defaultDate ? formatDateForValue(defaultDate) : "",
-      startTime: "09:00",
-      endTime: "11:00",
-      location: "",
-      description: "",
-    });
+    setFormData(buildInitialFormData());
     onClose();
   };
+
+  const handleSelectActivity = (activityId: string) => {
+    const selected = activityOptions.find((activity) => activity.activity_id === activityId);
+    if (!selected) return;
+    setFormData((prev) => ({
+      ...prev,
+      activityId: selected.activity_id,
+      name: selected.activity_name,
+      type: selected.activity_type,
+      description: selected.description ?? "",
+      location: selected.location ?? "",
+    }));
+  };
+
+  const handleCreateActivity = async (name: string) => {
+    const trimmedName = name.trim();
+    if (!trimmedName) return;
+    if (!formData.type.trim()) {
+      alert("กรุณาเลือกประเภทก่อนเพิ่มกิจกรรม");
+      return;
+    }
+
+    const payload: CreateActivityRequest = {
+      activity_name: trimmedName,
+      activity_type: formData.type.trim(),
+      description: normalizeOptionalValue(formData.description),
+      location: normalizeOptionalValue(formData.location),
+    };
+
+    const created = await onCreateActivityOption?.(payload);
+    if (!created) return;
+
+    setFormData((prev) => ({
+      ...prev,
+      activityId: created.activity_id,
+      name: created.activity_name,
+      type: created.activity_type,
+      description: created.description ?? "",
+      location: created.location ?? "",
+    }));
+  };
+
+  const dropdownOptions = activityOptions.map((activity) => ({
+    value: activity.activity_id,
+    label: activity.activity_name,
+  }));
+  const hasSelectedOption = formData.activityId
+    ? dropdownOptions.some((option) => option.value === formData.activityId)
+    : false;
+  const mergedOptions = hasSelectedOption || !formData.activityId || !formData.name.trim()
+    ? dropdownOptions
+    : [{ value: formData.activityId, label: formData.name }, ...dropdownOptions];
 
   if (!isOpen) return null;
 
@@ -91,7 +188,9 @@ export function ActivityFormModal({ isOpen, onClose, onSubmit, defaultDate }: Ac
       <div className="relative w-full max-w-md rounded-2xl bg-white shadow-xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-          <h2 className="text-lg font-semibold text-slate-800">สร้างกิจกรรมใหม่</h2>
+          <h2 className="text-lg font-semibold text-slate-800">
+            {mode === "edit" ? "แก้ไขกิจกรรม" : "สร้างกิจกรรมใหม่"}
+          </h2>
           <button
             type="button"
             onClick={handleClose}
@@ -109,13 +208,15 @@ export function ActivityFormModal({ isOpen, onClose, onSubmit, defaultDate }: Ac
               <label className="mb-1.5 block text-sm font-medium text-slate-700">
                 ชื่อกิจกรรม <span className="text-red-500">*</span>
               </label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => handleChange("name", e.target.value)}
-                placeholder="วางยุงและสร้างที่"
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                required
+              <SearchableDropdown
+                options={mergedOptions}
+                value={formData.activityId}
+                onChange={handleSelectActivity}
+                placeholder="เลือกกิจกรรม"
+                className="w-full"
+                allowCreate={Boolean(onCreateActivityOption)}
+                onCreate={handleCreateActivity}
+                createLabel="เพิ่มกิจกรรม"
               />
             </div>
 
@@ -124,59 +225,50 @@ export function ActivityFormModal({ isOpen, onClose, onSubmit, defaultDate }: Ac
               <label className="mb-1.5 block text-sm font-medium text-slate-700">
                 ประเภท <span className="text-red-500">*</span>
               </label>
-              <select
+              <Dropdown
+                options={ACTIVITY_TYPES}
                 value={formData.type}
-                onChange={(e) => handleChange("type", e.target.value)}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                required
-              >
-                <option value="">เลือกประเภท</option>
-                {ACTIVITY_TYPES.map((type) => (
-                  <option key={type.value} value={type.value}>
-                    {type.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* วันที่ */}
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                วันที่ <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="date"
-                value={formData.date}
-                onChange={(e) => handleChange("date", e.target.value)}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                required
+                onChange={(val) => handleChange("type", val)}
+                placeholder="เลือกประเภท"
+                className="w-full text-slate-700 placeholder:text-slate-500"
               />
             </div>
 
-            {/* เวลาเริ่มต้น - เวลาสิ้นสุด */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* วันที่, เวลาเริ่มต้น, เวลาสิ้นสุด */}
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                  วันที่ <span className="text-red-500">*</span>
+                </label>
+                <DatePicker
+                  value={parseLocalDate(formData.date)}
+                  onChange={(date) => handleChange("date", date ? formatDateForValue(date) : "")}
+                  placeholder="เลือกวันที่"
+                  className="w-full"
+                />
+              </div>
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">
                   เวลาเริ่มต้น <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="time"
+                <Dropdown
+                  options={TIME_OPTIONS}
                   value={formData.startTime}
-                  onChange={(e) => handleChange("startTime", e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                  required
+                  onChange={(val) => handleChange("startTime", val)}
+                  placeholder="เลือกเวลา"
+                  className="w-full text-slate-700 placeholder:text-slate-500"
                 />
               </div>
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">
                   เวลาสิ้นสุด <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="time"
+                <Dropdown
+                  options={TIME_OPTIONS}
                   value={formData.endTime}
-                  onChange={(e) => handleChange("endTime", e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                  required
+                  onChange={(val) => handleChange("endTime", val)}
+                  placeholder="เลือกเวลา"
+                  className="w-full text-slate-700 placeholder:text-slate-500"
                 />
               </div>
             </div>
@@ -184,24 +276,24 @@ export function ActivityFormModal({ isOpen, onClose, onSubmit, defaultDate }: Ac
             {/* สถานที่ */}
             <div>
               <label className="mb-1.5 block text-sm font-medium text-slate-700">สถานที่</label>
-              <input
+              <Input
                 type="text"
                 value={formData.location}
                 onChange={(e) => handleChange("location", e.target.value)}
-                placeholder="แหล่งที่ชำกันมา..."
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                placeholder="ระบุสถานที่จัดกิจกรรม"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 placeholder:text-slate-500 transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               />
             </div>
 
             {/* รายละเอียดเพิ่มเติม */}
             <div>
               <label className="mb-1.5 block text-sm font-medium text-slate-700">รายละเอียดเพิ่มเติม</label>
-              <textarea
+              <Textarea
                 value={formData.description}
                 onChange={(e) => handleChange("description", e.target.value)}
                 placeholder="รายละเอียดกิจกรรม..."
                 rows={3}
-                className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 placeholder:text-slate-500 transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               />
             </div>
           </div>
@@ -217,9 +309,9 @@ export function ActivityFormModal({ isOpen, onClose, onSubmit, defaultDate }: Ac
             </button>
             <button
               type="submit"
-              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700"
+              className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-800"
             >
-              สร้างกิจกรรม
+              {mode === "edit" ? "บันทึก" : "สร้างกิจกรรม"}
             </button>
           </div>
         </form>

@@ -27,7 +27,7 @@ export function OverviewView() {
     { id: "doctor_order" as SubTab, label: "คำสั่งแพทย์" },
     { id: "nurse_note" as SubTab, label: "บันทึกพยาบาล" },
     { id: "wound_care" as SubTab, label: "ทำแผล" },
-    { id: "relative_note" as SubTab, label: "โน๊ตญาติ" },
+    { id: "relative_note" as SubTab, label: "บันทึกสำหรับญาติ" },
   ];
 
   return (

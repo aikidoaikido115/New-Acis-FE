@@ -202,9 +202,9 @@ export function useDashboardData() {
         vitalSignService.getOverview({ floor: normalizedFloor, vitalsign_status: "abnormal" }),
       ]);
 
-      const allByDate = filterByDate(allVitals, selectedDate);
-      const normalByDate = filterByDate(normalVitals, selectedDate);
-      const abnormalByDate = filterByDate(abnormalVitals, selectedDate);
+      const allByDate = filterByDate(allVitals.items, selectedDate);
+      const normalByDate = filterByDate(normalVitals.items, selectedDate);
+      const abnormalByDate = filterByDate(abnormalVitals.items, selectedDate);
       const warningCount = Math.max(0, allByDate.length - normalByDate.length - abnormalByDate.length);
 
       setVitalStats([

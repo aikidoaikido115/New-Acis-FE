@@ -16,6 +16,7 @@ import { drugMasterService } from "@/services/drug-master.service";
 import { personalDrugService } from "@/services/personal-drug.service";
 import { allergyService } from "../../../services/allergy.service";
 import { drugAllergyService } from "../../../services/drug-allergy.service";
+import { intakeService } from "@/services/intake.service";
 import type { CreateResidentRequest, ResidentFormState } from "@/types/resident";
 import type { Room } from "@/types/room";
 
@@ -68,6 +69,14 @@ const parseDose = (dose: string) => {
   const unit = match[2].trim();
   if (!unit) return null;
   return { amount, unit };
+};
+
+const careLevelToLabelName = (value?: string) => {
+  const normalized = (value || "").trim().toLowerCase();
+  if (normalized === "partial_assist" || normalized === "partial") return "ช่วยเหลือตัวเองได้บางส่วน";
+  if (normalized === "bedridden") return "ติดเตียง";
+  if (normalized === "general") return "ช่วยเหลือตัวเองได้ทั้งหมด";
+  return "";
 };
 
 export default function Page() {
@@ -132,6 +141,13 @@ export default function Page() {
   const buildResidentPayload = (formData: ResidentFormState): CreateResidentRequest => {
     const emergencyPhone = normalizePhone(formData.emergencyHospitalPhone);
     const idCardNumber = formData.idCardNumber.trim();
+    const cleanedContacts = formData.emergencyContacts
+      .map((contact) => ({
+        name: contact.name.trim(),
+        relation: contact.relation.trim(),
+        phone: normalizePhone(contact.phone),
+      }))
+      .filter((contact) => contact.name || contact.relation || contact.phone);
 
     return {
     first_name: formData.firstName,
@@ -149,7 +165,10 @@ export default function Page() {
     surgical_history: formData.surgicalHistory || undefined,
     resuscitation_status: formData.cprStatus || undefined,
     preferred_emergency_hospital: formData.emergencyHospital || undefined,
-    emergency_hospital_phone: emergencyPhone.length === 10 ? emergencyPhone : undefined,
+    emergency_hospital_phone:
+      emergencyPhone.length >= 4 && emergencyPhone.length <= 10 ? emergencyPhone : undefined,
+    emergency_contacts: cleanedContacts.length > 0 ? cleanedContacts : undefined,
+    profile_image: formData.profileImagePreview || undefined,
     status: formData.status,
   };
   };
@@ -298,6 +317,13 @@ export default function Page() {
       const resident = await residentService.create(payload as any);
       const residentId = resident.id || (resident as any).resident_id || "";
       if (residentId) {
+        const careLevelLabel = careLevelToLabelName(formData.careLevel);
+        if (careLevelLabel) {
+          await intakeService.createResidentLabels({
+            resident_id: residentId,
+            labels: [{ label_name: careLevelLabel }],
+          });
+        }
         await syncAllergies(residentId, formData.foodAllergies, formData.drugAllergies);
         await syncMedications(residentId, formData.medications);
       }

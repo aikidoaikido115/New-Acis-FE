@@ -8,6 +8,7 @@ import { drugMasterService } from "@/services/drug-master.service";
 import { personalDrugService } from "@/services/personal-drug.service";
 import { allergyService } from "../../../services/allergy.service";
 import { drugAllergyService } from "../../../services/drug-allergy.service";
+import { intakeService } from "@/services/intake.service";
 import type { PersonalDrug } from "../../../services/personal-drug.service";
 import type { ResidentAllergyItem } from "../../../services/allergy.service";
 import type { ResidentDrugAllergyItem } from "../../../services/drug-allergy.service";
@@ -35,6 +36,31 @@ const normalizeCareLevel = (value?: string) => {
   if (normalized === "partial_assist" || normalized === "partial") return "partial";
   if (normalized === "bedridden") return "bedridden";
   if (normalized === "general") return "general";
+  return "";
+};
+
+const mapCareLevelLabel = (labelName?: string) => {
+  const trimmed = (labelName || "").trim();
+  if (trimmed === "ช่วยเหลือตัวเองได้ทั้งหมด") return "general";
+  if (trimmed === "ช่วยเหลือตัวเองได้บางส่วน") return "partial_assist";
+  if (trimmed === "ติดเตียง") return "bedridden";
+  return "";
+};
+
+const careLevelToLabelName = (value?: string) => {
+  const normalized = normalizeCareLevel(value);
+  if (normalized === "general") return "ช่วยเหลือตัวเองได้ทั้งหมด";
+  if (normalized === "partial") return "ช่วยเหลือตัวเองได้บางส่วน";
+  if (normalized === "bedridden") return "ติดเตียง";
+  return "";
+};
+
+const resolveCareLevelFromLabels = (labels?: ApiResident["resident_labels"]) => {
+  if (!labels || labels.length === 0) return "";
+  for (const label of labels) {
+    const mapped = mapCareLevelLabel(label.intake_label?.label_name);
+    if (mapped) return mapped;
+  }
   return "";
 };
 
@@ -129,7 +155,10 @@ const parseDose = (dose: string) => {
 
 const transformResidentData = (apiResident: ApiResident): Resident => {
   const fullName = `${apiResident.first_name} ${apiResident.last_name}`;
-  const careLevel = normalizeCareLevel(apiResident.care_level) || determineCareLevel(apiResident.adl_score);
+  const labelBasedCareLevel = resolveCareLevelFromLabels(apiResident.resident_labels);
+  const careLevel =
+    normalizeCareLevel(labelBasedCareLevel) ||
+    determineCareLevel(apiResident.adl_score);
   const statusValue = (apiResident.status || "").toLowerCase();
   const isActive = statusValue
     ? statusValue === "active"
@@ -194,6 +223,8 @@ export default function Page() {
     const toDateString = (value?: string) => (value ? value.split("T")[0] || value : "");
     const roomKey = resident.room_id || (resident as any).room_id || "";
     const resolvedFloor = roomKey ? roomFloorMap.get(String(roomKey)) : undefined;
+    const labelBasedCareLevel = resolveCareLevelFromLabels(resident.resident_labels);
+    const fallbackCareLevel = labelBasedCareLevel || determineCareLevel(resident.adl_score);
 
     const baseState: ResidentFormState = {
       status: resident.status || "",
@@ -217,7 +248,7 @@ export default function Page() {
       drugAllergies: "",
       foodAllergies: "",
       adlScore: resident.adl_score !== undefined && resident.adl_score !== null ? String(resident.adl_score) : "",
-      careLevel: resident.care_level || "general",
+      careLevel: fallbackCareLevel || "general",
       cprStatus: resident.resuscitation_status || "",
       emergencyHospital: resident.preferred_emergency_hospital || "",
       emergencyHospitalPhone: resident.emergency_hospital_phone || "",
@@ -395,9 +426,22 @@ export default function Page() {
     return `${value}T00:00:00+07:00`;
   };
 
+  const getApiErrorMessage = (error: any, fallback: string) =>
+    error?.response?.data?.message ||
+    error?.response?.data?.error ||
+    error?.message ||
+    fallback;
+
   const buildResidentPayload = (formData: ResidentFormState): CreateResidentRequest => {
     const emergencyPhone = normalizePhone(formData.emergencyHospitalPhone);
     const idCardNumber = formData.idCardNumber.trim();
+    const cleanedContacts = formData.emergencyContacts
+      .map((contact) => ({
+        name: contact.name.trim(),
+        relation: contact.relation.trim(),
+        phone: normalizePhone(contact.phone),
+      }))
+      .filter((contact) => contact.name || contact.relation || contact.phone);
 
     return {
     first_name: formData.firstName,
@@ -415,7 +459,10 @@ export default function Page() {
     surgical_history: formData.surgicalHistory || undefined,
     resuscitation_status: formData.cprStatus || undefined,
     preferred_emergency_hospital: formData.emergencyHospital || undefined,
-    emergency_hospital_phone: emergencyPhone.length === 10 ? emergencyPhone : undefined,
+    emergency_hospital_phone:
+      emergencyPhone.length >= 4 && emergencyPhone.length <= 10 ? emergencyPhone : undefined,
+    emergency_contacts: cleanedContacts.length > 0 ? cleanedContacts : undefined,
+    profile_image: formData.profileImagePreview || undefined,
     status: formData.status,
   };
   };
@@ -447,6 +494,30 @@ export default function Page() {
       return [...prev, option];
     });
     return option;
+  };
+
+  const validateMedications = (medications: Medication[]) => {
+    const activeMeds = medications.filter((med) => med.name.trim() !== "");
+    for (const med of activeMeds) {
+      if (!med.dose.trim() || !med.frequency || !med.mealType) {
+        throw new Error("กรุณากรอกข้อมูลยาให้ครบ (ชื่อยา, ปริมาณ/ขนาด, ความถี่, ประเภท)");
+      }
+
+      const parsedDose = parseDose(med.dose);
+      if (!parsedDose) {
+        throw new Error("รูปแบบปริมาณ/ขนาดไม่ถูกต้อง (เช่น 500mg)");
+      }
+
+      const timing = mealTypeToTiming(med.mealType);
+      if (!timing) {
+        throw new Error("กรุณาเลือกประเภทการกินยา (ก่อนอาหาร/หลังอาหาร)");
+      }
+
+      const timeOfDayInfo = frequencyToTimeOfDay(med.frequency);
+      if (!timeOfDayInfo) {
+        throw new Error("กรุณาเลือกความถี่การกินยา");
+      }
+    }
   };
 
   const syncMedications = async (residentId: string, medications: Medication[]) => {
@@ -568,6 +639,8 @@ export default function Page() {
     try {
       setIsSubmitting(true);
 
+      validateMedications(formData.medications);
+
       const payload = buildResidentPayload(formData);
       let savedResident: ApiResident;
 
@@ -582,14 +655,37 @@ export default function Page() {
         throw new Error("ไม่พบรหัสผู้สูงอายุจากระบบ");
       }
 
-      await syncAllergies(residentId, formData.foodAllergies, formData.drugAllergies);
-      await syncMedications(residentId, formData.medications);
+      const careLevelLabel = careLevelToLabelName(formData.careLevel);
+      const postSaveTasks: Promise<unknown>[] = [];
+      if (careLevelLabel) {
+        postSaveTasks.push(
+          intakeService.createResidentLabels({
+            resident_id: residentId,
+            labels: [{ label_name: careLevelLabel }],
+          })
+        );
+      }
+      postSaveTasks.push(syncAllergies(residentId, formData.foodAllergies, formData.drugAllergies));
+      postSaveTasks.push(syncMedications(residentId, formData.medications));
+
+      const postSaveResults = await Promise.allSettled(postSaveTasks);
+      const postSaveErrors = postSaveResults
+        .filter((result): result is PromiseRejectedResult => result.status === "rejected")
+        .map((result) => getApiErrorMessage(result.reason, "ไม่สามารถซิงค์ข้อมูลเสริมได้"));
 
       showToast({
         type: "success",
         title: "บันทึกข้อมูลสำเร็จ",
         message: modalMode === "edit" ? "แก้ไขแฟ้มผู้สูงอายุเรียบร้อย" : "เพิ่มแฟ้มผู้สูงอายุเรียบร้อย",
       });
+
+      if (postSaveErrors.length > 0) {
+        showToast({
+          type: "info",
+          title: "ซิงค์ข้อมูลเสริมไม่ครบ",
+          message: postSaveErrors[0],
+        });
+      }
 
       setIsAddModalOpen(false);
       setEditingResidentId(null);
@@ -599,11 +695,7 @@ export default function Page() {
 
       await fetchResidents();
     } catch (error: any) {
-      const errorMessage =
-        error.response?.data?.message ||
-        error.response?.data?.error ||
-        error.message ||
-        "เกิดข้อผิดพลาดในการบันทึกข้อมูล";
+      const errorMessage = getApiErrorMessage(error, "เกิดข้อผิดพลาดในการบันทึกข้อมูล");
       showToast({ type: "error", title: "บันทึกข้อมูลล้มเหลว", message: errorMessage });
       throw error;
     } finally {
@@ -612,8 +704,12 @@ export default function Page() {
   };
 
   const handleEditClick = async (id: string) => {
+    setEditingResidentId(id);
+    setEditingInitialValues(undefined);
+    setModalMode("edit");
+    setIsAddModalOpen(true);
+
     try {
-      setIsLoading(true);
       const resident = await residentService.getById(id);
 
       const [personalDrugs, residentAllergies, residentDrugAllergies] = await Promise.all([
@@ -648,7 +744,6 @@ export default function Page() {
 
       originalMedicationIdsRef.current = medications.map((med: Medication) => med.pdId).filter(Boolean) as string[];
 
-      setEditingResidentId(id);
       setEditingInitialValues(
         mapResidentToFormState(resident, {
           medications: medications.length > 0 ? medications : [{ pdId: "", dmId: "", name: "", dose: "", frequency: "", time: "", mealType: "", note: "" }],
@@ -656,17 +751,10 @@ export default function Page() {
           drugAllergies: drugAllergyNames,
         })
       );
-      setModalMode("edit");
-      setIsAddModalOpen(true);
     } catch (error) {
       // ถ้าโหลดไม่ได้ เปิดเป็นฟอร์มว่างแต่ยังคงโหมดแก้ไขและ id
-      setEditingResidentId(id);
       setEditingInitialValues(undefined);
-      setModalMode("edit");
-      setIsAddModalOpen(true);
       alert("ไม่สามารถโหลดข้อมูลผู้สูงอายุได้ ขึ้นฟอร์มว่างให้กรอกใหม่");
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -713,8 +801,7 @@ export default function Page() {
 
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-16 text-slate-500">
-              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#0093EF] mb-4"></div>
-              <div className="text-sm">กำลังโหลดข้อมูล...</div>
+              <div className="text-sm">กำลังโหลดข้อมูลผู้สูงอายุ...</div>
             </div>
           ) : error ? (
             <div className="flex flex-col items-center justify-center py-16 text-red-500">

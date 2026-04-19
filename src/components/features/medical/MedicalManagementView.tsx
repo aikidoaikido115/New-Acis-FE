@@ -50,17 +50,16 @@ const HISTORY_PAGE_SIZE = 10;
 const getResidentPrimaryId = (resident: Resident): string => resident.resident_id || resident.id;
 const getRoomPrimaryId = (room: Room): string => room.room_id || room.id;
 
-const toHelpLevel = (careLevel?: string): string => {
-  switch ((careLevel || "").toLowerCase()) {
-    case "general":
-      return "ช่วยเหลือตัวเองได้";
-    case "partial_assist":
-      return "ต้องการความช่วยเหลือ";
-    case "bedridden":
-      return "ติดเตียง";
-    default:
-      return "-";
-  }
+const toHelpLevel = (labels?: Resident["resident_labels"]): string => {
+  const labelName = labels
+    ?.map((label) => label.intake_label?.label_name || "")
+    .find((name) => name.includes("ช่วยเหลือตัวเอง") || name === "ติดเตียง")
+    ?.trim();
+
+  if (labelName === "ช่วยเหลือตัวเองได้ทั้งหมด") return "ช่วยเหลือตัวเองได้";
+  if (labelName === "ช่วยเหลือตัวเองได้บางส่วน") return "ต้องการความช่วยเหลือ";
+  if (labelName === "ติดเตียง") return "ติดเตียง";
+  return "-";
 };
 
 const toThaiStatus = (isTaken: boolean, isOmitted?: boolean | null): Medication["status"] => {
@@ -719,7 +718,7 @@ export function MedicalManagementView() {
           room: roomText,
           floor,
           allergies: parseListFromText(resident?.drug_allergies || resident?.allergies),
-          helpLevel: toHelpLevel(resident?.care_level),
+          helpLevel: toHelpLevel(resident?.resident_labels),
           medications: [],
           pendingCount: 0,
         });

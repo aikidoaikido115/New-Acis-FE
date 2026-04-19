@@ -139,7 +139,7 @@ export function RelativeNoteTable() {
                 <tr>
                   <td colSpan={4} className="py-12 px-4 text-center text-slate-500">
                     <div className="flex flex-col items-center justify-center">
-                      <div className="text-sm">ไม่พบข้อมูลโน้ตญาติ</div>
+                      <div className="text-sm">ไม่พบข้อมูลบันทึกสำหรับญาติ</div>
                       <div className="text-xs mt-1">ลองเปลี่ยนคำค้นหาหรือตัวกรองใหม่</div>
                     </div>
                   </td>

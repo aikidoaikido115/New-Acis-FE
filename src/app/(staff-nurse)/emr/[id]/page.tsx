@@ -108,10 +108,13 @@ export default function PatientDetailPage() {
   }, [resident]);
 
   const statusText = useMemo(() => {
-    const raw = (resident?.care_level || "").toLowerCase();
-    if (raw === "general") return "ช่วยเหลือตัวเองได้";
-    if (raw === "partial_assist") return "ต้องการความช่วยเหลือ";
-    if (raw === "bedridden") return "ติดเตียง";
+    const labelName = resident?.resident_labels
+      ?.map((label) => label.intake_label?.label_name || "")
+      .find((name) => name.includes("ช่วยเหลือตัวเอง") || name === "ติดเตียง")
+      ?.trim();
+    if (labelName === "ช่วยเหลือตัวเองได้ทั้งหมด") return "ช่วยเหลือตัวเองได้";
+    if (labelName === "ช่วยเหลือตัวเองได้บางส่วน") return "ต้องการความช่วยเหลือ";
+    if (labelName === "ติดเตียง") return "ติดเตียง";
     return resident?.status || "-";
   }, [resident]);
 
@@ -121,7 +124,7 @@ export default function PatientDetailPage() {
     { id: "doctor_order" as SubTab, label: "คำสั่งแพทย์" },
     { id: "nurse_note" as SubTab, label: "บันทึกพยาบาล" },
     { id: "wound_care" as SubTab, label: "ทำแผล" },
-    { id: "relative_note" as SubTab, label: "โน๊ตญาติ" },
+    { id: "relative_note" as SubTab, label: "บันทึกสำหรับญาติ" },
   ];
 
   return (

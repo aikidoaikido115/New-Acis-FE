@@ -26,7 +26,7 @@ export function AdditionalNotes({ notes }: AdditionalNotesProps) {
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
-      <h2 className="text-xl font-semibold text-gray-800 mb-4 pb-4 border-b border-gray-200">บันทึกเพิ่มเติม</h2>
+      <h2 className="text-xl font-semibold text-gray-800 mb-4 pb-4 border-b border-gray-200">บันทึกประจำวันสำหรับญาติ</h2>
       <ul className="space-y-2 list-disc list-inside">
         {additionalNotes.map((note) => (
           <li key={note.id} className="text-sm mt-4 text-gray-700">

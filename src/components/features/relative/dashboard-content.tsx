@@ -1,7 +1,6 @@
 'use client';
 
 import { DailySummaryHeader } from './daily-summary-header';
-import { NursingCareLog } from './nursing-care-log';
 import { DailyActivities } from './daily-activities';
 import { AdditionalNotes } from './additional-notes';
 
@@ -43,9 +42,6 @@ export function RelativeDashboardContent({
         onDateChange={handleDateChange}
         lastUpdatedAt={lastUpdatedAt}
       />
-
-      {/* Nursing Care Log */}
-      <NursingCareLog />
 
       {/* Daily Activities */}
       <DailyActivities />

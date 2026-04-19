@@ -74,24 +74,31 @@ export function IndividualView() {
       const residentStatus = String(resident.status || "").toLowerCase();
       const matchesStatus = selectedStatus === "all" || residentStatus === selectedStatus;
 
-      const careLevel = (resident.care_level || "").toLowerCase();
-      const matchesCareLevel = selectedHelpLevel === "all" || careLevel === selectedHelpLevel;
+      const careLevel = resident.resident_labels
+        ?.map((label) => label.intake_label?.label_name || "")
+        .find((labelName) => labelName.includes("ช่วยเหลือตัวเอง") || labelName === "ติดเตียง") || "";
+      const careLevelKey = careLevel.includes("บางส่วน")
+        ? "partial_assist"
+        : careLevel.includes("ติดเตียง")
+        ? "bedridden"
+        : careLevel.includes("ทั้งหมด")
+        ? "general"
+        : "";
+      const matchesCareLevel = selectedHelpLevel === "all" || careLevelKey === selectedHelpLevel;
 
       return matchesSearch && matchesFloor && matchesStatus && matchesCareLevel;
     });
   }, [residents, roomById, searchTerm, selectedFloor, selectedStatus, selectedHelpLevel]);
 
   const getCareLevelText = (resident: Resident) => {
-    switch (resident.care_level) {
-      case "general":
-        return "ช่วยเหลือตัวเองได้";
-      case "partial_assist":
-        return "ต้องการความช่วยเหลือ";
-      case "bedridden":
-        return "ติดเตียง";
-      default:
-        return "-";
-    }
+    const labelName = resident.resident_labels
+      ?.map((label) => label.intake_label?.label_name || "")
+      .find((name) => name.includes("ช่วยเหลือตัวเอง") || name === "ติดเตียง")
+      ?.trim();
+    if (labelName === "ช่วยเหลือตัวเองได้ทั้งหมด") return "ช่วยเหลือตัวเองได้";
+    if (labelName === "ช่วยเหลือตัวเองได้บางส่วน") return "ต้องการความช่วยเหลือ";
+    if (labelName === "ติดเตียง") return "ติดเตียง";
+    return "-";
   };
 
   const handleRowClick = (residentId: string) => {

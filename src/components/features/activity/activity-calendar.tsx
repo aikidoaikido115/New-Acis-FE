@@ -1,5 +1,4 @@
 "use client";
-
 import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -125,11 +124,9 @@ export function ActivityCalendar({ selectedDate, onSelectDate }: ActivityCalenda
   };
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4">
-      {/* Days View */}
+    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4 lg:aspect-square">
       {viewMode === "days" && (
         <>
-          {/* Month/Year Header */}
           <div className="mb-4 flex items-center justify-between">
             <button
               type="button"
@@ -172,12 +169,23 @@ export function ActivityCalendar({ selectedDate, onSelectDate }: ActivityCalenda
 
             {/* Days of the month */}
             {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => (
+              // --- จุดใต้วันที่ (activity dot logic) ---
+              // หลังเชื่อม API: ให้รับ prop activities: { date: string }[] หรือคล้ายกัน
+              // แล้วเช็คว่าใน activities มีวันที่ตรงกับ day, month, year ปัจจุบันหรือไม่
+              // ตัวอย่าง:
+              //   const hasActivity = activities.some(a =>
+              //     new Date(a.date).getDate() === day &&
+              //     new Date(a.date).getMonth() === month &&
+              //     new Date(a.date).getFullYear() === year
+              //   );
+              // แล้วถ้า hasActivity เป็น true ให้ render <span className="mt-0.5 block h-1 w-1 rounded-full bg-slate-400" /> ใต้ปุ่มวันนั้น
+              // ตอนนี้ยังไม่เชื่อม API เลยยังไม่แสดงจุด
               <button
                 key={day}
                 type="button"
                 onClick={() => handleSelectDate(day)}
                 className={cn(
-                  "rounded-full py-1.5 transition",
+                  "w-9 h-9 rounded-full flex items-center justify-center transition",
                   isSelected(day)
                     ? "bg-blue-600 text-white font-semibold"
                     : isToday(day)
@@ -192,7 +200,6 @@ export function ActivityCalendar({ selectedDate, onSelectDate }: ActivityCalenda
         </>
       )}
 
-      {/* Months View */}
       {viewMode === "months" && (
         <>
           <div className="mb-4 flex items-center justify-between">
@@ -243,7 +250,6 @@ export function ActivityCalendar({ selectedDate, onSelectDate }: ActivityCalenda
         </>
       )}
 
-      {/* Years View */}
       {viewMode === "years" && (
         <>
           <div className="mb-4 flex items-center justify-between">

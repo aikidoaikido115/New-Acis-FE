@@ -48,10 +48,10 @@ export function ElderTable({ residents, onEdit, onViewRelative }: ElderTableProp
               <th className="pl-8 pr-1 py-2 text-xs font-semibold text-slate-600 w-[35%] sm:w-[30%] md:w-[24%] lg:w-[22%]">
                 ชื่อ-นามสกุล
               </th>
-              <th className="px-1 py-2 text-xs font-semibold text-slate-600 w-[20%] md:w-[12%] hidden sm:table-cell">
+              <th className="px-1 py-2 pr-4 text-xs font-semibold text-slate-600 w-[50%] md:w-[15%] hidden sm:table-cell">
                 ชื่อเล่น
               </th>
-              <th className="pl-1 pr-1 py-2 text-xs font-semibold text-slate-600 text-left w-[14%] sm:w-[11%] md:w-[10%]">
+              <th className="pl-1 pr-1 py-2 text-xs font-semibold text-slate-600 text-left w-[20%] sm:w-[11%] md:w-[15%]">
                 ห้อง
               </th>
               <th className="px-1 py-2 text-xs font-semibold text-slate-600 w-[25%] sm:w-[18%] md:w-[22%]">

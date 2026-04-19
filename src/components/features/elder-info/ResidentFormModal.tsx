@@ -50,6 +50,13 @@ function SectionCard({ title, children }: { title: string; children: React.React
   );
 }
 
+const parseLocalDate = (value?: string) => {
+  if (!value) return null;
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day) return null;
+  return new Date(year, month - 1, day);
+};
+
 // ── Props ─────────────────────────────────────────────────────────
 interface ResidentFormModalProps {
   isOpen: boolean;
@@ -96,6 +103,10 @@ export function ResidentFormModal({ isOpen, onClose, onSubmit, isLoading = false
     const value = (room as { room_id?: string | number; id?: string | number }).room_id ?? room.id ?? "";
     const label = room.room_number || `ห้อง ${value || ""}`;
     return { value: String(value), label };
+  }).sort((a, b) => {
+    const aNum = parseInt(a.label.replace(/[^\d]/g, ''), 10) || 0;
+    const bNum = parseInt(b.label.replace(/[^\d]/g, ''), 10) || 0;
+    return aNum - bNum;
   });
 
   const emergencyHospitalOptions = useMemo(
@@ -178,27 +189,40 @@ export function ResidentFormModal({ isOpen, onClose, onSubmit, isLoading = false
             />
 
             <div className="flex-1 space-y-4">
-              {/* Row 1: ชื่อ-นามสกุล / เพศ */}
+              {/* Row 1: ชื่อ-นามสกุล / ชื่อเล่น */}
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
                   <Label icon={<User size={14} />} text="ชื่อ - นามสกุล" required />
                   <Input type="text" value={form.fullNameInput} onChange={form.handleFullNameChange} placeholder="กรอกชื่อ-นามสกุล" className={inputClass} required />
                 </div>
                 <div>
-                  <Label icon={<User size={14} />} text="เพศ" required />
-                  <Dropdown options={GENDER_OPTIONS} value={formData.gender} onChange={(val) => set({ gender: val })} placeholder="เลือกเพศ" className="w-full" />
+                  <Label icon={<User size={14} />} text="ชื่อเล่น" />
+                  <Input type="text" name="nickname" value={formData.nickname} onChange={form.handleChange} placeholder="กรอกชื่อเล่น" className={inputClass} />
                 </div>
               </div>
 
-              {/* Row 2: วันเกิด / ชื่อเล่น / เลขบัตร */}
+              {/* Row 2: วันเกิด / เพศ / เลขบัตร */}
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div>
                   <Label icon={<Calendar size={14} />} text="วันเกิด" required />
-                  <DatePicker value={formData.dateOfBirth ? new Date(formData.dateOfBirth) : null} onChange={(d) => form.handleDateChange("dateOfBirth", d)} placeholder="DD/MM/YYYY" />
+                  <DatePicker value={parseLocalDate(formData.dateOfBirth)} onChange={(d) => form.handleDateChange("dateOfBirth", d)} placeholder="DD/MM/YYYY" />
                 </div>
                 <div>
-                  <Label icon={<User size={14} />} text="ชื่อเล่น" />
-                  <Input type="text" name="nickname" value={formData.nickname} onChange={form.handleChange} placeholder="กรอกชื่อเล่น" className={inputClass} />
+                  <Label icon={<User size={14} />} text="เพศ" required />
+                  <div className="flex flex-wrap gap-6 text-slate-700">
+                    {GENDER_OPTIONS.map((option) => (
+                      <label key={option.value} className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="gender"
+                          value={option.value}
+                          checked={formData.gender === option.value}
+                          onChange={() => set({ gender: option.value })}
+                        />
+                        {option.label}
+                      </label>
+                    ))}
+                  </div>
                 </div>
                 <div>
                   <Label icon={<CreditCard size={14} />} text="เลขบัตรประชาชน" />
@@ -217,12 +241,16 @@ export function ResidentFormModal({ isOpen, onClose, onSubmit, isLoading = false
                     <div>
                       <Label icon={<Calendar size={14} />} text="วันที่เข้าพัก - วันที่คาดว่าจะออก" />
                       <div className="flex items-center gap-2">
-                        <DatePicker value={formData.admitDate ? new Date(formData.admitDate) : null} onChange={(d) => form.handleDateChange("admitDate", d)} placeholder="DD/MM/YYYY" />
+                        <DatePicker value={parseLocalDate(formData.admitDate)} onChange={(d) => form.handleDateChange("admitDate", d)} placeholder="DD/MM/YYYY" />
                         <span className="text-slate-400">-</span>
-                        <DatePicker value={formData.expectedDischargeDate ? new Date(formData.expectedDischargeDate) : null} onChange={(d) => form.handleDateChange("expectedDischargeDate", d)} placeholder="DD/MM/YYYY" />
+                        <DatePicker value={parseLocalDate(formData.expectedDischargeDate)} onChange={(d) => form.handleDateChange("expectedDischargeDate", d)} placeholder="DD/MM/YYYY" />
                       </div>
                     </div>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <div>
+                        <Label icon={<Layers size={14} />} text="ชั้น" />
+                        <Dropdown options={FLOOR_OPTIONS} value={formData.floor} onChange={(val) => set({ floor: val })} placeholder="เลือกชั้น" className="w-full" />
+                      </div>
                       <div>
                         <Label icon={<Home size={14} />} text="ห้อง" />
                         <SearchableDropdown
@@ -245,10 +273,7 @@ export function ResidentFormModal({ isOpen, onClose, onSubmit, isLoading = false
                           createLabel="เพิ่มห้อง"
                         />
                       </div>
-                      <div>
-                        <Label icon={<Layers size={14} />} text="ชั้น" />
-                        <Dropdown options={FLOOR_OPTIONS} value={formData.floor} onChange={(val) => set({ floor: val })} placeholder="เลือกชั้น" className="w-full" />
-                      </div>
+                      
                     </div>
                   </div>
                 </div>
@@ -369,7 +394,7 @@ export function ResidentFormModal({ isOpen, onClose, onSubmit, isLoading = false
             </div>
             <div className="md:col-span-4">
               <Label icon={<Phone size={14} />} text="เบอร์โรงพยาบาลกรณีฉุกเฉิน" />
-              <Input type="text" name="emergencyHospitalPhone" value={formData.emergencyHospitalPhone} onChange={form.handlePhoneChange} placeholder="กรอกเบอร์โรงพยาบาล" className={inputClass} maxLength={10} />
+              <Input type="text" name="emergencyHospitalPhone" value={formData.emergencyHospitalPhone} onChange={form.handlePhoneChange} placeholder="กรอกเบอร์โรงพยาบาล (4-10 หลัก)" className={inputClass} maxLength={10} />
             </div>
           </div>
 

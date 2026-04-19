@@ -85,8 +85,19 @@ export const computeResidentAndGenderStats = (residents: Resident[]) => {
   const stats: ResidentStats = { total: 0, general: 0, partial_assist: 0, bedridden: 0 };
   const gender: GenderStats = { male: 0, female: 0 };
 
+  const resolveCareLevelKey = (resident: Resident): "general" | "partial_assist" | "bedridden" => {
+    const labelName = resident.resident_labels
+      ?.map((label) => label.intake_label?.label_name || "")
+      .find((name) => name.includes("ช่วยเหลือตัวเอง") || name === "ติดเตียง")
+      ?.trim();
+
+    if (labelName === "ช่วยเหลือตัวเองได้บางส่วน") return "partial_assist";
+    if (labelName === "ติดเตียง") return "bedridden";
+    return "general";
+  };
+
   residents.forEach((resident) => {
-    const level = resident.care_level || "general";
+    const level = resolveCareLevelKey(resident);
     stats.total += 1;
     if (level === "partial_assist") stats.partial_assist += 1;
     else if (level === "bedridden") stats.bedridden += 1;

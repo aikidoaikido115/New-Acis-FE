@@ -18,6 +18,17 @@ export interface EmergencyContact {
   phone: string;
 }
 
+export interface IntakeLabel {
+  label_id: string;
+  label_name: string;
+}
+
+export interface ResidentLabel {
+  resident_id: string;
+  label_id: string;
+  intake_label?: IntakeLabel;
+}
+
 export interface Resident {
   id: string;
   // Some BE responses use resident_id instead of id
@@ -48,6 +59,7 @@ export interface Resident {
   preferred_emergency_hospital?: string; // โรงพยาบาลกรณีฉุกเฉิน
   emergency_hospital_phone?: string;
   emergency_contacts?: EmergencyContact[];
+  resident_labels?: ResidentLabel[];
 
   // Legacy fields
   phone_number?: string;
@@ -55,7 +67,6 @@ export interface Resident {
   blood_type?: string;
   allergies?: string; // combined allergies (legacy)
   medical_conditions?: string; // (legacy)
-  care_level?: "general" | "partial_assist" | "bedridden";
   status: string;
   notes?: string;
   created_at: string;
@@ -93,7 +104,6 @@ export interface CreateResidentRequest {
   emergency_contacts?: EmergencyContact[];
 
   // Legacy
-  care_level?: "general" | "partial_assist" | "bedridden";
   notes?: string;
 }
 
