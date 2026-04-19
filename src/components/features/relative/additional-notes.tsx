@@ -10,7 +10,7 @@ interface AdditionalNotesProps {
 }
 
 export function AdditionalNotes({ notes }: AdditionalNotesProps) {
-  // Mock data
+  // Mock data ลบแล้วใส่ข้อมูลบันทึกจริงจาก API ใน emr ที่ พยาบาลบันทึกให้แต่ละคน
   const defaultNotes: Note[] = [
     {
       id: '1',

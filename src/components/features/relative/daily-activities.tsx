@@ -1,5 +1,5 @@
 import { Clock, MapPin, ImageIcon } from 'lucide-react';
-
+// ลบแล้วใส่ข้อมูลจริงจากกิจกรรมที่เข้าร่วมรายคน ดึงการ์ด รูปถ่ายในกิจกรรมนั้นๆ
 interface Activity {
   id: string;
   time: string;

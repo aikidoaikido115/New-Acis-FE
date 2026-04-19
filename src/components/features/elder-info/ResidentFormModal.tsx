@@ -394,7 +394,7 @@ export function ResidentFormModal({ isOpen, onClose, onSubmit, isLoading = false
             </div>
             <div className="md:col-span-4">
               <Label icon={<Phone size={14} />} text="เบอร์โรงพยาบาลกรณีฉุกเฉิน" />
-              <Input type="text" name="emergencyHospitalPhone" value={formData.emergencyHospitalPhone} onChange={form.handlePhoneChange} placeholder="กรอกเบอร์โรงพยาบาล (4-10 หลัก)" className={inputClass} maxLength={10} />
+              <Input type="text" name="emergencyHospitalPhone" value={formData.emergencyHospitalPhone} onChange={form.handlePhoneChange} placeholder="กรอกเบอร์โรงพยาบาล" className={inputClass} />
             </div>
           </div>
 

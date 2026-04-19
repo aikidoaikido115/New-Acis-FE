@@ -2,6 +2,7 @@ export interface User {
   first_name?: string;
   last_name?: string;
   nickname?: string;
+  phone?: string;
   gender?: string;
   username?: string;
   email?: string;
@@ -14,6 +15,7 @@ export interface FormData {
   firstname: string;
   lastname: string;
   nickname: string;
+  phone: string;
   gender: string;
   username: string;
   email: string;
@@ -38,6 +40,7 @@ export const mapUserToForm = (user: User): FormData => ({
   firstname: user.first_name ?? "",
   lastname: user.last_name ?? "",
   nickname: user.nickname ?? "",
+  phone: user.phone ?? "",
   gender: (user.gender ?? "").toLowerCase(),
   username: user.username ?? "",
   email: user.email ?? "",

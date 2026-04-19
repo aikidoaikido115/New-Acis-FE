@@ -21,6 +21,7 @@ export function ProfilePageContent() {
     firstname: "",
     lastname: "",
     nickname: "",
+    phone: "",
     gender: "",
     username: "",
     email: "",
@@ -65,6 +66,11 @@ export function ProfilePageContent() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type } = e.target;
+    if (name === "phone") {
+      const digitsOnly = value.replace(/\D/g, "").slice(0, 10);
+      setFormData(prev => ({ ...prev, [name]: digitsOnly }));
+      return;
+    }
     setFormData(prev => ({ ...prev, [name]: type === "radio" ? value : value }));
   };
 
@@ -115,25 +121,32 @@ export function ProfilePageContent() {
         first_name: formData.firstname || undefined,
         last_name: formData.lastname || undefined,
         nickname: formData.nickname || undefined,
+        phone: formData.phone || undefined,
         gender: formData.gender || undefined,
       };
 
       const updated = await authService.updateProfile(payload);
+      const refreshed = await authService.fetchUserProfile();
+      const effectiveUser = refreshed ?? updated;
+
+      const normalizePhone = (value?: string) => (value ?? "").replace(/\D/g, "");
+      const normalizeText = (value?: string) => (value ?? "").trim();
 
       const mismatches: string[] = [];
-      if (payload.username && updated.username !== payload.username) mismatches.push("username");
-      if (payload.first_name && updated.first_name !== payload.first_name) mismatches.push("first_name");
-      if (payload.last_name && updated.last_name !== payload.last_name) mismatches.push("last_name");
-      if (payload.nickname && updated.nickname !== payload.nickname) mismatches.push("nickname");
-      if (payload.gender && (updated.gender || "").toLowerCase() !== payload.gender.toLowerCase()) mismatches.push("gender");
+      if (payload.username && normalizeText(effectiveUser.username) !== normalizeText(payload.username)) mismatches.push("username");
+      if (payload.first_name && normalizeText(effectiveUser.first_name) !== normalizeText(payload.first_name)) mismatches.push("first_name");
+      if (payload.last_name && normalizeText(effectiveUser.last_name) !== normalizeText(payload.last_name)) mismatches.push("last_name");
+      if (payload.nickname && normalizeText(effectiveUser.nickname) !== normalizeText(payload.nickname)) mismatches.push("nickname");
+      if (payload.phone && normalizePhone(effectiveUser.phone) !== normalizePhone(payload.phone)) mismatches.push("phone");
+      if (payload.gender && (effectiveUser.gender || "").toLowerCase() !== payload.gender.toLowerCase()) mismatches.push("gender");
 
       if (mismatches.length > 0) {
         showToast({ message: "บันทึกไม่สำเร็จ ข้อมูลยังไม่ถูกอัปเดต", type: "error", title: "ผิดพลาด" });
         return;
       }
 
-      setUser(updated);
-      const mapped = mapUserToForm(updated);
+      setUser(effectiveUser);
+      const mapped = mapUserToForm(effectiveUser);
       setFormData(mapped);
       setInitialForm(mapped);
       showToast({ message: "ข้อมูลโปรไฟล์ของคุณถูกอัปเดตแล้ว", type: "success", title: "บันทึกสำเร็จ" });
@@ -190,7 +203,16 @@ export function ProfilePageContent() {
               onChange={handleChange}
               placeholder="ชื่อเล่น"
             />
-            <GenderRadio value={formData.gender} onChange={handleChange} />
+            <InputField
+              label="เบอร์โทรศัพท์"
+              name="phone"
+              value={formData.phone}
+              onChange={handleChange}
+              placeholder="เบอร์โทรศัพท์"
+            />
+            <div className="md:col-span-2">
+              <GenderRadio value={formData.gender} onChange={handleChange} />
+            </div>
           </div>
         </div>
 

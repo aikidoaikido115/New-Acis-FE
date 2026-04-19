@@ -61,6 +61,7 @@ export interface User {
   first_name: string;
   last_name: string;
   nickname?: string;
+  phone?: string;
   gender?: string;
   profile_image?: string;
   role_id?: string;

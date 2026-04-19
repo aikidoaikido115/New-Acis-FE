@@ -41,7 +41,7 @@ export interface Resident {
   date_of_birth: string;
   id_card_number?: string;
   purpose_of_stay?: string; // จุดประสงค์การเข้าพัก
-  check_in_date: string;
+  check_in_date?: string;
   expected_check_out_date?: string; // วันที่คาดว่าจะออก
   room_id?: string;
   floor?: number;
@@ -83,10 +83,10 @@ export interface CreateResidentRequest {
   age?: number;
   id_card_number?: string;
   purpose_of_stay?: string;
-  check_in_date: string;
+  check_in_date?: string;
   expected_check_out_date?: string;
   status: string;
-  room_id: string;
+  room_id?: string;
   floor?: number;
   profile_image?: string;
 
@@ -102,6 +102,7 @@ export interface CreateResidentRequest {
   preferred_emergency_hospital?: string;
   emergency_hospital_phone?: string;
   emergency_contacts?: EmergencyContact[];
+  labels?: Array<{ label_name: string; note_text?: string }>;
 
   // Legacy
   notes?: string;

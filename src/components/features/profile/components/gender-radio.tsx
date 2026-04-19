@@ -6,7 +6,7 @@ interface GenderRadioProps {
 }
 
 export const GenderRadio: React.FC<GenderRadioProps> = ({ value, onChange }) => (
-  <div className="mt-4">
+  <div>
     <label className="block text-gray-600 mb-2">เพศ</label>
     <div className="flex flex-wrap gap-6 text-gray-900">
       {["male", "female", "other"].map(gender => (

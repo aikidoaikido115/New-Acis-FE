@@ -432,9 +432,16 @@ export default function Page() {
     error?.message ||
     fallback;
 
-  const buildResidentPayload = (formData: ResidentFormState): CreateResidentRequest => {
+  const appendFormValue = (form: FormData, key: string, value?: string | null) => {
+    if (value === undefined || value === null) return;
+    const trimmed = value.trim();
+    if (trimmed === "") return;
+    form.append(key, trimmed);
+  };
+
+  const buildResidentFormData = (formData: ResidentFormState, labels?: Array<{ label_name: string; note_text?: string }>) => {
+    const form = new FormData();
     const emergencyPhone = normalizePhone(formData.emergencyHospitalPhone);
-    const idCardNumber = formData.idCardNumber.trim();
     const cleanedContacts = formData.emergencyContacts
       .map((contact) => ({
         name: contact.name.trim(),
@@ -443,7 +450,54 @@ export default function Page() {
       }))
       .filter((contact) => contact.name || contact.relation || contact.phone);
 
-    return {
+    appendFormValue(form, "first_name", formData.firstName);
+    appendFormValue(form, "last_name", formData.lastName);
+    appendFormValue(form, "gender", formData.gender);
+    appendFormValue(form, "status", formData.status);
+    appendFormValue(form, "date_of_birth", toRFC3339(formData.dateOfBirth) || "");
+
+    appendFormValue(form, "nickname", formData.nickname || "");
+    appendFormValue(form, "id_card_number", formData.idCardNumber || "");
+    appendFormValue(form, "purpose_of_stay", formData.purpose || "");
+    appendFormValue(form, "check_in_date", toRFC3339(formData.admitDate) || "");
+    appendFormValue(form, "expected_check_out_date", toRFC3339(formData.expectedDischargeDate) || "");
+    appendFormValue(form, "room_id", formData.roomId || "");
+
+    appendFormValue(form, "pre_existing_conditions", formData.chronicDiseases || "");
+    appendFormValue(form, "pre_existing_conditions_notes", formData.chronicDiseasesNote || "");
+    appendFormValue(form, "surgical_history", formData.surgicalHistory || "");
+    appendFormValue(form, "resuscitation_status", formData.cprStatus || "");
+    appendFormValue(form, "preferred_emergency_hospital", formData.emergencyHospital || "");
+    appendFormValue(form, "emergency_hospital_phone", emergencyPhone || "");
+
+    if (cleanedContacts.length > 0) {
+      form.append("emergency_contacts", JSON.stringify(cleanedContacts));
+    }
+    if (labels && labels.length > 0) {
+      form.append("labels", JSON.stringify(labels));
+    }
+    if (formData.profileImage) {
+      form.append("profile_image", formData.profileImage);
+    }
+
+    return form;
+  };
+
+  const buildResidentPayload = (formData: ResidentFormState, labels?: Array<{ label_name: string; note_text?: string }>): CreateResidentRequest => {
+    const emergencyPhone = normalizePhone(formData.emergencyHospitalPhone);
+    const idCardNumber = formData.idCardNumber.trim();
+    const checkInDate = toRFC3339(formData.admitDate);
+    const expectedCheckOutDate = toRFC3339(formData.expectedDischargeDate);
+    const roomId = formData.roomId.trim();
+    const cleanedContacts = formData.emergencyContacts
+      .map((contact) => ({
+        name: contact.name.trim(),
+        relation: contact.relation.trim(),
+        phone: normalizePhone(contact.phone),
+      }))
+      .filter((contact) => contact.name || contact.relation || contact.phone);
+
+    const payload: CreateResidentRequest = {
     first_name: formData.firstName,
     last_name: formData.lastName,
     nickname: formData.nickname || undefined,
@@ -451,20 +505,25 @@ export default function Page() {
     date_of_birth: toRFC3339(formData.dateOfBirth) as string,
     id_card_number: idCardNumber || undefined,
     purpose_of_stay: formData.purpose || undefined,
-    check_in_date: toRFC3339(formData.admitDate) as string,
-    expected_check_out_date: toRFC3339(formData.expectedDischargeDate) || undefined,
-    room_id: formData.roomId,
+    check_in_date: checkInDate || undefined,
+    expected_check_out_date: expectedCheckOutDate || undefined,
+    room_id: roomId || undefined,
     pre_existing_conditions: formData.chronicDiseases || undefined,
     pre_existing_conditions_notes: formData.chronicDiseasesNote || undefined,
     surgical_history: formData.surgicalHistory || undefined,
     resuscitation_status: formData.cprStatus || undefined,
     preferred_emergency_hospital: formData.emergencyHospital || undefined,
-    emergency_hospital_phone:
-      emergencyPhone.length >= 4 && emergencyPhone.length <= 10 ? emergencyPhone : undefined,
+    emergency_hospital_phone: emergencyPhone || undefined,
     emergency_contacts: cleanedContacts.length > 0 ? cleanedContacts : undefined,
     profile_image: formData.profileImagePreview || undefined,
     status: formData.status,
   };
+
+    if (labels && labels.length > 0) {
+      payload.labels = labels;
+    }
+
+    return payload;
   };
 
   const syncAllergies = async (residentId: string, foodAllergies: string, drugAllergies: string) => {
@@ -641,7 +700,11 @@ export default function Page() {
 
       validateMedications(formData.medications);
 
-      const payload = buildResidentPayload(formData);
+      const careLevelLabel = careLevelToLabelName(formData.careLevel);
+      const labels = modalMode === "edit" && careLevelLabel ? [{ label_name: careLevelLabel }] : undefined;
+      const payload = formData.profileImage
+        ? buildResidentFormData(formData, labels)
+        : buildResidentPayload(formData, labels);
       let savedResident: ApiResident;
 
       if (modalMode === "edit" && editingResidentId) {
@@ -655,9 +718,8 @@ export default function Page() {
         throw new Error("ไม่พบรหัสผู้สูงอายุจากระบบ");
       }
 
-      const careLevelLabel = careLevelToLabelName(formData.careLevel);
       const postSaveTasks: Promise<unknown>[] = [];
-      if (careLevelLabel) {
+      if (modalMode !== "edit" && careLevelLabel) {
         postSaveTasks.push(
           intakeService.createResidentLabels({
             resident_id: residentId,

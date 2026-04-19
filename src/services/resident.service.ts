@@ -35,8 +35,19 @@ class ResidentService {
    * Create a new resident
    * POST /api/emr/residents
    */
-  async create(data: CreateResidentRequest): Promise<Resident> {
-    const response = await apiClient.post<ApiResponse<Resident>>('/api/emr/residents', data);
+  async create(data: CreateResidentRequest | FormData): Promise<Resident> {
+    const isFormData = data instanceof FormData;
+    const response = await apiClient.post<ApiResponse<Resident>>(
+      '/api/emr/residents',
+      data,
+      isFormData
+        ? {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+          }
+        : undefined
+    );
     return response.data.result;
   }
 
@@ -44,10 +55,18 @@ class ResidentService {
    * Update resident
    * PATCH /api/emr/residents/{id}
    */
-  async update(id: string, data: Partial<CreateResidentRequest>): Promise<Resident> {
+  async update(id: string, data: Partial<CreateResidentRequest> | FormData): Promise<Resident> {
+    const isFormData = data instanceof FormData;
     const response = await apiClient.patch<ApiResponse<Resident>>(
       `/api/emr/residents/${id}`,
-      data
+      data,
+      isFormData
+        ? {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+          }
+        : undefined
     );
     return response.data.result;
   }

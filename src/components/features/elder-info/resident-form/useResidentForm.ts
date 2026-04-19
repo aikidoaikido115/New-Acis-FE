@@ -125,14 +125,6 @@ export function useResidentForm(
       return;
     }
 
-    if (
-      formData.emergencyHospitalPhone &&
-      (formData.emergencyHospitalPhone.length < 4 || formData.emergencyHospitalPhone.length > 10)
-    ) {
-      alert("เบอร์โรงพยาบาลกรณีฉุกเฉินต้องมี 4-10 หลัก");
-      return;
-    }
-
     try {
       await onSubmit(formData);
     } catch (err) {

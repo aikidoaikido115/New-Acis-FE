@@ -11,8 +11,10 @@ interface InputFieldProps {
 }
 
 export const InputField: React.FC<InputFieldProps> = ({ label, name, value, onChange, placeholder, type = "text" }) => {
-  const inputProps: any = { type, name, placeholder, value, onChange, className: "w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500 text-gray-900" };
+  const safeValue = value ?? "";
+  const inputProps: any = { type, name, placeholder, value: safeValue, onChange, className: "w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500 text-gray-900" };
   if (name === "phone") {
+    inputProps.type = "tel";
     inputProps.inputMode = "numeric";
     inputProps.pattern = "[0-9]*";
     inputProps.maxLength = 10;

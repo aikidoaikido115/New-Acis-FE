@@ -32,7 +32,7 @@ export function RelativeDashboardContent({
       {showPreviewBanner && residentName && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
           <p className="text-sm text-slate-700">
-            <span className="font-semibold">ตัวอย่างหน้าที่ญาติจะเห็น</span>: {residentName}
+            <span className="font-semibold">ตัวอย่างหน้าที่ญาติจะเห็นของผู้สูงอายุ</span>: {residentName}
           </p>
         </div>
       )}
