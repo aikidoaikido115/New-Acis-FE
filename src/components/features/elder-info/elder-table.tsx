@@ -85,7 +85,15 @@ export function ElderTable({ residents, onEdit, onViewDetail, onViewRelative }: 
                 </td>
                 <td className="px-1 py-2.5">
                   <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-xs font-medium ${careBadgeClass(resident.care)}`}>
-                    <span className="truncate max-w-full">{resident.care.trim()}</span>
+                    {/* Mobile: short label for 'ช่วยเหลือตัวเองได้บางส่วน' */}
+                    {resident.care.trim() === "ช่วยเหลือตัวเองได้บางส่วน" ? (
+                      <>
+                        <span className="sm:inline hidden truncate max-w-full">ช่วยเหลือตัวเองได้บางส่วน</span>
+                        <span className="sm:hidden inline truncate max-w-full">ช่วยบางส่วน</span>
+                      </>
+                    ) : (
+                      <span className="truncate max-w-full">{resident.care.trim()}</span>
+                    )}
                   </span>
                 </td>
                 <td className="px-1 py-2.5 text-xs sm:text-sm text-slate-700 hidden md:table-cell">

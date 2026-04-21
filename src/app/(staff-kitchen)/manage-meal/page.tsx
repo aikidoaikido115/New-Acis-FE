@@ -164,43 +164,7 @@ export default function ManageMealPage() {
       isMounted = false;
     };
   }, []);
-
-  const validateMealsData = (data: Record<MealKey, MealData>) => {
-    const errors: string[] = [];
-    (Object.keys(data) as MealKey[]).forEach((key) => {
-      const meal = data[key];
-      const label = mealTabs.find(t => t.key === key)?.label || key;
-
-      if (!meal.mainMenu || meal.mainMenu.trim() === "") {
-        errors.push(`กรุณากรอกเมนูหลักสำหรับ${label}`);
-      }
-
-      const mainAmount = Number.parseInt(String(meal.mainServings), 10);
-      if (!meal.mainServings || Number.isNaN(mainAmount) || mainAmount <= 0) {
-        errors.push(`กรุณากรอกจำนวนเสิร์ฟสำหรับ${label}`);
-      }
-
-      const secondary = meal.secondaryMenus[0];
-      if (secondary) {
-        const hasSecondary =
-          secondary.menu.trim() !== "" ||
-          String(secondary.servings).trim() !== "" ||
-          secondary.note.trim() !== "";
-
-        if (hasSecondary) {
-          if (!secondary.menu || secondary.menu.trim() === "") {
-            errors.push(`กรุณากรอกเมนูรองสำหรับ${label}`);
-          }
-          const secondaryAmount = Number.parseInt(String(secondary.servings), 10);
-          if (!secondary.servings || Number.isNaN(secondaryAmount) || secondaryAmount <= 0) {
-            errors.push(`กรุณากรอกจำนวนเสิร์ฟเมนูรองสำหรับ${label}`);
-          }
-        }
-      }
-    });
-    return errors;
-  };
-
+  
   const createMenu = async (menuName: string, note: string) => {
     const payload = {
       menu_name: menuName.trim(),
@@ -214,13 +178,6 @@ export default function ManageMealPage() {
     if (isSaving) {
       return;
     }
-    const errors = validateMealsData(mealsData);
-    if (errors.length > 0) {
-      setSaveError(errors.join("\n"));
-      return;
-    }
-
-    setSaveError("");
     setIsSaving(true);
 
     try {

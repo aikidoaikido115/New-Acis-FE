@@ -9,6 +9,8 @@ export interface ActivitySchedule {
   created_at?: string;
   updated_at?: string;
   activity?: Activity;
+  has_attendance?: boolean;
+  can_check_in?: boolean;
 }
 
 export interface CreateActivityScheduleRequest {

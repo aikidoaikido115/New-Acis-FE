@@ -8,10 +8,10 @@ import type {
 class ActivityScheduleService {
   /**
    * Get activity schedules (optional date filter)
-   * GET /api/activity-schedules?date=YYYY-MM-DD
+   * GET /api/activities/schedules?date=YYYY-MM-DD
    */
   async getByDate(date?: string): Promise<ActivitySchedule[]> {
-    const url = date ? `/api/activity-schedules?date=${encodeURIComponent(date)}` : '/api/activity-schedules';
+    const url = date ? `/api/activities/schedules?date=${encodeURIComponent(date)}` : '/api/activities/schedules';
     const response = await apiClient.get<ApiResponse<ActivitySchedule[]>>(url);
     return response.data.result;
   }
@@ -21,7 +21,7 @@ class ActivityScheduleService {
    * POST /api/activity-schedules
    */
   async create(payload: CreateActivityScheduleRequest): Promise<ActivitySchedule> {
-    const response = await apiClient.post<ApiResponse<ActivitySchedule>>('/api/activity-schedules', payload);
+    const response = await apiClient.post<ApiResponse<ActivitySchedule>>('/api/activities/schedules', payload);
     return response.data.result;
   }
 
@@ -30,7 +30,7 @@ class ActivityScheduleService {
    * PATCH /api/activity-schedules/{id}
    */
   async update(id: string, payload: UpdateActivityScheduleRequest): Promise<ActivitySchedule> {
-    const response = await apiClient.patch<ApiResponse<ActivitySchedule>>(`/api/activity-schedules/${id}`, payload);
+    const response = await apiClient.patch<ApiResponse<ActivitySchedule>>(`/api/activities/schedules/${id}`, payload);
     return response.data.result;
   }
 
@@ -39,7 +39,16 @@ class ActivityScheduleService {
    * DELETE /api/activity-schedules/{id}
    */
   async remove(id: string): Promise<void> {
-    await apiClient.delete<ApiResponse<null>>(`/api/activity-schedules/${id}`);
+    await apiClient.delete<ApiResponse<null>>(`/api/activities/schedules/${id}`);
+  }
+
+  /**
+   * Get activity schedule by ID
+   * GET /api/activities/schedules/{id}
+   */
+  async getById(id: string): Promise<ActivitySchedule> {
+    const response = await apiClient.get<ApiResponse<ActivitySchedule>>(`/api/activities/schedules/${id}`);
+    return response.data.result;
   }
 }
 

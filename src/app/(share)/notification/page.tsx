@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { NURSE_NOTIFICATIONS } from "@/components/shared/notifications/notifications";
+import { useNurseNotifications } from "@/components/shared/notifications/notifications";
 import {
   getKitchenNotificationItems,
   markAllKitchenNotificationsRead,
@@ -34,10 +34,13 @@ function NotificationCard({ notification }: { notification: NotificationItemData
 }
 
 export default function NotificationPage() {
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const roleName = user?.role_name;
   const kitchenRole = isKitchenRole(roleName);
   const [kitchenNotifications, setKitchenNotifications] = useState<NotificationItemData[]>([]);
+  const { notifications: nurseNotifications, isLoading: isLoadingNurse } = useNurseNotifications(
+    !kitchenRole && isAuthenticated
+  );
 
   useEffect(() => {
     if (!kitchenRole) return;
@@ -50,16 +53,22 @@ export default function NotificationPage() {
     return () => window.clearInterval(intervalId);
   }, [kitchenRole]);
 
-  const notifications = kitchenRole ? kitchenNotifications : NURSE_NOTIFICATIONS;
+  const notifications = kitchenRole ? kitchenNotifications : nurseNotifications;
 
   return (
     <div className="min-h-screen bg-[#F5F7FA] flex flex-col items-center pt-10 px-4">
       <div className="w-full max-w-4xl bg-white rounded-2xl shadow-lg p-8">
         <h1 className="text-2xl font-bold text-gray-800 mb-6">การแจ้งเตือน</h1>
         <div className="space-y-5">
-          {notifications.map((notification) => (
-            <NotificationCard key={notification.id} notification={notification} />
-          ))}
+          {notifications.length === 0 && !kitchenRole && isLoadingNurse ? (
+            <div className="text-center text-sm text-gray-500">กำลังโหลดการแจ้งเตือน...</div>
+          ) : notifications.length === 0 ? (
+            <div className="text-center text-sm text-gray-500">ไม่มีการแจ้งเตือน</div>
+          ) : (
+            notifications.map((notification) => (
+              <NotificationCard key={notification.id} notification={notification} />
+            ))
+          )}
         </div>
       </div>
     </div>

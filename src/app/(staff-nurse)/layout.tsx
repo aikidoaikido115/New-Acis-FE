@@ -21,7 +21,6 @@ export default function StaffNurseLayout({ children }: { children: React.ReactNo
             role: user?.role_name,
             profile_image: user?.profile_image,
           }}
-          notificationsCount={3}
           onToggleSidebar={() => setIsSidebarOpen(true)}
         />
 

@@ -43,7 +43,6 @@ export default function ProfileLayout({ children }: { children: React.ReactNode 
             role: roleName,
             profile_image: user?.profile_image,
           }}
-          notificationsCount={kitchenRole ? 0 : 3}
           onToggleSidebar={() => setIsSidebarOpen(true)}
         />
 

@@ -25,14 +25,14 @@ import { ElderTablePagination } from "@/components/features/elder-info/paginatio
 
 const ITEMS_PER_PAGE = 10;
 
-const determineCareLevel = (adlScore?: number) => {
+export const determineCareLevel = (adlScore?: number) => {
   if (adlScore === undefined) return "general";
   if (adlScore <= 5) return "bedridden";
   if (adlScore <= 11) return "partial";
   return "general";
 };
 
-const normalizeCareLevel = (value?: string) => {
+export const normalizeCareLevel = (value?: string) => {
   const normalized = (value || "").trim().toLowerCase();
   if (normalized === "partial_assist" || normalized === "partial") return "partial";
   if (normalized === "bedridden") return "bedridden";
@@ -40,7 +40,7 @@ const normalizeCareLevel = (value?: string) => {
   return "";
 };
 
-const mapCareLevelLabel = (labelName?: string) => {
+export const mapCareLevelLabel = (labelName?: string) => {
   const trimmed = (labelName || "").trim();
   if (trimmed === "ช่วยเหลือตัวเองได้ทั้งหมด") return "general";
   if (trimmed === "ช่วยเหลือตัวเองได้บางส่วน") return "partial_assist";
@@ -48,7 +48,7 @@ const mapCareLevelLabel = (labelName?: string) => {
   return "";
 };
 
-const careLevelToLabelName = (value?: string) => {
+export const careLevelToLabelName = (value?: string) => {
   const normalized = normalizeCareLevel(value);
   if (normalized === "general") return "ช่วยเหลือตัวเองได้ทั้งหมด";
   if (normalized === "partial") return "ช่วยเหลือตัวเองได้บางส่วน";
@@ -56,7 +56,7 @@ const careLevelToLabelName = (value?: string) => {
   return "";
 };
 
-const resolveCareLevelFromLabels = (labels?: ApiResident["resident_labels"]) => {
+export const resolveCareLevelFromLabels = (labels?: ApiResident["resident_labels"]) => {
   if (!labels || labels.length === 0) return "";
   for (const label of labels) {
     const mapped = mapCareLevelLabel(label.intake_label?.label_name);
@@ -65,7 +65,7 @@ const resolveCareLevelFromLabels = (labels?: ApiResident["resident_labels"]) => 
   return "";
 };
 
-const formatDate = (dateString?: string) => {
+export const formatDate = (dateString?: string) => {
   if (!dateString) return "-";
   const date = new Date(dateString);
   if (Number.isNaN(date.getTime())) return "-";
@@ -107,7 +107,7 @@ const timeOfDayAliasMap: Record<string, string> = {
 
 const orderedTimeTokens = ["morning", "noon", "evening", "bedtime"];
 
-const frequencyToTimeOfDay = (value: string) => {
+export const frequencyToTimeOfDay = (value: string) => {
   const tokens = frequencyTokensByValue[value];
   if (!tokens) return null;
   return {
@@ -116,7 +116,7 @@ const frequencyToTimeOfDay = (value: string) => {
   };
 };
 
-const timeOfDayToFrequencyValue = (timeOfDay?: string | null) => {
+export const timeOfDayToFrequencyValue = (timeOfDay?: string | null) => {
   if (!timeOfDay) return "";
   const tokens = timeOfDay
     .split(",")
@@ -130,7 +130,7 @@ const timeOfDayToFrequencyValue = (timeOfDay?: string | null) => {
   return orderedTokens.join("_");
 };
 
-const timingToMealType = (timing?: string | null) => {
+export const timingToMealType = (timing?: string | null) => {
   if (!timing) return "";
   const normalized = timing.toLowerCase();
   if (normalized.includes("ก่อน") || normalized.includes("before")) return "before_meal";
@@ -138,13 +138,13 @@ const timingToMealType = (timing?: string | null) => {
   return "";
 };
 
-const mealTypeToTiming = (mealType?: string) => {
+export const mealTypeToTiming = (mealType?: string) => {
   if (mealType === "before_meal") return "ก่อนอาหาร";
   if (mealType === "after_meal") return "หลังอาหาร";
   return "";
 };
 
-const parseDose = (dose: string) => {
+export const parseDose = (dose: string) => {
   const trimmed = dose.trim();
   const match = trimmed.match(/^([0-9]+(?:\.[0-9]+)?)(.*)$/);
   if (!match) return null;

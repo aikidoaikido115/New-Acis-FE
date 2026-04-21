@@ -26,6 +26,17 @@ import {
   type ResidentSnapshot,
   type InventoryStatKey,
 } from "@/components/features/dashboard/dashboard-utils";
+import { activityScheduleService } from "@/services/activity-schedule.service";
+import { be } from "date-fns/locale";
+
+const formatHHMM = (value?: string) => {
+  if (!value) return "-";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${hh}:${mm}`;
+};
 
 export type StatCardItem = { label: string; value: number };
 export type VitalStatItem = { label: string; value: number; variant: "normal" | "warning" | "danger" };
@@ -101,9 +112,34 @@ export function useDashboardData() {
     [activityDate]
   );
 
+  const [scheduleItemsApi, setScheduleItemsApi] = useState<ScheduleItemWithBadge[]>([]);
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        const dateKey = toDateInputValue(activityDate);
+        const schedules = await activityScheduleService.getByDate(dateKey);
+        if (!mounted) return;
+        const mapped = (schedules || []).map((s) => ({
+          time: `${formatHHMM(s.start_time)}-${formatHHMM(s.end_time)}`,
+          title: s.activity?.activity_name || "กิจกรรม",
+          detail: s.activity?.activity_type || "-",
+          location: s.activity?.location || "-",
+          badge: scheduleBadge,
+        }));
+        setScheduleItemsApi(mapped);
+      } catch (err) {
+        setScheduleItemsApi([]);
+      }
+    };
+    void load();
+    return () => { mounted = false; };
+  }, [activityDate, scheduleBadge]);
+
   const scheduleItems = useMemo<ScheduleItemWithBadge[]>(
-    () => getScheduleItemsForDate(activityDate).map((item) => ({ ...item, badge: scheduleBadge })),
-    [activityDate, scheduleBadge]
+    () => (scheduleItemsApi.length ? scheduleItemsApi : getScheduleItemsForDate(activityDate).map((item) => ({ ...item, badge: scheduleBadge }))),
+    [activityDate, scheduleBadge, scheduleItemsApi]
   );
 
   const inventoryCards = useMemo<InventoryCardItem[]>(() => {
@@ -168,8 +204,8 @@ export function useDashboardData() {
 
       const normalizedOverview: ResidentSnapshot[] = overviewItems.map((item) => ({
         resident_id: item.resident_id,
-        gender: item.gender,
-        status: item.status,
+        gender: item.gender || "",
+        status: item.status || "",
         check_in_date: item.check_in_date || undefined,
         expected_check_out_date: item.expected_check_out_date || undefined,
         floor: typeof item.floor === "number" ? item.floor : undefined,
@@ -274,6 +310,7 @@ export function useDashboardData() {
         morning: { total: 0, taken: 0 },
         noon: { total: 0, taken: 0 },
         evening: { total: 0, taken: 0 },
+        bedtime: { total: 0, taken: 0 },
       };
 
       filteredByFloor.forEach((plan) => {
@@ -288,6 +325,8 @@ export function useDashboardData() {
         { label: "มื้อเช้า", value: buildMedicineValue(counts.morning.total, counts.morning.taken) },
         { label: "มื้อกลางวัน", value: buildMedicineValue(counts.noon.total, counts.noon.taken) },
         { label: "มื้อเย็น", value: buildMedicineValue(counts.evening.total, counts.evening.taken) },
+        { label: "ก่อนนอน", value: buildMedicineValue(counts.bedtime.total, counts.bedtime.taken) },
+
       ]);
     } catch (error) {
       logApiError("Failed to fetch medicine status:", error);

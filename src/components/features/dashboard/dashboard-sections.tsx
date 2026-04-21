@@ -69,7 +69,7 @@ export function DashboardHeader({
             <Plus className="h-4 w-4" />
             เพิ่มประวัติแรกเข้า
           </button>
-          <DatePicker value={selectedDate} onChange={(date) => date && onDateChange(date)} />
+          {/* <DatePicker value={selectedDate} onChange={(date) => date && onDateChange(date)} /> */}
           <Dropdown options={floorOptions} value={selectedFloor} onChange={onFloorChange} placeholder="เลือกชั้น" />
         </div>
       </div>
@@ -162,7 +162,6 @@ export function DashboardScheduleRow({
       <DashboardCard
         title="ตารางกิจกรรม"
         icon={<Calendar className="h-4 w-4" />}
-        action={<DatePicker value={activityDate} onChange={(date) => date && onActivityDateChange(date)} />}
       >
         <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
           <MiniCalendar selectedDate={activityDate} />

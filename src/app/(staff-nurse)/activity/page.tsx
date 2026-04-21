@@ -1,12 +1,17 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Calendar, Pencil, Plus, Trash2, Copy } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { ActivityCalendar } from "@/components/features/activity/activity-calendar";
 import { ActivityFormModal, type ActivityFormData } from "@/components/features/activity/activity-form-modal";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import { activityService } from "@/services/activity.service";
 import { activityScheduleService } from "@/services/activity-schedule.service";
+import { activityAttendanceService } from "@/services/activity-attendance.service";
+import { ContactInformationModal } from "@/components/shared/contact/ContactInformationModal";
+import { resolveContactInfo } from "@/components/shared/contact/contactDirectory";
+import type { ContactInfo } from "@/components/shared/contact/contactDirectory";
 import type { Activity } from "@/types/activity";
 import type { ActivitySchedule } from "@/types/activity-schedule";
 
@@ -16,8 +21,7 @@ const MONTHS = [
   "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม",
 ];
 
-// TODO: Turn off mock schedules after API-driven data is ready.
-const USE_MOCK_SCHEDULES = true;
+const USE_MOCK_SCHEDULES = false;
 
 interface EmptyActivityCardProps {
   selectedDate: Date;
@@ -44,14 +48,14 @@ function EmptyActivityCard({ selectedDate, onAddActivity }: EmptyActivityCardPro
           <p className="text-lg font-semibold text-slate-700">ไม่มีกิจกรรมในวันนี้</p>
           <p className="text-sm text-slate-500">เริ่มสร้างกิจกรรมของคุณ</p>
         </div>
-        <button
-          type="button"
-          onClick={onAddActivity}
-          className="mt-6 inline-flex items-center gap-2 rounded-lg bg-[#0093EF] px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-500"
-        >
-          <Plus className="h-4 w-4" />
-          เพิ่มกิจกรรมในวันนี้
-        </button>
+          <button
+            type="button"
+            onClick={onAddActivity}
+            className="w-full rounded-lg bg-[#0093EF] px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-500 flex items-center justify-center gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            เพิ่มกิจกรรมในวันนี้
+          </button>
       </div>
     </div>
   );
@@ -64,10 +68,22 @@ interface ActivityScheduleCardProps {
   onEdit: (schedule: ActivitySchedule) => void;
   onDelete: (schedule: ActivitySchedule) => void;
   onCopy: (schedule: ActivitySchedule, activity?: Activity) => void;
+  onCheckIn: (schedule: ActivitySchedule, activity?: Activity) => void;
   resolveActivity: (schedule: ActivitySchedule) => Activity | undefined;
+  onOpenContact: (name: string) => void;
 }
 
-function ActivityScheduleCard({ selectedDate, items, onAddActivity, onEdit, onDelete, onCopy, resolveActivity }: ActivityScheduleCardProps) {
+function ActivityScheduleCard({
+  selectedDate,
+  items,
+  onAddActivity,
+  onEdit,
+  onDelete,
+  onCopy,
+  onCheckIn,
+  resolveActivity,
+  onOpenContact,
+}: ActivityScheduleCardProps) {
   const isSmallScreen = typeof window !== "undefined" ? window.innerWidth < 640 : false;
   const dayName = DAYS_FULL[selectedDate.getDay()];
   const date = selectedDate.getDate();
@@ -81,7 +97,7 @@ function ActivityScheduleCard({ selectedDate, items, onAddActivity, onEdit, onDe
         </h2>
       </div>
       <div className="px-6">
-        <div className="max-h-[420px] overflow-y-auto pr-2 lg:max-h-[560px] divide-y divide-slate-100">
+        <div className="max-h-[42vh] overflow-y-auto pr-2 lg:max-h-[56vh] divide-y divide-slate-100">
         {items.map((item, index) => {
           const activity = resolveActivity(item);
           const isLast = index === items.length - 1;
@@ -142,13 +158,32 @@ function ActivityScheduleCard({ selectedDate, items, onAddActivity, onEdit, onDe
                   </div>
                 </div>
                 <div className="mt-3 flex items-center justify-between gap-2">
-                  <p className="text-xs text-slate-500">อัปเดตล่าสุดโดย: {updatedBy}</p>
-                  <button
-                    type="button"
-                    className="rounded-md bg-[#0093EF] px-3 py-1 text-xs font-semibold text-white transition hover:bg-blue-500"
-                  >
-                    เช็คชื่อ
-                  </button>
+                  <p className="text-xs text-slate-500">อัปเดตล่าสุดโดย: <button type="button" onClick={() => onOpenContact(updatedBy)} className="underline">{updatedBy}</button></p>
+                  {item.can_check_in ? (
+                    <button
+                      type="button"
+                      className="rounded-md bg-[#0093EF] px-5 py-2 text-xs font-semibold text-white transition hover:bg-blue-500"
+                      onClick={() => onCheckIn(item, activity)}
+                    >
+                      เช็คชื่อ
+                    </button>
+                  ) : item.has_attendance ? (
+                    <button
+                      type="button"
+                      className="rounded-md bg-slate-300 px-5 py-2 text-xs font-semibold text-slate-600"
+                      onClick={() => onCheckIn(item, activity)}
+                    >
+                      ดูประวัติ
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="rounded-md bg-slate-300 px-5 py-2 text-xs font-semibold text-slate-600"
+                      onClick={() => onCheckIn(item, activity)}
+                    >
+                      เช็คชื่อ
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -280,6 +315,7 @@ const buildMockSchedules = (date: Date): ActivitySchedule[] => {
 };
 
 export default function ActivityPage() {
+  const router = useRouter();
   const { showToast } = useToast();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -289,6 +325,8 @@ export default function ActivityPage() {
   const [prefillValues, setPrefillValues] = useState<Partial<ActivityFormData> | undefined>(undefined);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ActivitySchedule | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [contactInfo, setContactInfo] = useState<ContactInfo | null>(null);
 
   const loadActivities = useCallback(async () => {
     try {
@@ -313,6 +351,11 @@ export default function ActivityPage() {
         const data = await activityScheduleService.getByDate(dateKey);
         setScheduleItems(data);
       } catch (error: any) {
+        const status = error?.response?.status ?? error?.status_code ?? error?.status;
+        if (status === 404) {
+          setScheduleItems([]);
+          return;
+        }
         showToast({
           type: "error",
           title: "โหลดตารางกิจกรรมไม่สำเร็จ",
@@ -326,6 +369,39 @@ export default function ActivityPage() {
   useEffect(() => {
     loadSchedules(toDateKey(selectedDate));
   }, [selectedDate, loadSchedules]);
+
+  // Enrich schedule items with attendance metadata (has_attendance, can_check_in)
+  useEffect(() => {
+    let mounted = true;
+    const enrich = async () => {
+      try {
+        const items = scheduleItems || [];
+        // Only fetch attendance for schedules that haven't been enriched yet
+        const indices = items.map((it, i) => ({ it, i })).filter(({ it }) => typeof it.can_check_in === "undefined").map(({ i }) => i);
+        if (indices.length === 0) return;
+        const nextItems = items.map((it) => ({ ...it }));
+        await Promise.all(indices.map(async (idx) => {
+          const item = items[idx];
+          try {
+            const att = await activityAttendanceService.getByScheduleId(item.as_id);
+            if (!mounted) return;
+            nextItems[idx].has_attendance = true;
+            nextItems[idx].can_check_in = typeof att.can_edit === 'boolean' ? att.can_edit : false;
+          } catch (err) {
+            // leave defaults
+            nextItems[idx].has_attendance = false;
+            nextItems[idx].can_check_in = false;
+          }
+        }));
+        if (!mounted) return;
+        setScheduleItems(nextItems);
+      } catch (err) {
+        // ignore enrichment errors
+      }
+    };
+    void enrich();
+    return () => { mounted = false; };
+  }, [scheduleItems]);
 
   const handleAddActivity = () => {
     setEditingSchedule(null);
@@ -373,11 +449,9 @@ export default function ActivityPage() {
         setActivities((prev) =>
           prev.map((activity) => (activity.activity_id === saved.activity_id ? saved : activity))
         );
-        showToast({ type: "success", title: "แก้ไขกิจกรรมสำเร็จ", message: saved.activity_name });
       } else {
         saved = await activityService.create(payload);
         setActivities((prev) => [saved, ...prev]);
-        showToast({ type: "success", title: "สร้างกิจกรรมสำเร็จ", message: saved.activity_name });
       }
 
       const schedulePayload = {
@@ -389,16 +463,21 @@ export default function ActivityPage() {
 
       if (editingSchedule) {
         await activityScheduleService.update(editingSchedule.as_id, schedulePayload);
-        showToast({ type: "success", title: "อัปเดตกำหนดการสำเร็จ", message: saved.activity_name });
       } else {
         await activityScheduleService.create(schedulePayload);
-        showToast({ type: "success", title: "บันทึกกำหนดการสำเร็จ", message: saved.activity_name });
       }
+
+      showToast({ 
+        type: "success", 
+        title: editingSchedule ? "แก้ไขกิจกรรมสำเร็จ" : "บันทึกกิจกรรมใหม่สำเร็จ", 
+        message: saved.activity_name 
+      });
 
       const nextDate = parseLocalDate(data.date) || selectedDate;
       setSelectedDate(nextDate);
       await loadSchedules(toDateKey(nextDate));
       setEditingSchedule(null);
+      setIsModalOpen(false); // แนะนำให้ปิด Modal ตรงนี้ด้วยถ้าสำเร็จ
     } catch (error: any) {
       showToast({
         type: "error",
@@ -442,14 +521,20 @@ export default function ActivityPage() {
   const handleCloseDelete = () => {
     setIsDeleteModalOpen(false);
     setDeleteTarget(null);
+    setDeleteConfirmText("");
   };
 
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
-
+    if (deleteTarget.has_attendance) {
+      if (deleteConfirmText.trim() !== "ลบ") {
+        showToast({ type: "error", title: "ต้องพิมพ์ 'ลบ' เพื่อยืนยันการลบกิจกรรมที่มีข้อมูลการบันทึก" });
+        return;
+      }
+    }
     try {
       await activityScheduleService.remove(deleteTarget.as_id);
-      showToast({ type: "success", title: "ลบกำหนดการสำเร็จ" });
+      showToast({ type: "success", title: "ลบกำหนดการสำเร็จ", message: "", });
       await loadSchedules(toDateKey(selectedDate));
       handleCloseDelete();
     } catch (error: any) {
@@ -490,6 +575,22 @@ export default function ActivityPage() {
 
   const deleteActivity = deleteTarget ? resolveActivity(deleteTarget) : undefined;
 
+  const handleCheckIn = (schedule: ActivitySchedule, activity?: Activity) => {
+    const title = activity?.activity_name || schedule.activity?.activity_name || "กิจกรรม";
+    const query = new URLSearchParams({
+      title,
+      date: schedule.date,
+      start: schedule.start_time,
+      end: schedule.end_time,
+    });
+    // If schedule is not editable and has attendance, route to review history
+    if (schedule.has_attendance === true && schedule.can_check_in === false) {
+      router.push(`/activity/check-in/${schedule.as_id}/review?${query.toString()}&view=history`);
+      return;
+    }
+    router.push(`/activity/check-in/${schedule.as_id}?${query.toString()}`);
+  };
+
   return (
     <>
       <div className="flex flex-col gap-6 p-4 sm:p-6 lg:p-8">
@@ -509,7 +610,9 @@ export default function ActivityPage() {
               onEdit={handleEditSchedule}
               onDelete={handleRequestDelete}
               onCopy={handleCopySchedule}
+              onCheckIn={handleCheckIn}
               resolveActivity={resolveActivity}
+              onOpenContact={(name) => setContactInfo(resolveContactInfo(name))}
             />
           )}
         </div>
@@ -522,6 +625,17 @@ export default function ActivityPage() {
             <p className="text-sm font-semibold text-slate-800">{deleteActivity?.activity_name || "-"}</p>
             <p className="text-xs text-slate-500">{deleteActivity?.activity_type || "-"}</p>
           </div>
+          {deleteTarget?.has_attendance && (
+            <div className="mt-2">
+              <p className="text-xs text-slate-500">กิจกรรมนี้มีข้อมูลการบันทึก หากต้องการลบกรุณาพิมพ์ <strong>ลบ</strong> ลงในช่องด้านล่างเพื่อยืนยัน</p>
+              <input
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                className="mt-2 w-full rounded-md border border-slate-200 px-3 py-2"
+                placeholder="พิมพ์ ลบ เพื่อยืนยัน"
+              />
+            </div>
+          )}
           <div className="flex items-center justify-end gap-3">
             <button
               type="button"
@@ -533,7 +647,10 @@ export default function ActivityPage() {
             <button
               type="button"
               onClick={handleConfirmDelete}
-              className="rounded-lg bg-red-500 px-6 py-2 text-sm font-semibold text-white transition hover:bg-red-600"
+              disabled={deleteTarget?.has_attendance && deleteConfirmText.trim() !== "ลบ"}
+              className={`rounded-lg px-6 py-2 text-sm font-semibold text-white transition ${
+                deleteTarget?.has_attendance && deleteConfirmText.trim() !== "ลบ" ? "bg-slate-300 text-slate-400" : "bg-red-500 hover:bg-red-600"
+              }`}
             >
               ลบกิจกรรม
             </button>
@@ -555,6 +672,9 @@ export default function ActivityPage() {
         mode={editingSchedule ? "edit" : "create"}
         initialValues={modalInitialValues}
       />
+      {contactInfo && (
+        <ContactInformationModal contact={contactInfo} onClose={() => setContactInfo(null)} />
+      )}
     </>
   );
 }
