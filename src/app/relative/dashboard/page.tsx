@@ -9,8 +9,6 @@ import { RelativeDashboardContent } from '@/components/features/relative/dashboa
 export default function RelativeDashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // TODO: Replace with actual data from backend API
-  const mockLastUpdatedAt = '2025-02-12T20:00:00+07:00';
   const handleDateChange = (date: string) => {
     // TODO: Fetch data for the selected date from backend
     console.log('Selected date:', date);
@@ -35,7 +33,6 @@ export default function RelativeDashboard() {
         {/* Content */}
         <div className="flex-1 p-8 pt-20 lg:pt-8">
           <RelativeDashboardContent
-            lastUpdatedAt={mockLastUpdatedAt}
             onDateChange={handleDateChange}
           />
         </div>

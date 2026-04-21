@@ -1,11 +1,13 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { DailySummaryHeader } from './daily-summary-header';
 import { DailyActivities } from './daily-activities';
 import { AdditionalNotes } from './additional-notes';
 
 interface RelativeDashboardContentProps {
   residentName?: string;
+  residentId?: string;
   lastUpdatedAt?: string;
   onDateChange?: (date: string) => void;
   showPreviewBanner?: boolean;
@@ -13,17 +15,32 @@ interface RelativeDashboardContentProps {
 
 export function RelativeDashboardContent({ 
   residentName,
-  lastUpdatedAt = '2025-02-12T20:00:00+07:00',
+  residentId,
+  lastUpdatedAt,
   onDateChange,
   showPreviewBanner = false 
 }: RelativeDashboardContentProps) {
-  
-  const handleDateChange = (date: string) => {
-    if (onDateChange) {
-      onDateChange(date);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
+  const [lastUpdatedAtState, setLastUpdatedAtState] = useState<string | undefined>(lastUpdatedAt);
+
+  useEffect(() => {
+    setLastUpdatedAtState(lastUpdatedAt);
+  }, [lastUpdatedAt]);
+
+  const formatDateKey = (date: Date): string => {
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const selectedDateKey = selectedDate ? formatDateKey(selectedDate) : undefined;
+
+  const handleDateChange = (date: Date | null) => {
+    setSelectedDate(date);
+    if (date && onDateChange) {
+      onDateChange(formatDateKey(date));
     }
-    // TODO: Fetch data for the selected date
-    console.log('Selected date:', date);
   };
 
   return (
@@ -40,14 +57,19 @@ export function RelativeDashboardContent({
       {/* Header with date */}
       <DailySummaryHeader 
         onDateChange={handleDateChange}
-        lastUpdatedAt={lastUpdatedAt}
+        selectedDate={selectedDate}
+        lastUpdatedAt={lastUpdatedAtState}
       />
 
       {/* Daily Activities */}
       <DailyActivities />
 
       {/* Additional Notes */}
-      <AdditionalNotes />
+      <AdditionalNotes
+        residentId={residentId}
+        selectedDate={selectedDateKey}
+        onLastUpdatedChange={setLastUpdatedAtState}
+      />
     </div>
   );
 }

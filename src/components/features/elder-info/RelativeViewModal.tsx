@@ -6,13 +6,11 @@ interface RelativeViewModalProps {
   isOpen: boolean;
   onClose: () => void;
   residentName: string | null;
+  residentId?: string | null;
 }
 
-export function RelativeViewModal({ isOpen, onClose, residentName }: RelativeViewModalProps) {
+export function RelativeViewModal({ isOpen, onClose, residentName, residentId }: RelativeViewModalProps) {
   if (!isOpen) return null;
-
-  // TODO: Fetch actual resident data
-  const mockLastUpdatedAt = '2025-02-12T20:00:00+07:00';
 
   const handleDateChange = (date: string) => {
     // TODO: Fetch data for the selected date
@@ -36,7 +34,7 @@ export function RelativeViewModal({ isOpen, onClose, residentName }: RelativeVie
           <div className="p-6 md:p-8">
             <RelativeDashboardContent
               residentName={residentName || undefined}
-              lastUpdatedAt={mockLastUpdatedAt}
+              residentId={residentId || undefined}
               onDateChange={handleDateChange}
               showPreviewBanner={true}
             />

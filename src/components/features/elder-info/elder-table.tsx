@@ -6,10 +6,11 @@ import type { ResidentDisplayData } from "@/types/elder";
 interface ElderTableProps {
   residents: ResidentDisplayData[];
   onEdit?: (id: string) => void;
+  onViewDetail?: (id: string) => void;
   onViewRelative?: (id: string) => void;
 }
 
-export function ElderTable({ residents, onEdit, onViewRelative }: ElderTableProps) {
+export function ElderTable({ residents, onEdit, onViewDetail, onViewRelative }: ElderTableProps) {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   
   // Close dropdown when clicking outside
@@ -99,6 +100,7 @@ export function ElderTable({ residents, onEdit, onViewRelative }: ElderTableProp
                       className="p-1 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded transition"
                       aria-label="ดูรายละเอียด"
                       title="ดูรายละเอียด"
+                      onClick={() => onViewDetail?.(String(resident.id))}
                     >
                       <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     </button>

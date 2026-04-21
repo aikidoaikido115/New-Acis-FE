@@ -29,6 +29,32 @@ export interface ResidentLabel {
   intake_label?: IntakeLabel;
 }
 
+export interface ResidentOverviewItem {
+  resident_id: string;
+  first_name: string;
+  last_name: string;
+  nickname?: string | null;
+  room_number?: string;
+  intake_labels: string[];
+  gender?: string;
+  status?: string;
+  check_in_date?: string | null;
+  expected_check_out_date?: string | null;
+  floor?: number | null;
+}
+
+export interface OverviewPagination {
+  page: number;
+  page_size: number;
+  total_items: number;
+  total_pages: number;
+}
+
+export interface ResidentOverviewListResponse {
+  items: ResidentOverviewItem[];
+  pagination: OverviewPagination;
+}
+
 export interface Resident {
   id: string;
   // Some BE responses use resident_id instead of id

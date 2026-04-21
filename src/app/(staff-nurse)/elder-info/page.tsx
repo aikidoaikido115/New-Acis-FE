@@ -18,6 +18,7 @@ import type { Resident } from "@/types/elder";
 import type { Room } from "@/types/room";
 import { ResidentFormModal } from "@/components/features/elder-info/ResidentFormModal";
 import { RelativeViewModal } from "@/components/features/elder-info/RelativeViewModal";
+import { ResidentDetailModal } from "@/components/features/elder-info/ResidentDetailModal";
 import { ElderTableFilter } from "@/components/features/elder-info/info-table-filter";
 import { ElderTable } from "@/components/features/elder-info/elder-table";
 import { ElderTablePagination } from "@/components/features/elder-info/pagination";
@@ -193,6 +194,9 @@ export default function Page() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [isRelativeViewModalOpen, setIsRelativeViewModalOpen] = useState(false);
   const [relativeViewResidentName, setRelativeViewResidentName] = useState<string | null>(null);
+  const [relativeViewResidentId, setRelativeViewResidentId] = useState<string | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [detailResidentId, setDetailResidentId] = useState<string | null>(null);
   const [drugMasterOptions, setDrugMasterOptions] = useState<Array<{ value: string; label: string; name: string; dose?: string }>>([]);
   const originalMedicationIdsRef = useRef<string[]>([]);
 
@@ -824,7 +828,16 @@ export default function Page() {
     const resident = allResidents.find(r => r.id === id);
     const residentName = resident ? resident.name : "ไม่พบข้อมูล";
     setRelativeViewResidentName(residentName);
+    const resolvedId = (resident as { resident_id?: string; id?: string } | undefined)?.resident_id || resident?.id || id;
+    setRelativeViewResidentId(resolvedId);
     setIsRelativeViewModalOpen(true);
+  };
+
+  const handleViewDetail = (id: string) => {
+    const resident = allResidents.find(r => r.id === id);
+    const resolvedId = (resident as { resident_id?: string; id?: string } | undefined)?.resident_id || resident?.id || id;
+    setDetailResidentId(resolvedId);
+    setIsDetailModalOpen(true);
   };
 
   return (
@@ -877,7 +890,12 @@ export default function Page() {
             </div>
           ) : (
             <>
-              <ElderTable residents={paginatedResidents} onEdit={handleEditClick} onViewRelative={handleViewRelative} />
+              <ElderTable
+                residents={paginatedResidents}
+                onEdit={handleEditClick}
+                onViewDetail={handleViewDetail}
+                onViewRelative={handleViewRelative}
+              />
 
               {totalItems > 0 && (
                 <ElderTablePagination
@@ -920,6 +938,14 @@ export default function Page() {
         isOpen={isRelativeViewModalOpen}
         onClose={() => setIsRelativeViewModalOpen(false)}
         residentName={relativeViewResidentName}
+        residentId={relativeViewResidentId}
+      />
+
+      {/* Resident Detail Modal */}
+      <ResidentDetailModal
+        isOpen={isDetailModalOpen}
+        onClose={() => setIsDetailModalOpen(false)}
+        residentId={detailResidentId}
       />
     </>
   );

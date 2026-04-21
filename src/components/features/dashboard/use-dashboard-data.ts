@@ -8,7 +8,7 @@ import { drugPlanService } from "@/services/drug-plan.service";
 import { useAuth } from "@/hooks/useAuth";
 import type { GenderStats, ResidentStats } from "@/types/dashboard";
 import type { Room } from "@/types/room";
-import type { Resident } from "@/types/resident";
+import type { ResidentOverviewItem } from "@/types/resident";
 import type { DrugPlan } from "@/types/drug-plan";
 import {
   DEFAULT_MEDICINE_STATUS,
@@ -23,6 +23,7 @@ import {
   isSameDay,
   resolveTimeOfDayKey,
   toDateInputValue,
+  type ResidentSnapshot,
   type InventoryStatKey,
 } from "@/components/features/dashboard/dashboard-utils";
 
@@ -63,7 +64,7 @@ export function useDashboardData() {
   const [selectedFloor, setSelectedFloor] = useState("all");
   const [isLoading, setIsLoading] = useState(true);
   const [rooms, setRooms] = useState<Room[]>([]);
-  const [residents, setResidents] = useState<Resident[]>([]);
+  const [residents, setResidents] = useState<ResidentSnapshot[]>([]);
   const [vitalStats, setVitalStats] = useState<VitalStatItem[]>(DEFAULT_VITAL_STATS);
   const [medicineStatus, setMedicineStatus] = useState<MedicineStatusItem[]>(DEFAULT_MEDICINE_STATUS);
   const [lowStockCount, setLowStockCount] = useState(0);
@@ -76,12 +77,13 @@ export function useDashboardData() {
   }, [selectedFloor]);
 
   const residentById = useMemo(() => {
-    return new Map(
-      residents.map((resident) => {
-        const id = resident.resident_id || resident.id;
-        return [id, resident] as const;
-      })
-    );
+    const entries: Array<[string, ResidentSnapshot]> = [];
+    residents.forEach((resident) => {
+      if (resident.resident_id) {
+        entries.push([String(resident.resident_id), resident]);
+      }
+    });
+    return new Map(entries);
   }, [residents]);
 
   const filteredResidents = useMemo(
@@ -129,6 +131,27 @@ export function useDashboardData() {
     [residentStats]
   );
 
+  const fetchResidentOverviewAll = useCallback(async () => {
+    const pageSize = 100;
+    let page = 1;
+    let totalPages = 1;
+    const items: ResidentOverviewItem[] = [];
+
+    do {
+      const response = await residentService.getOverview({
+        floor: normalizedFloor,
+        status: "active",
+        page,
+        page_size: pageSize,
+      });
+      items.push(...(response.items || []));
+      totalPages = response.pagination?.total_pages || 1;
+      page += 1;
+    } while (page <= totalPages);
+
+    return items;
+  }, [normalizedFloor]);
+
   const refreshResidents = useCallback(async () => {
     if (!isAuthenticated) {
       setIsLoading(false);
@@ -138,17 +161,30 @@ export function useDashboardData() {
     }
     setIsLoading(true);
     try {
-      const [roomsRes, residentsRes] = await Promise.all([roomService.getAll(), residentService.getAll()]);
+      const [roomsRes, overviewItems] = await Promise.all([
+        roomService.getAll(),
+        fetchResidentOverviewAll(),
+      ]);
+
+      const normalizedOverview: ResidentSnapshot[] = overviewItems.map((item) => ({
+        resident_id: item.resident_id,
+        gender: item.gender,
+        status: item.status,
+        check_in_date: item.check_in_date || undefined,
+        expected_check_out_date: item.expected_check_out_date || undefined,
+        floor: typeof item.floor === "number" ? item.floor : undefined,
+        intake_labels: item.intake_labels || [],
+      }));
+
       setRooms(roomsRes || []);
-      setResidents(residentsRes || []);
+      setResidents(normalizedOverview);
     } catch (error) {
-      logApiError("Failed to fetch resident data:", error);
-      setRooms([]);
+      logApiError("Failed to fetch resident overview:", error);
       setResidents([]);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isAuthenticated, fetchResidentOverviewAll]);
 
   const loadInventoryItems = useCallback(async () => {
     if (!isAuthenticated) {
@@ -230,7 +266,7 @@ export function useDashboardData() {
         ? filteredByDate
         : filteredByDate.filter((plan: DrugPlan) => {
             const residentId = plan.PersonalDrug?.resident_id;
-            const resident = residentId ? residentById.get(residentId) : undefined;
+            const resident = residentId ? residentById.get(String(residentId)) : undefined;
             return resident?.floor === normalizedFloor;
           });
 

@@ -31,6 +31,14 @@ export const DEFAULT_MEDICINE_STATUS = [
   { label: "มื้อเย็น", value: "-" },
 ];
 
+export type ResidentSnapshot = Pick<
+  Resident,
+  "gender" | "check_in_date" | "expected_check_out_date" | "status" | "floor" | "resident_labels"
+> & {
+  resident_id?: string;
+  intake_labels?: string[];
+};
+
 export const SCHEDULE_ITEMS = [
   { time: "09:00-10:30", title: "กิจกรรมประจำวัน", detail: "กิจกรรมฟื้นฟูสมรรถภาพ", location: "ห้องกิจกรรม" },
   { time: "14:00-15:30", title: "กิจกรรมประจำสัปดาห์", detail: "กิจกรรมพัฒนากล้ามเนื้อ", location: "โถงกิจกรรม" },
@@ -63,17 +71,18 @@ export const formatThaiDate = (date: Date) => `${date.getDate()} ${MONTHS_TH[dat
 
 export const formatThaiMonthYear = (date: Date) => `${MONTHS_TH[date.getMonth()]} ${date.getFullYear() + 543}`;
 
-export const isResidentActiveOnDate = (resident: Resident, date: Date) => {
+export const isResidentActiveOnDate = (resident: ResidentSnapshot, date: Date) => {
   const admitDate = parseDateSafe(resident.check_in_date);
   const dischargeDate = parseDateSafe(resident.expected_check_out_date);
   const target = startOfDay(date);
 
   if (admitDate && admitDate > target) return false;
   if (dischargeDate && dischargeDate < target) return false;
+  if (resident.status && resident.status.toLowerCase() !== "active") return false;
   return true;
 };
 
-export const filterResidents = (residents: Resident[], floor: number | undefined, date: Date) =>
+export const filterResidents = (residents: ResidentSnapshot[], floor: number | undefined, date: Date) =>
   residents.filter((resident) => {
     if (typeof floor === "number" && resident.floor !== floor) {
       return false;
@@ -81,15 +90,16 @@ export const filterResidents = (residents: Resident[], floor: number | undefined
     return isResidentActiveOnDate(resident, date);
   });
 
-export const computeResidentAndGenderStats = (residents: Resident[]) => {
+export const computeResidentAndGenderStats = (residents: ResidentSnapshot[]) => {
   const stats: ResidentStats = { total: 0, general: 0, partial_assist: 0, bedridden: 0 };
   const gender: GenderStats = { male: 0, female: 0 };
 
-  const resolveCareLevelKey = (resident: Resident): "general" | "partial_assist" | "bedridden" => {
-    const labelName = resident.resident_labels
-      ?.map((label) => label.intake_label?.label_name || "")
-      .find((name) => name.includes("ช่วยเหลือตัวเอง") || name === "ติดเตียง")
-      ?.trim();
+  const resolveCareLevelKey = (resident: ResidentSnapshot): "general" | "partial_assist" | "bedridden" => {
+    const labelName = resident.intake_labels?.find((name) => name.includes("ช่วยเหลือตัวเอง") || name === "ติดเตียง")
+      || resident.resident_labels
+        ?.map((label) => label.intake_label?.label_name || "")
+        .find((name) => name.includes("ช่วยเหลือตัวเอง") || name === "ติดเตียง")
+        ?.trim();
 
     if (labelName === "ช่วยเหลือตัวเองได้บางส่วน") return "partial_assist";
     if (labelName === "ติดเตียง") return "bedridden";

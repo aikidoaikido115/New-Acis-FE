@@ -1,5 +1,18 @@
 import apiClient, { ApiResponse } from '@/lib/axios.ts/api-client';
-import type { Resident, CreateResidentRequest } from '@/types/resident';
+import type {
+  Resident,
+  CreateResidentRequest,
+  ResidentOverviewListResponse,
+} from '@/types/resident';
+
+export interface ResidentOverviewQuery {
+  floor?: number;
+  label_ids?: string[];
+  status?: string;
+  search?: string;
+  page?: number;
+  page_size?: number;
+}
 
 class ResidentService {
   /**
@@ -8,6 +21,37 @@ class ResidentService {
    */
   async getAll(): Promise<Resident[]> {
     const response = await apiClient.get<ApiResponse<Resident[]>>('/api/emr/residents/all');
+    return response.data.result;
+  }
+
+  /**
+   * Get resident overview (lightweight list)
+   * GET /api/emr/residents/overview
+   */
+  async getOverview(query: ResidentOverviewQuery = {}): Promise<ResidentOverviewListResponse> {
+    const params = new URLSearchParams();
+    if (typeof query.floor === 'number') {
+      params.append('floor', String(query.floor));
+    }
+    if (query.label_ids?.length) {
+      query.label_ids.forEach((labelId) => params.append('label_ids', labelId));
+    }
+    if (query.status) {
+      params.append('status', query.status);
+    }
+    if (query.search) {
+      params.append('search', query.search);
+    }
+    if (typeof query.page === 'number') {
+      params.append('page', String(query.page));
+    }
+    if (typeof query.page_size === 'number') {
+      params.append('page_size', String(query.page_size));
+    }
+
+    const qs = params.toString();
+    const url = qs ? `/api/emr/residents/overview?${qs}` : '/api/emr/residents/overview';
+    const response = await apiClient.get<ApiResponse<ResidentOverviewListResponse>>(url);
     return response.data.result;
   }
 
