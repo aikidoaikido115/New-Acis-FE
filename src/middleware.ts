@@ -5,7 +5,7 @@ import type { NextRequest } from 'next/server';
 const ROLE_ROUTES: Record<string, string[]> = {
   nurse: ['/dashboard', '/elder-info', '/activity', '/emr', '/medicine', '/warehouse', '/user-manual', '/support-service', '/profile', '/notification', '/support-tickets', '/change-password'],
   kitchen: ['/manage-meal', '/user-manual-kitchen', '/support-service-kitchen', '/profile', '/notification', '/change-password'],
-  relative: ['/relative', '/change-password'],
+  relative: ['/relative', '/change-password' , '/relative/dashboard' ,'/relative/patient-info' , '/relative/privacy' , '/relative/terms'],
 };
 
 // Public routes that don't require authentication
@@ -16,10 +16,6 @@ const PUBLIC_ROUTES = [
   '/forgot-password',
   '/relative/login',
   '/relative/consent',
-  '/terms',
-  '/privacy',
-  '/relative/terms',
-  '/relative/privacy',
 ];
 
 // Check if route is public

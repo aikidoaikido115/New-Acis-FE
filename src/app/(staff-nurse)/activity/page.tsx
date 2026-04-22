@@ -321,6 +321,7 @@ export default function ActivityPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [scheduleItems, setScheduleItems] = useState<ActivitySchedule[]>([]);
+  const [schedulesByMonth, setSchedulesByMonth] = useState<Record<string, number>>({}); // { "2025-01-15": 2, ... }
   const [editingSchedule, setEditingSchedule] = useState<ActivitySchedule | null>(null);
   const [prefillValues, setPrefillValues] = useState<Partial<ActivityFormData> | undefined>(undefined);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -369,6 +370,47 @@ export default function ActivityPage() {
   useEffect(() => {
     loadSchedules(toDateKey(selectedDate));
   }, [selectedDate, loadSchedules]);
+  // เก็บ year/month แยก เพื่อ trigger เฉพาะเมื่อเดือนเปลี่ยน
+const [viewYearMonth, setViewYearMonth] = useState(() => ({
+  year: new Date().getFullYear(),
+  month: new Date().getMonth(),
+}));
+
+// อัปเดต viewYearMonth เมื่อ selectedDate เปลี่ยนเดือน
+useEffect(() => {
+  const y = selectedDate.getFullYear();
+  const m = selectedDate.getMonth();
+  setViewYearMonth((prev) => {
+    if (prev.year === y && prev.month === m) return prev;
+    return { year: y, month: m };
+  });
+}, [selectedDate]);
+
+// Load month schedules เฉพาะเมื่อเดือนเปลี่ยน
+useEffect(() => {
+  const { year, month } = viewYearMonth;
+  const loadMonthSchedules = async () => {
+    try {
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const schedulesMap: Record<string, number> = {};
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dateKey = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+        try {
+          const data = await activityScheduleService.getByDate(dateKey);
+          if (data && data.length > 0) {
+            schedulesMap[dateKey] = data.length;
+          }
+        } catch {
+          // silently skip
+        }
+      }
+      setSchedulesByMonth(schedulesMap);
+    } catch {
+      // ignore
+    }
+  };
+  loadMonthSchedules();
+}, [viewYearMonth]); // trigger เฉพาะเมื่อ year/month เปลี่ยน
 
   // Enrich schedule items with attendance metadata (has_attendance, can_check_in)
   useEffect(() => {
@@ -434,58 +476,81 @@ export default function ActivityPage() {
   );
 
   const handleSubmitActivity = async (data: ActivityFormData) => {
-    const payload = {
-      activity_name: data.name.trim(),
-      activity_type: data.type.trim(),
-      description: data.description.trim() ? data.description.trim() : null,
-      location: data.location.trim() ? data.location.trim() : null,
+  const payload = {
+    activity_name: data.name.trim(),
+    activity_type: data.type.trim(),
+    description: data.description.trim() ? data.description.trim() : null,
+    location: data.location.trim() ? data.location.trim() : null,
+  };
+
+  try {
+    let saved: Activity;
+
+    if (data.activityId) {
+      saved = await activityService.update(data.activityId, payload);
+      setActivities((prev) =>
+        prev.map((a) => (a.activity_id === saved.activity_id ? saved : a))
+      );
+    } else {
+      saved = await activityService.create(payload);
+      setActivities((prev) => [saved, ...prev]);
+    }
+
+    const schedulePayload = {
+      activity_id: saved.activity_id,
+      date: data.date,
+      start_time: data.startTime,
+      end_time: data.endTime,
     };
 
-    try {
-      let saved: Activity;
-
-      if (data.activityId) {
-        saved = await activityService.update(data.activityId, payload);
-        setActivities((prev) =>
-          prev.map((activity) => (activity.activity_id === saved.activity_id ? saved : activity))
-        );
-      } else {
-        saved = await activityService.create(payload);
-        setActivities((prev) => [saved, ...prev]);
-      }
-
-      const schedulePayload = {
-        activity_id: saved.activity_id,
-        date: data.date,
-        start_time: data.startTime,
-        end_time: data.endTime,
-      };
-
-      if (editingSchedule) {
-        await activityScheduleService.update(editingSchedule.as_id, schedulePayload);
-      } else {
-        await activityScheduleService.create(schedulePayload);
-      }
-
-      showToast({ 
-        type: "success", 
-        title: editingSchedule ? "แก้ไขกิจกรรมสำเร็จ" : "บันทึกกิจกรรมใหม่สำเร็จ", 
-        message: saved.activity_name 
-      });
-
-      const nextDate = parseLocalDate(data.date) || selectedDate;
-      setSelectedDate(nextDate);
-      await loadSchedules(toDateKey(nextDate));
-      setEditingSchedule(null);
-      setIsModalOpen(false); // แนะนำให้ปิด Modal ตรงนี้ด้วยถ้าสำเร็จ
-    } catch (error: any) {
-      showToast({
-        type: "error",
-        title: "บันทึกกิจกรรมไม่สำเร็จ",
-        message: error?.message || "ไม่สามารถบันทึกกิจกรรมได้",
-      });
+    if (editingSchedule) {
+      await activityScheduleService.update(editingSchedule.as_id, schedulePayload);
+    } else {
+      await activityScheduleService.create(schedulePayload);
     }
-  };
+
+    showToast({
+      type: "success",
+      title: editingSchedule ? "แก้ไขกิจกรรมสำเร็จ" : "บันทึกกิจกรรมใหม่สำเร็จ",
+      message: saved.activity_name,
+    });
+
+    const nextDate = parseLocalDate(data.date) || selectedDate;
+    const dateKey = toDateKey(nextDate); // ← ประกาศตรงนี้
+
+    // Reload schedules สำหรับวันนั้น
+    await loadSchedules(dateKey);
+
+    // อัปเดต dot บน calendar จากข้อมูลจริง
+    try {
+      const freshSchedules = await activityScheduleService.getByDate(dateKey);
+      setSchedulesByMonth((prev) => ({
+        ...prev,
+        [dateKey]: freshSchedules?.length ?? 0,
+      }));
+    } catch {
+      // fallback optimistic
+      setSchedulesByMonth((prev) => ({
+        ...prev,
+        [dateKey]: (prev[dateKey] ?? 0) + (editingSchedule ? 0 : 1),
+      }));
+    }
+
+    // เปลี่ยนวันที่แสดงถ้าเลือกวันต่างจากปัจจุบัน
+    if (nextDate.getTime() !== selectedDate.getTime()) {
+      setSelectedDate(nextDate);
+    }
+
+    setEditingSchedule(null);
+    setIsModalOpen(false); // ← ลบอันซ้ำออก
+  } catch (error: any) {
+    showToast({
+      type: "error",
+      title: "บันทึกกิจกรรมไม่สำเร็จ",
+      message: error?.message || "ไม่สามารถบันทึกกิจกรรมได้",
+    });
+  }
+};
 
   const resolveActivity = useCallback(
     (schedule: ActivitySchedule) => schedule.activity || activities.find((activity) => activity.activity_id === schedule.activity_id),
@@ -599,7 +664,11 @@ export default function ActivityPage() {
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
-          <ActivityCalendar selectedDate={selectedDate} onSelectDate={setSelectedDate} />
+          <ActivityCalendar 
+            selectedDate={selectedDate} 
+            onSelectDate={setSelectedDate}
+            schedulesByMonth={schedulesByMonth}
+          />
           {displayScheduleItems.length === 0 ? (
             <EmptyActivityCard selectedDate={selectedDate} onAddActivity={handleAddActivity} />
           ) : (

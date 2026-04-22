@@ -5,6 +5,10 @@ import { MealHistoryView } from "./MealHistoryView";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import apiClient, { ApiResponse } from "@/lib/axios.ts/api-client";
+import { mealService } from "@/services/meal.service";
+import { useToast } from "@/components/ui/toast";
+import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
+import type { Menu } from "@/types/meal";
 
 type MealView = "main" | "history";
 type MealKey = "breakfast" | "lunch" | "dinner";
@@ -41,7 +45,8 @@ interface SecondaryMenu {
 }
 
 interface MealData {
-  mainMenu: string;
+  mainMenuId: string;
+  mainMenuName: string;
   mainServings: number | string;
   mainNote: string;
   secondaryMenus: SecondaryMenu[];
@@ -79,7 +84,8 @@ interface CreateMealPlanPayload {
 }
 
 const createEmptyMealData = (): MealData => ({
-  mainMenu: "",
+  mainMenuId: "",
+  mainMenuName: "",
   mainServings: "",
   mainNote: "",
   secondaryMenus: [],
@@ -87,6 +93,7 @@ const createEmptyMealData = (): MealData => ({
 });
 
 export default function ManageMealPage() {
+  const { showToast } = useToast();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [view, setView] = useState<MealView>("main");
   const [saveError, setSaveError] = useState<string>("");
@@ -94,6 +101,12 @@ export default function ManageMealPage() {
   const [allergyStats, setAllergyStats] = useState<ResidentAllergyStatsResponse | null>(null);
   const [totalResidents, setTotalResidents] = useState<number | null>(null);
   const [statsError, setStatsError] = useState<string>("");
+  const [availableMenus, setAvailableMenus] = useState<Menu[]>([]);
+  const [isLoadingMenus, setIsLoadingMenus] = useState(true);
+  const [showAddMenuModal, setShowAddMenuModal] = useState(false);
+  const [newMenuName, setNewMenuName] = useState("");
+  const [newMenuNote, setNewMenuNote] = useState("");
+  const [isAddingMenu, setIsAddingMenu] = useState(false);
   const [mealsData, setMealsData] = useState<Record<MealKey, MealData>>({
     breakfast: createEmptyMealData(),
     lunch: createEmptyMealData(),
@@ -145,16 +158,13 @@ export default function ManageMealPage() {
         }
 
         if (allergyResult.status === "rejected" && totalResult.status === "rejected") {
-          setStatsError("ไม่สามารถดึงข้อมูลจำนวนคนได้");
+          setStatsError("");
         } else {
           setStatsError("");
         }
       } catch (err: unknown) {
         if (isMounted) {
-          const message = typeof (err as { message?: string })?.message === "string"
-            ? (err as { message: string }).message
-            : "ไม่สามารถดึงข้อมูลจำนวนคนได้";
-          setStatsError(message);
+          setStatsError("");
         }
       }
     };
@@ -164,31 +174,57 @@ export default function ManageMealPage() {
       isMounted = false;
     };
   }, []);
-  
-  const createMenu = async (menuName: string, note: string) => {
-    const payload = {
-      menu_name: menuName.trim(),
-      description: note?.trim() || "ไม่ระบุรายละเอียด",
+
+  useEffect(() => {
+    const fetchMenus = async () => {
+      try {
+        setIsLoadingMenus(true);
+        const menus = await mealService.getAllMenus();
+        setAvailableMenus(menus);
+      } catch (error) {
+        console.error("Failed to fetch menus:", error);
+        showToast({ message: "ไม่สามารถดึงข้อมูลเมนูได้", type: "error" });
+      } finally {
+        setIsLoadingMenus(false);
+      }
     };
-    const response = await apiClient.post<ApiResponse<MenuResult>>("/api/meals/menus", payload);
-    return response.data.result.menu_id;
-  };
+
+    fetchMenus();
+  }, [showToast]);
 
   const handleSave = async () => {
     if (isSaving) {
       return;
     }
     setIsSaving(true);
+    setSaveError("");
 
     try {
       for (const tab of mealTabs) {
         const mealKey = tab.key;
         const meal = mealsData[mealKey];
 
-        const mainMenuId = await createMenu(meal.mainMenu, meal.mainNote);
+        // Validate main menu
+        if (!meal.mainMenuId.trim()) {
+          throw new Error(`กรุณาเลือกเมนูหลักของ${tab.label}`);
+        }
+        if (!meal.mainServings || Number(meal.mainServings) <= 0) {
+          throw new Error(`กรุณากรอกจำนวนเมนูหลักของ${tab.label}`);
+        }
+
+        // Use existing menu or create new one
+        let mainMenuId = meal.mainMenuId;
+        if (meal.mainMenuId === "custom") {
+          // Create new menu
+          const newMenu = await mealService.createMenu({
+            menu_name: meal.mainMenuName.trim(),
+            description: meal.mainNote?.trim() || "",
+          });
+          mainMenuId = newMenu.menu_id;
+        }
 
         let backupMenuId = mainMenuId;
-        let backupAmount = 0;
+        let backupAmount: number | undefined = undefined;
 
         const secondary = meal.secondaryMenus[0];
         const hasSecondary = secondary
@@ -196,37 +232,94 @@ export default function ManageMealPage() {
           : false;
 
         if (secondary && hasSecondary) {
-          backupMenuId = await createMenu(secondary.menu, secondary.note);
+          if (!secondary.menu.trim()) {
+            throw new Error(`กรุณากรอกชื่อเมนูรองของ${tab.label}`);
+          }
+          if (!secondary.servings || Number(secondary.servings) <= 0) {
+            throw new Error(`กรุณากรอกจำนวนเมนูรองของ${tab.label}`);
+          }
+          backupMenuId = await mealService.createMenu({
+            menu_name: secondary.menu.trim(),
+            description: secondary.note?.trim() || "",
+          }).then(menu => menu.menu_id);
           backupAmount = Number.parseInt(String(secondary.servings), 10) || 0;
         }
 
-        const payload: CreateMealPlanPayload = {
+        const payload = {
           menu_id: mainMenuId,
-          backup_menu_id: backupMenuId,
+          backup_menu_id: backupMenuId !== mainMenuId ? backupMenuId : undefined,
           main_amount: Number.parseInt(String(meal.mainServings), 10) || 0,
-          meal_type: mealKey,
+          meal_type: mealKey as "breakfast" | "lunch" | "dinner",
+          human_in_the_loop: true, // Always use manual mode, skip AI
+          backup_amount: backupAmount,
         };
 
-        if (secondary && hasSecondary) {
-          payload.backup_amount = backupAmount;
-        }
-
-        await apiClient.post<ApiResponse<unknown>>("/api/meals/meal-plans/manual", payload);
+        await mealService.createMealPlanManual(payload);
       }
 
-      alert("บันทึกข้อมูลสำเร็จ");
+      showToast({
+        title: "บันทึกสำเร็จ",
+        message: "ระบบได้บันทึกข้อมูลการจัดเตรียมอาหารเรียบร้อยแล้ว",
+        type: "success",
+      });
+
+      // Clear form
+      setMealsData({
+        breakfast: createEmptyMealData(),
+        lunch: createEmptyMealData(),
+        dinner: createEmptyMealData(),
+      });
     } catch (err: unknown) {
       const message = typeof (err as { message?: string })?.message === "string"
         ? (err as { message: string }).message
         : "บันทึกข้อมูลไม่สำเร็จ";
       setSaveError(message);
+      showToast({
+        title: "เกิดข้อผิดพลาด",
+        message: message,
+        type: "error",
+      });
     } finally {
       setIsSaving(false);
     }
   };
 
+  const handleAddMenu = () => {
+    setShowAddMenuModal(true);
+  };
+
+  const handleSaveNewMenu = async () => {
+    if (!newMenuName.trim()) {
+      showToast({ message: "กรุณากรอกชื่อเมนู", type: "error" });
+      return;
+    }
+
+    try {
+      setIsAddingMenu(true);
+      const newMenu = await mealService.createMenu({
+        menu_name: newMenuName.trim(),
+        description: newMenuNote.trim() || "",
+      });
+
+      // Add to available menus
+      setAvailableMenus(prev => [...prev, newMenu]);
+
+      // Reset form
+      setNewMenuName("");
+      setNewMenuNote("");
+      setShowAddMenuModal(false);
+
+      showToast({ message: "เพิ่มเมนูใหม่สำเร็จ", type: "success" });
+    } catch (error) {
+      console.error("Failed to create menu:", error);
+      showToast({ message: "ไม่สามารถเพิ่มเมนูได้", type: "error" });
+    } finally {
+      setIsAddingMenu(false);
+    }
+  };
+
   return (
-    <div className="p-4 sm:p-8 w-full max-w-full min-h-screen">
+    <div className="p-4 sm:p-8 w-full max-w-full">
       {view === "history" ? (
         <MealHistoryView onBack={() => setView("main")} />
       ) : (
@@ -242,7 +335,66 @@ export default function ManageMealPage() {
           allergyStats={allergyStats}
           totalResidents={totalResidents}
           statsError={statsError}
+          availableMenus={availableMenus}
+          isLoadingMenus={isLoadingMenus}
+          onAddMenu={handleAddMenu}
         />
+      )}
+
+      {/* Add Menu Modal */}
+      {showAddMenuModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">เพิ่มเมนูใหม่</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  ชื่อเมนู <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  placeholder="กรอกชื่อเมนู"
+                  value={newMenuName}
+                  onChange={(e) => setNewMenuName(e.target.value)}
+                  className="w-full"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  รายละเอียดเมนู
+                </label>
+                <textarea
+                  placeholder="กรอกรายละเอียดเมนู (ไม่บังคับ)"
+                  value={newMenuNote}
+                  onChange={(e) => setNewMenuNote(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  rows={3}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAddMenuModal(false);
+                  setNewMenuName("");
+                  setNewMenuNote("");
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
+                disabled={isAddingMenu}
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveNewMenu}
+                disabled={isAddingMenu}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:opacity-50"
+              >
+                {isAddingMenu ? "กำลังบันทึก..." : "บันทึก"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -259,6 +411,9 @@ interface MealMainViewProps {
   allergyStats: ResidentAllergyStatsResponse | null;
   totalResidents: number | null;
   statsError: string;
+  availableMenus: Menu[];
+  isLoadingMenus: boolean;
+  onAddMenu: () => void;
 }
 
 function MealMainView({
@@ -273,6 +428,9 @@ function MealMainView({
   allergyStats,
   totalResidents,
   statsError,
+  availableMenus,
+  isLoadingMenus,
+  onAddMenu,
 }: MealMainViewProps) {
   const [activeTab, setActiveTab] = useState<MealKey>("breakfast");
 
@@ -299,6 +457,12 @@ function MealMainView({
   };
 
   const currentMealData = mealsData[activeTab];
+
+  // Convert menus to dropdown options
+  const menuOptions = availableMenus.map(menu => ({
+    value: menu.menu_id,
+    label: menu.menu_name
+  }));
 
   return (
     <>
@@ -404,12 +568,23 @@ function MealMainView({
                   <label className="block text-xs text-gray-500 mb-1">
                     เมนู <span className="text-red-500">*</span>
                   </label>
-                  <Input 
-                    placeholder="ชื่อเมนูหลัก" 
-                    className="bg-gray-50 border-gray-200 focus:border-blue-500 focus:ring-blue-500 text-slate-500 placeholder:text-slate-500"
-                    value={currentMealData.mainMenu ?? ""}
-                    onChange={(e) => updateMealData(activeTab, { mainMenu: e.target.value })}
-                    required
+                  <SearchableDropdown
+                    options={menuOptions}
+                    value={currentMealData.mainMenuId}
+                    onChange={(menuId) => {
+                      const selectedMenu = availableMenus.find(m => m.menu_id === menuId);
+                      updateMealData(activeTab, {
+                        mainMenuId: menuId,
+                        mainMenuName: selectedMenu?.menu_name || ""
+                      });
+                    }}
+                    placeholder="เลือกเมนูหลัก"
+                    allowCreate={true}
+                    onCreate={(menuName) => {
+                      setNewMenuName(menuName);
+                      onAddMenu();
+                    }}
+                    createLabel="+ เพิ่มเมนู"
                   />
                 </div>
                 <div>
@@ -421,7 +596,7 @@ function MealMainView({
                     inputMode="numeric"
                     pattern="[0-9]*"
                     placeholder="0"
-                    className="bg-gray-50 border-gray-200 focus:border-blue-500 focus:ring-blue-500 text-slate-500 placeholder:text-slate-500"
+                    className="bg-white border-gray-200 focus:border-blue-500 focus:ring-blue-500 text-slate-500 placeholder:text-slate-500"
                     value={currentMealData.mainServings ?? ""}
                     onChange={(e) => {
                       const val = e.target.value.replace(/[^\d]/g, "");
@@ -434,7 +609,7 @@ function MealMainView({
                   <label className="block text-xs text-gray-500 mb-1">หมายเหตุ</label>
                   <Input
                     placeholder="หมายเหตุ"
-                    className="bg-gray-50 border-gray-200 focus:border-blue-500 focus:ring-blue-500 text-slate-500 placeholder:text-slate-500"
+                    className="bg-white border-gray-200 focus:border-blue-500 focus:ring-blue-500 text-slate-500 placeholder:text-slate-500"
                     value={currentMealData.mainNote ?? ""}
                     onChange={(e) => updateMealData(activeTab, { mainNote: e.target.value })}
                   />
@@ -469,11 +644,19 @@ function MealMainView({
                         <label className="block text-xs text-gray-500 mb-1">
                           เมนู
                         </label>
-                        <Input 
-                          placeholder="ชื่อเมนูรอง" 
-                          className="bg-gray-50 border-gray-200 focus:border-blue-500 focus:ring-blue-500 text-slate-500 placeholder:text-slate-500"
-                          value={secondary.menu ?? ""}
-                          onChange={(e) => updateSecondaryMenu(activeTab, index, 'menu', e.target.value)}
+                        <SearchableDropdown
+                          options={menuOptions}
+                          value={secondary.menu}
+                          onChange={(menuId) => {
+                            const selectedMenu = availableMenus.find(m => m.menu_id === menuId);
+                            updateSecondaryMenu(activeTab, index, 'menu', selectedMenu?.menu_name || "");
+                          }}
+                          placeholder="เลือกเมนูรอง"
+                          allowCreate={true}
+                          onCreate={(menuName) => {
+                            updateSecondaryMenu(activeTab, index, 'menu', menuName);
+                          }}
+                          createLabel="+ เพิ่มเมนู"
                         />
                       </div>
                       <div>
@@ -485,7 +668,7 @@ function MealMainView({
                           inputMode="numeric"
                           pattern="[0-9]*"
                           placeholder="0"
-                          className="bg-gray-50 border-gray-200 focus:border-blue-500 focus:ring-blue-500 text-slate-500 placeholder:text-slate-500"
+                          className="bg-white border-gray-200 focus:border-blue-500 focus:ring-blue-500 text-slate-500 placeholder:text-slate-500"
                           value={secondary.servings ?? ""}
                           onChange={(e) => {
                             const val = e.target.value.replace(/[^\d]/g, "");
@@ -497,7 +680,7 @@ function MealMainView({
                         <label className="block text-xs text-gray-500 mb-1">หมายเหตุ</label>
                         <Input
                           placeholder="หมายเหตุ"
-                          className="bg-gray-50 border-gray-200 focus:border-blue-500 focus:ring-blue-500 text-slate-500 placeholder:text-slate-500"
+                          className="bg-white border-gray-200 focus:border-blue-500 focus:ring-blue-500 text-slate-500 placeholder:text-slate-500"
                           value={secondary.note ?? ""}
                           onChange={(e) => updateSecondaryMenu(activeTab, index, 'note', e.target.value)}
                         />

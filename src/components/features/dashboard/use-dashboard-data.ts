@@ -296,16 +296,24 @@ export function useDashboardData() {
       return;
     }
     try {
+      // 1. ดึงข้อมูลแผนยาทั้งหมด
       const plans = await drugPlanService.getOverview();
-      const filteredByDate = filterByDate(plans, selectedDate);
+      
+      // 2. กรองเอาเฉพาะแผนของ "วันที่เราเลือกดู" (targetDateKey) 
+      // เปลี่ยนจาก filterByDate(plans, selectedDate) มาเป็นแบบนี้:
+      const targetDateKey = toDateInputValue(selectedDate);
+      const filteredByDate = plans.filter((plan: any) => plan.date === targetDateKey);
+
+      // 3. กรองตามชั้น (Floor)
       const filteredByFloor = normalizedFloor === undefined
         ? filteredByDate
-        : filteredByDate.filter((plan: DrugPlan) => {
+        : filteredByDate.filter((plan: any) => {
             const residentId = plan.PersonalDrug?.resident_id;
             const resident = residentId ? residentById.get(String(residentId)) : undefined;
             return resident?.floor === normalizedFloor;
           });
 
+      // 4. เตรียมตัวนับ
       const counts = {
         morning: { total: 0, taken: 0 },
         noon: { total: 0, taken: 0 },
@@ -313,26 +321,33 @@ export function useDashboardData() {
         bedtime: { total: 0, taken: 0 },
       };
 
-      filteredByFloor.forEach((plan) => {
-        const timeOfDay = plan.PersonalDrug?.time_of_day || plan.PersonalDrug?.timing || "";
-        const key = resolveTimeOfDayKey(timeOfDay);
-        if (!key) return;
-        counts[key].total += 1;
-        if (plan.is_taken) counts[key].taken += 1;
+      // 5. นับจำนวนยาแยกตามมื้อ
+      filteredByFloor.forEach((plan: any) => {
+        const timeOfDayString = plan.PersonalDrug?.time_of_day || plan.PersonalDrug?.timing || "";
+        const keys = resolveTimeOfDayKeys(timeOfDayString);
+
+        keys.forEach(key => {
+          if (counts[key as keyof typeof counts]) {
+            counts[key as keyof typeof counts].total += 1;
+            if (plan.is_taken) {
+              counts[key as keyof typeof counts].taken += 1;
+            }
+          }
+        });
       });
 
+      // 6. อัปเดตสถานะเพื่อโชว์บนหน้า Dashboard
       setMedicineStatus([
         { label: "มื้อเช้า", value: buildMedicineValue(counts.morning.total, counts.morning.taken) },
         { label: "มื้อกลางวัน", value: buildMedicineValue(counts.noon.total, counts.noon.taken) },
         { label: "มื้อเย็น", value: buildMedicineValue(counts.evening.total, counts.evening.taken) },
         { label: "ก่อนนอน", value: buildMedicineValue(counts.bedtime.total, counts.bedtime.taken) },
-
       ]);
     } catch (error) {
       logApiError("Failed to fetch medicine status:", error);
       setMedicineStatus(DEFAULT_MEDICINE_STATUS);
     }
-  }, [selectedDate, normalizedFloor, residentById]);
+  }, [selectedDate, normalizedFloor, residentById, isAuthenticated]);
 
   useEffect(() => {
     void refreshResidents();

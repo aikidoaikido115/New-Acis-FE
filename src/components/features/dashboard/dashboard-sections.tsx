@@ -13,7 +13,7 @@ import {
   UserRound,
   Venus,
 } from "lucide-react";
-import { DatePicker } from "@/components/ui/date-picker";
+import Link from "next/link";
 import { Dropdown } from "@/components/ui/dropdown";
 import {
   DashboardCard,
@@ -165,9 +165,18 @@ export function DashboardScheduleRow({
       >
         <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
           <MiniCalendar selectedDate={activityDate} />
-          <div className="space-y-4">
+          <div className="space-y-4 max-h-[35vh] overflow-y-auto pr-2 custom-scrollbar">
             {scheduleItems.length > 0 ? (
-              scheduleItems.map((item) => <ScheduleItem {...item} key={item.time} />)
+              scheduleItems.map((item) => (
+                // 2. ครอบ ScheduleItem ด้วย Link และย้าย key มาไว้ที่นี่
+                <Link 
+                  href="/activity" 
+                  key={item.time} 
+                  className="block transition-all hover:shadow-md rounded-xl"
+                >
+                  <ScheduleItem {...item} />
+                </Link>
+              ))
             ) : (
               <div className="rounded-xl border border-slate-200 p-6 text-center text-sm text-slate-500">
                 ไม่มีกิจกรรมในวันนี้

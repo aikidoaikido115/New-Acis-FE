@@ -6,6 +6,7 @@ import { MealHistoryFilters } from "@/components/features/kitchen/MealHistoryFil
 import { MealHistoryTable } from "@/components/features/kitchen/MealHistoryTable";
 import { MealHistoryMobileModal } from "@/components/features/kitchen/MealHistoryMobileModal";
 import type { MealHistoryRow, TimeOption } from "@/components/features/kitchen/MealHistory.types";
+import { mealService } from "@/services/meal.service";
 
 export interface MealHistoryViewProps {
   onBack: () => void;
@@ -17,13 +18,16 @@ export function MealHistoryView({ onBack }: MealHistoryViewProps) {
   const [selectedTime, setSelectedTime] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [openPopoverId, setOpenPopoverId] = useState<string | null>(null);
+  const [historyRows, setHistoryRows] = useState<MealHistoryRow[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const autoCloseTimer = useRef<NodeJS.Timeout | null>(null);
 
   const timeOptions: TimeOption[] = [
     { value: "", label: "ทุกมื้อ" },
-    { value: "เช้า", label: "เช้า" },
-    { value: "กลางวัน", label: "กลางวัน" },
-    { value: "เย็น", label: "เย็น" },
+    { value: "breakfast", label: "เช้า" },
+    { value: "lunch", label: "กลางวัน" },
+    { value: "dinner", label: "เย็น" },
   ];
 
   const formatThaiDate = (date: Date): string => {
@@ -33,12 +37,54 @@ export function MealHistoryView({ onBack }: MealHistoryViewProps) {
     return `${day.toString().padStart(2, "0")}/${month.toString().padStart(2, "0")}/${year}`;
   };
 
-  const historyRows: MealHistoryRow[] = [
-    { id: "1", date: "02/04/2569 06:32", time: "เช้า", menu: "ข้าวต้มปลา", servings: "24", notes: "ลดเค็ม", createdBy: "ครัวเช้า" },
-    { id: "2", date: "02/04/2569 12:00", time: "กลางวัน", menu: "ข้าวผัดผักรวม", servings: "30", notes: "ไม่ใส่กุ้ง", createdBy: "ครัวกลางวัน" },
-    { id: "3", date: "02/04/2569 17:05", time: "เย็น", menu: "แกงจืดเต้าหู้หมูสับ", servings: "28", notes: "แยกพริก", createdBy: "ครัวเย็น" },
-    { id: "4", date: "01/04/2569 06:32", time: "เช้า", menu: "โจ๊กหมู", servings: "22", notes: "เนื้อหมูสับละเอียดมากๆ", createdBy: "ครัวเช้า" },
-  ];
+  const getThaiMealLabel = (mealType: string): string => {
+    const mealMap: Record<string, string> = {
+      breakfast: "เช้า",
+      lunch: "กลางวัน",
+      dinner: "เย็น",
+    };
+    return mealMap[mealType] || mealType;
+  };
+
+  // Fetch meal plans from API
+  useEffect(() => {
+    const fetchMealPlans = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const mealPlans = await mealService.getAllMealPlans();
+
+        // Transform API response to MealHistoryRow format
+        const rows: MealHistoryRow[] = mealPlans.map((plan) => {
+          const createdDate = new Date(plan.created_at || new Date());
+          const dateStr = formatThaiDate(createdDate);
+          const timeStr = createdDate.toLocaleTimeString('th-TH', {
+            hour: '2-digit',
+            minute: '2-digit',
+          });
+
+          return {
+            id: plan.id,
+            date: `${dateStr} ${timeStr}`,
+            time: plan.meal_type,
+            menu: plan.menu?.menu_name || "ไม่ระบุ",
+            servings: String(plan.main_amount),
+            notes: plan.menu?.description || "",
+            createdBy: "ระบบ", // This would need to come from plan if available
+          };
+        });
+
+        setHistoryRows(rows);
+      } catch (err) {
+        console.error("Failed to fetch meal plans:", err);
+        setError("ไม่สามารถโหลดข้อมูลได้");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchMealPlans();
+  }, []);
 
   const filteredRows = useMemo(() => {
     return historyRows.filter((row) => {
@@ -96,29 +142,43 @@ export function MealHistoryView({ onBack }: MealHistoryViewProps) {
         <h1 className="text-headline-5 font-bold text-gray-800">รายการแผนอาหารที่บันทึกไว้</h1>
       </div>
 
-      <MealHistoryFilters
-        searchTerm={searchTerm}
-        onSearchTermChange={setSearchTerm}
-        selectedDate={selectedDate}
-        onSelectedDateChange={setSelectedDate}
-        selectedTime={selectedTime}
-        onSelectedTimeChange={setSelectedTime}
-        timeOptions={timeOptions}
-      />
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-2 text-sm text-red-700">
+          {error}
+        </div>
+      )}
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 w-full overflow-hidden relative">
-        <MealHistoryTable rows={paginatedRows} onOpenPopover={handleOpenPopover} />
-        <MealHistoryMobileModal row={activeRow} onClose={handleClosePopover} />
+      {isLoading ? (
+        <div className="flex items-center justify-center py-8">
+          <div className="text-gray-500">กำลังโหลดข้อมูล...</div>
+        </div>
+      ) : (
+        <>
+          <MealHistoryFilters
+            searchTerm={searchTerm}
+            onSearchTermChange={setSearchTerm}
+            selectedDate={selectedDate}
+            onSelectedDateChange={setSelectedDate}
+            selectedTime={selectedTime}
+            onSelectedTimeChange={setSelectedTime}
+            timeOptions={timeOptions}
+          />
 
-        <ElderTablePagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          totalItems={totalItems}
-          startItem={startItem}
-          endItem={endItem}
-          onPageChange={setCurrentPage}
-        />
-      </div>
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 w-full overflow-hidden relative">
+            <MealHistoryTable rows={paginatedRows} onOpenPopover={handleOpenPopover} />
+            <MealHistoryMobileModal row={activeRow} onClose={handleClosePopover} />
+
+            <ElderTablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              startItem={startItem}
+              endItem={endItem}
+              onPageChange={setCurrentPage}
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 }

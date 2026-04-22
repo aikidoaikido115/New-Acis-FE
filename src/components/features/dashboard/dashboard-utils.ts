@@ -25,12 +25,6 @@ export const DEFAULT_VITAL_STATS = [
   { label: "ผิดปกติ", value: 0, variant: "danger" as const },
 ];
 
-export const DEFAULT_MEDICINE_STATUS = [
-  { label: "มื้อเช้า", value: "-" },
-  { label: "มื้อกลางวัน", value: "-" },
-  { label: "มื้อเย็น", value: "-" },
-];
-
 export type ResidentSnapshot = Pick<
   Resident,
   "gender" | "check_in_date" | "expected_check_out_date" | "status" | "floor" | "resident_labels"
@@ -128,14 +122,28 @@ export const filterByDate = <T extends { created_at: string }>(items: T[], date:
   });
 };
 
-export const resolveTimeOfDayKey = (value?: string | null) => {
-  if (!value) return null;
+// เพิ่ม/แก้ไขฟังก์ชันนี้ใน dashboard-util.ts
+export const resolveTimeOfDayKeys = (value?: string | null): string[] => {
+  if (!value) return [];
   const normalized = value.toLowerCase();
-  if (value.includes("เช้า") || normalized.includes("morning")) return "morning";
-  if (value.includes("กลางวัน") || normalized.includes("noon") || normalized.includes("afternoon")) return "noon";
-  if (value.includes("เย็น") || normalized.includes("evening") || normalized.includes("night")) return "evening";
-  return null;
+  const keys: string[] = [];
+  
+  // ใช้ .includes เพื่อให้รองรับค่าที่มีหลายมื้อ เช่น "morning,evening"
+  if (normalized.includes("morning") || normalized.includes("เช้า")) keys.push("morning");
+  if (normalized.includes("noon") || normalized.includes("กลางวัน")) keys.push("noon");
+  if (normalized.includes("evening") || normalized.includes("เย็น")) keys.push("evening");
+  if (normalized.includes("bedtime") || normalized.includes("ก่อนนอน")) keys.push("bedtime");
+  
+  return keys;
 };
+
+// แก้ไข DEFAULT_MEDICINE_STATUS ให้มี 4 มื้อตามจริง
+export const DEFAULT_MEDICINE_STATUS = [
+  { label: "มื้อเช้า", value: "ไม่มีข้อมูล" },
+  { label: "มื้อกลางวัน", value: "ไม่มีข้อมูล" },
+  { label: "มื้อเย็น", value: "ไม่มีข้อมูล" },
+  { label: "ก่อนนอน", value: "ไม่มีข้อมูล" },
+];
 
 export const buildMedicineValue = (total: number, taken: number) => {
   if (total <= 0) return "ไม่มีข้อมูล";

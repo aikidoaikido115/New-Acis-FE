@@ -18,6 +18,7 @@ const MONTHS_SHORT = [
 interface ActivityCalendarProps {
   selectedDate: Date;
   onSelectDate: (date: Date) => void;
+  schedulesByMonth?: Record<string, number>; // { "2025-01-15": count, ... }
 }
 
 function getDaysInMonth(year: number, month: number): number {
@@ -28,7 +29,7 @@ function getFirstDayOfMonth(year: number, month: number): number {
   return new Date(year, month, 1).getDay();
 }
 
-export function ActivityCalendar({ selectedDate, onSelectDate }: ActivityCalendarProps) {
+export function ActivityCalendar({ selectedDate, onSelectDate, schedulesByMonth }: ActivityCalendarProps) {
   const [viewDate, setViewDate] = useState(selectedDate);
   const [viewMode, setViewMode] = useState<ViewMode>("days");
 
@@ -40,6 +41,12 @@ export function ActivityCalendar({ selectedDate, onSelectDate }: ActivityCalenda
   // Year range for year picker (show 12 years)
   const startYear = Math.floor(year / 12) * 12;
   const years = Array.from({ length: 12 }, (_, i) => startYear + i);
+
+  const hasActivityOnDay = (day: number): boolean => {
+    if (!schedulesByMonth) return false;
+    const dateKey = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    return (schedulesByMonth[dateKey] ?? 0) > 0;
+  };
 
   const handlePrevMonth = () => {
     setViewDate(new Date(year, month - 1, 1));
@@ -169,32 +176,25 @@ export function ActivityCalendar({ selectedDate, onSelectDate }: ActivityCalenda
 
             {/* Days of the month */}
             {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => (
-              // --- จุดใต้วันที่ (activity dot logic) ---
-              // หลังเชื่อม API: ให้รับ prop activities: { date: string }[] หรือคล้ายกัน
-              // แล้วเช็คว่าใน activities มีวันที่ตรงกับ day, month, year ปัจจุบันหรือไม่
-              // ตัวอย่าง:
-              //   const hasActivity = activities.some(a =>
-              //     new Date(a.date).getDate() === day &&
-              //     new Date(a.date).getMonth() === month &&
-              //     new Date(a.date).getFullYear() === year
-              //   );
-              // แล้วถ้า hasActivity เป็น true ให้ render <span className="mt-0.5 block h-1 w-1 rounded-full bg-slate-400" /> ใต้ปุ่มวันนั้น
-              // ตอนนี้ยังไม่เชื่อม API เลยยังไม่แสดงจุด
-              <button
-                key={day}
-                type="button"
-                onClick={() => handleSelectDate(day)}
-                className={cn(
-                  "w-9 h-9 rounded-full flex items-center justify-center transition",
-                  isSelected(day)
-                    ? "bg-blue-600 text-white font-semibold"
-                    : isToday(day)
-                    ? "bg-blue-100 text-blue-600 font-medium"
-                    : "text-slate-600 hover:bg-slate-100"
+              <div key={day} className="flex flex-col items-center">
+                <button
+                  type="button"
+                  onClick={() => handleSelectDate(day)}
+                  className={cn(
+                    "w-9 h-9 rounded-full flex items-center justify-center transition",
+                    isSelected(day)
+                      ? "bg-blue-600 text-white font-semibold"
+                      : isToday(day)
+                      ? "bg-blue-100 text-blue-600 font-medium"
+                      : "text-slate-600 hover:bg-slate-100"
+                  )}
+                >
+                  {day}
+                </button>
+                {hasActivityOnDay(day) && (
+                  <span className="mt-1 h-1.5 w-1.5 rounded-full bg-slate-300" />
                 )}
-              >
-                {day}
-              </button>
+              </div>
             ))}
           </div>
         </>
