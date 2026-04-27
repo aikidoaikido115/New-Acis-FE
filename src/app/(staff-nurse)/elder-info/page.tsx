@@ -833,6 +833,28 @@ export default function Page() {
     setIsRelativeViewModalOpen(true);
   };
 
+  const handleCopyRelativeMagicLink = async (id: string) => {
+    try {
+      const resident = allResidents.find((r) => r.id === id);
+      const resolvedId = (resident as { resident_id?: string; id?: string } | undefined)?.resident_id || resident?.id || id;
+      const linkData = await residentService.getRelativeMagicLink(resolvedId);
+      const absoluteLink = new URL(linkData.magic_link, window.location.origin).toString();
+      await navigator.clipboard.writeText(absoluteLink);
+      showToast({
+        type: "success",
+        title: "คัดลอกลิงก์สำเร็จ",
+        message: "ลิงก์สำหรับญาติถูกคัดลอกไปยังคลิปบอร์ดแล้ว",
+      });
+    } catch (error) {
+      const message = getApiErrorMessage(error, "ไม่สามารถคัดลอกลิงก์ญาติได้");
+      showToast({
+        type: "error",
+        title: "คัดลอกไม่สำเร็จ",
+        message,
+      });
+    }
+  };
+
   const handleViewDetail = (id: string) => {
     const resident = allResidents.find(r => r.id === id);
     const resolvedId = (resident as { resident_id?: string; id?: string } | undefined)?.resident_id || resident?.id || id;
@@ -895,6 +917,7 @@ export default function Page() {
                 onEdit={handleEditClick}
                 onViewDetail={handleViewDetail}
                 onViewRelative={handleViewRelative}
+                onCopyMagicLink={handleCopyRelativeMagicLink}
               />
 
               {totalItems > 0 && (

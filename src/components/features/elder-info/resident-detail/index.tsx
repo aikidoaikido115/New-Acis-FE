@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Printer, X } from "lucide-react";
+import { Copy, Printer, X } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
 import { residentService } from "@/services/resident.service";
 import { roomService } from "@/services/room.service";
@@ -15,6 +15,7 @@ import { BasicInfoSection } from "./components/BasicInfoSection";
 import { MedicalInfoSection } from "./components/MedicalInfoSection";
 import { EmergencySafetySection } from "./components/EmergencySafetySection";
 import { formatPrintDateTime } from "./utils/formatters";
+import { useToast } from "@/components/ui/toast";
 
 interface ResidentDetailModalProps {
   isOpen: boolean;
@@ -23,6 +24,7 @@ interface ResidentDetailModalProps {
 }
 
 export function ResidentDetailModal({ isOpen, onClose, residentId }: ResidentDetailModalProps) {
+  const { showToast } = useToast();
   const [resident, setResident] = useState<ApiResident | null>(null);
   const [room, setRoom] = useState<Room | null>(null);
   const [allergies, setAllergies] = useState<string[]>([]);
@@ -30,7 +32,6 @@ export function ResidentDetailModal({ isOpen, onClose, residentId }: ResidentDet
   const [medications, setMedications] = useState<PersonalDrug[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isPrinting, setIsPrinting] = useState(false);
   const [printDateTime, setPrintDateTime] = useState<string>("");
 
   const fetchData = useCallback(async () => {
@@ -87,12 +88,10 @@ export function ResidentDetailModal({ isOpen, onClose, residentId }: ResidentDet
     const handleBeforePrint = () => {
       const now = new Date();
       setPrintDateTime(formatPrintDateTime(now));
-      setIsPrinting(true);
       document.body.classList.add("print-resident-modal");
     };
     const handleAfterPrint = () => {
       document.body.classList.remove("print-resident-modal");
-      setIsPrinting(false);
     };
     window.addEventListener("beforeprint", handleBeforePrint);
     window.addEventListener("afterprint", handleAfterPrint);
@@ -105,11 +104,30 @@ export function ResidentDetailModal({ isOpen, onClose, residentId }: ResidentDet
   const handleExport = () => {
     const now = new Date();
     setPrintDateTime(formatPrintDateTime(now));
-    setIsPrinting(true);
     document.body.classList.add("print-resident-modal");
     setTimeout(() => {
       window.print();
     }, 50);
+  };
+
+  const handleCopyRelativeMagicLink = async () => {
+    if (!residentId) return;
+    try {
+      const linkData = await residentService.getRelativeMagicLink(residentId);
+      const absoluteLink = new URL(linkData.magic_link, window.location.origin).toString();
+      await navigator.clipboard.writeText(absoluteLink);
+      showToast({
+        type: "success",
+        title: "คัดลอกลิงก์สำเร็จ",
+        message: "ลิงก์สำหรับญาติถูกคัดลอกไปยังคลิปบอร์ดแล้ว",
+      });
+    } catch {
+      showToast({
+        type: "error",
+        title: "คัดลอกไม่สำเร็จ",
+        message: "ไม่สามารถคัดลอกลิงก์สำหรับญาติได้",
+      });
+    }
   };
 
   return (
@@ -131,6 +149,14 @@ export function ResidentDetailModal({ isOpen, onClose, residentId }: ResidentDet
             >
               <Printer className="h-4 w-4" />
               พิมพ์ / Export PDF
+            </button>
+            <button
+              type="button"
+              onClick={handleCopyRelativeMagicLink}
+              className="print-hide inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 shadow-sm hover:bg-emerald-100"
+            >
+              <Copy className="h-4 w-4" />
+              คัดลอกลิงก์ญาติ
             </button>
             <button
               type="button"

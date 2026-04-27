@@ -1,6 +1,6 @@
 "use client";
-import { useState, useRef, useEffect } from "react";
-import { Eye, Pencil, MoreVertical } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Eye, Pencil, MoreVertical, Copy } from "lucide-react";
 import type { ResidentDisplayData } from "@/types/elder";
 
 interface ElderTableProps {
@@ -8,9 +8,10 @@ interface ElderTableProps {
   onEdit?: (id: string) => void;
   onViewDetail?: (id: string) => void;
   onViewRelative?: (id: string) => void;
+  onCopyMagicLink?: (id: string) => void;
 }
 
-export function ElderTable({ residents, onEdit, onViewDetail, onViewRelative }: ElderTableProps) {
+export function ElderTable({ residents, onEdit, onViewDetail, onViewRelative, onCopyMagicLink }: ElderTableProps) {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   
   // Close dropdown when clicking outside
@@ -119,6 +120,14 @@ export function ElderTable({ residents, onEdit, onViewDetail, onViewRelative }: 
                       onClick={() => onEdit?.(String(resident.id))}
                     >
                       <Pencil className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    </button>
+                    <button
+                      className="p-1 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded transition"
+                      aria-label="คัดลอกลิงก์ญาติ"
+                      title="คัดลอกลิงก์ญาติ"
+                      onClick={() => onCopyMagicLink?.(String(resident.id))}
+                    >
+                      <Copy className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     </button>
                     <div className="relative dropdown-container">
                       <button

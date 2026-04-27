@@ -14,6 +14,14 @@ export interface ResidentOverviewQuery {
   page_size?: number;
 }
 
+export interface RelativeMagicLinkPayload {
+  resident_id: string;
+  relative_id: string;
+  token: string;
+  magic_link: string;
+  expires_at: string;
+}
+
 class ResidentService {
   /**
    * Get all residents
@@ -111,6 +119,29 @@ class ResidentService {
             },
           }
         : undefined
+    );
+    return response.data.result;
+  }
+
+  /**
+   * Get existing/active relative magic link (used for copy flow)
+   * GET /api/emr/relatives/magic-link?resident_id={id}
+   */
+  async getRelativeMagicLink(residentId: string): Promise<RelativeMagicLinkPayload> {
+    const response = await apiClient.get<ApiResponse<RelativeMagicLinkPayload>>(
+      `/api/emr/relatives/magic-link?resident_id=${encodeURIComponent(residentId)}`
+    );
+    return response.data.result;
+  }
+
+  /**
+   * Issue new relative magic link
+   * POST /api/emr/relatives/magic-link/issue
+   */
+  async issueRelativeMagicLink(residentId: string): Promise<RelativeMagicLinkPayload> {
+    const response = await apiClient.post<ApiResponse<RelativeMagicLinkPayload>>(
+      "/api/emr/relatives/magic-link/issue",
+      { resident_id: residentId }
     );
     return response.data.result;
   }
