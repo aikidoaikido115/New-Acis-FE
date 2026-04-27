@@ -1,10 +1,12 @@
 "use client";
 
-import { Plus } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Pagination } from "@/components/ui/pagination";
 import { useToast } from "@/components/ui/toast";
 import { AddRelativeNoteModal, RelativeNoteFormData } from "../modals/AddRelativeNoteModal";
+import { NoteTimelineControls } from "../NoteTimelineControls";
 import { ContactInformationModal } from "@/components/shared/contact/ContactInformationModal";
 import { resolveContactInfo } from "@/components/shared/contact/contactDirectory";
 import { relativeNoteService } from "@/services/relative-note.service";
@@ -13,11 +15,16 @@ import { roomService } from "@/services/room.service";
 import type { RelativeNote } from "@/types/emr-notes";
 import type { Resident } from "@/types/resident";
 import type { Room } from "@/types/room";
+import { filterAndSortByTimeline, formatBangkokDateTime, type TimelineSortOrder } from "../note-timeline";
 
 export function RelativeNoteTable() {
   const { showToast } = useToast();
+  const { confirm, confirmDialog } = useConfirmDialog();
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [sortOrder, setSortOrder] = useState<TimelineSortOrder>("newest");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingNote, setEditingNote] = useState<RelativeNote | null>(null);
   const [activeContactName, setActiveContactName] = useState<string | null>(null);
   const [notes, setNotes] = useState<RelativeNote[]>([]);
   const [residents, setResidents] = useState<Resident[]>([]);
@@ -67,11 +74,26 @@ export function RelativeNoteTable() {
     );
   }, [rooms]);
 
-  const totalPages = Math.max(1, Math.ceil(notes.length / pageSize));
+  const filteredNotes = useMemo(() => {
+    return filterAndSortByTimeline(notes, selectedDate, sortOrder);
+  }, [notes, selectedDate, sortOrder]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredNotes.length / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
   const pagedNotes = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return notes.slice(start, start + pageSize);
-  }, [notes, currentPage]);
+    const start = (safeCurrentPage - 1) * pageSize;
+    return filteredNotes.slice(start, start + pageSize);
+  }, [filteredNotes, safeCurrentPage]);
+
+  const handleDateChange = (date: Date | null) => {
+    setSelectedDate(date);
+    setCurrentPage(1);
+  };
+
+  const handleSortOrderChange = (value: TimelineSortOrder) => {
+    setSortOrder(value);
+    setCurrentPage(1);
+  };
 
   const handleSubmit = async (data: RelativeNoteFormData) => {
     if (!data.residentId) {
@@ -80,34 +102,93 @@ export function RelativeNoteTable() {
     }
 
     try {
-      await relativeNoteService.create({
-        resident_id: data.residentId,
-        relation: data.relation,
-        content: data.content,
-        send_note: data.sendNote,
-      });
+      const editingId = editingNote?.relative_note_id || editingNote?.id;
+
+      if (editingId) {
+        await relativeNoteService.updateById(editingId, {
+          relation: data.relation,
+          content: data.content,
+          send_note: data.sendNote,
+        });
+      } else {
+        await relativeNoteService.create({
+          resident_id: data.residentId,
+          relation: data.relation,
+          content: data.content,
+          send_note: data.sendNote,
+        });
+      }
+
       await loadData();
-      setIsModalOpen(false);
-      showToast({ type: "success", title: "บันทึกสำเร็จ", message: "เพิ่มโน้ตญาติเรียบร้อยแล้ว" });
+      handleModalClose();
+      showToast({
+        type: "success",
+        title: editingId ? "แก้ไขสำเร็จ" : "บันทึกสำเร็จ",
+        message: editingId ? "อัปเดตโน้ตญาติเรียบร้อยแล้ว" : "เพิ่มโน้ตญาติเรียบร้อยแล้ว",
+      });
     } catch {
-      showToast({ type: "error", title: "บันทึกไม่สำเร็จ", message: "ไม่สามารถสร้างโน้ตญาติได้" });
-      throw new Error("Create relative note failed");
+      showToast({
+        type: "error",
+        title: editingNote ? "แก้ไขไม่สำเร็จ" : "บันทึกไม่สำเร็จ",
+        message: editingNote ? "ไม่สามารถแก้ไขโน้ตญาติได้" : "ไม่สามารถสร้างโน้ตญาติได้",
+      });
+    }
+  };
+
+  const handleOpenCreateModal = () => {
+    setEditingNote(null);
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEditModal = (note: RelativeNote) => {
+    setEditingNote(note);
+    setIsModalOpen(true);
+  };
+
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setEditingNote(null);
+  };
+
+  const handleDelete = async (id: string) => {
+    const shouldDelete = await confirm({
+      title: "ยืนยันการลบ",
+      message: "ยืนยันการลบโน้ตญาตินี้?",
+      confirmText: "ลบ",
+      cancelText: "ยกเลิก",
+      tone: "danger",
+    });
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    try {
+      await relativeNoteService.deleteById(id);
+      setNotes((prev) => prev.filter((item) => (item.relative_note_id || item.id) !== id));
+      showToast({ type: "success", title: "ลบสำเร็จ", message: "ลบโน้ตญาติเรียบร้อยแล้ว" });
+    } catch {
+      showToast({ type: "error", title: "ลบไม่สำเร็จ", message: "ไม่สามารถลบโน้ตญาติได้" });
     }
   };
 
   return (
     <div className="p-6 space-y-4">
-      {/* Add Button Section */}
-      <div>
-        <div className="flex items-center justify-end">
-          <button
-            className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-            onClick={() => setIsModalOpen(true)}
-          >
-            <Plus className="w-4 h-4" />
-            <span className="text-xs sm:text-sm font-medium">เพิ่มบันทึก</span>
-          </button>
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <NoteTimelineControls
+          selectedDate={selectedDate}
+          onDateChange={handleDateChange}
+          sortOrder={sortOrder}
+          onSortOrderChange={handleSortOrderChange}
+        />
+
+        <button
+          className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+          onClick={handleOpenCreateModal}
+        >
+          <Plus className="w-4 h-4" />
+          <span className="text-xs sm:text-sm font-medium">เพิ่มบันทึก</span>
+        </button>
       </div>
 
       {/* Table Section */}
@@ -118,26 +199,25 @@ export function RelativeNoteTable() {
               <tr style={{ backgroundColor: 'rgba(239, 242, 247, 1)', borderBottom: '1px solid rgba(103, 103, 103, 0.48)' }}>
                 <th className="text-left py-3 px-4 text-xs font-semibold w-48" style={{ color: 'rgba(126, 143, 164, 1)' }}>ชื่อ/ห้อง</th>
                 <th className="text-left py-3 px-4 text-xs font-semibold" style={{ color: 'rgba(126, 143, 164, 1)' }}>บันทึก</th>
-                <th className="text-left py-3 px-4 text-xs font-semibold w-32" style={{ color: 'rgba(126, 143, 164, 1)' }}>รูปภาพ</th>
                 <th className="text-right py-3 px-4 text-xs font-semibold w-48" style={{ color: 'rgba(126, 143, 164, 1)' }}>จัดการ</th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={4} className="py-6 px-4 text-center text-sm text-gray-500">
+                  <td colSpan={3} className="py-6 px-4 text-center text-sm text-gray-500">
                     กำลังโหลดข้อมูล...
                   </td>
                 </tr>
               ) : error ? (
                 <tr>
-                  <td colSpan={4} className="py-6 px-4 text-center text-sm text-red-500">
+                  <td colSpan={3} className="py-6 px-4 text-center text-sm text-red-500">
                     {error}
                   </td>
                 </tr>
               ) : pagedNotes.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="py-12 px-4 text-center text-slate-500">
+                  <td colSpan={3} className="py-12 px-4 text-center text-slate-500">
                     <div className="flex flex-col items-center justify-center">
                       <div className="text-sm">ไม่พบข้อมูลบันทึกสำหรับญาติ</div>
                       <div className="text-xs mt-1">ลองเปลี่ยนคำค้นหาหรือตัวกรองใหม่</div>
@@ -153,32 +233,53 @@ export function RelativeNoteTable() {
                     ? `${resident.first_name || ""} ${resident.last_name || ""}`.trim() || note.resident_id
                     : note.resident_id;
                   const roomText = room ? `ห้อง ${room.room_number}` : "";
-                  const by = note.created_by_staff_id || "-";
+                  const by = note.created_by_staff_name || note.created_by_staff_id || "-";
+                  const createdAt = formatBangkokDateTime(note.created_at);
 
                   return (
                     <tr key={noteId} className="bg-white hover:bg-gray-50 transition-colors" style={{ borderBottom: '1px solid rgba(103, 103, 103, 0.48)' }}>
                       <td className="py-4 px-4 text-xs sm:text-sm text-gray-900 align-middle">
                         <span className="underline">{name}</span>
                         {roomText ? <p className="text-[11px] text-gray-500">{roomText}</p> : null}
+                        <p className="text-[11px] text-gray-400 mt-1">บันทึกเมื่อ {createdAt}</p>
                       </td>
                       <td className="py-4 px-4 align-middle">
                         <p className="text-xs sm:text-sm text-gray-700">{note.content || "-"}</p>
                         <p className="text-[11px] text-gray-500 mt-1">ความสัมพันธ์: {note.relation}</p>
                       </td>
-                      <td className="py-4 px-4 align-middle text-xs text-gray-400">-</td>
-                      <td className="py-4 px-4 align-middle text-right text-xs sm:text-sm text-gray-500">
-                        โดย{" "}
-                        {by !== "-" ? (
+                      <td className="py-4 px-4 align-middle">
+                        <div className="flex items-center justify-end gap-3 whitespace-nowrap">
+                          <span className="text-xs sm:text-sm text-gray-400">
+                            โดย{" "}
+                            {by !== "-" ? (
+                              <button
+                                type="button"
+                                onClick={() => setActiveContactName(by)}
+                                className="text-blue-600 underline hover:text-blue-700"
+                              >
+                                {by}
+                              </button>
+                            ) : (
+                              by
+                            )}
+                          </span>
                           <button
                             type="button"
-                            onClick={() => setActiveContactName(by)}
-                            className="text-blue-600 underline hover:text-blue-700"
+                            onClick={() => handleOpenEditModal(note)}
+                            className="p-1.5 text-blue-500 hover:bg-blue-50 rounded transition-colors"
+                            aria-label="แก้ไขโน้ตญาติ"
                           >
-                            {by}
+                            <Pencil className="w-4 h-4" />
                           </button>
-                        ) : (
-                          by
-                        )}
+                          <button
+                            type="button"
+                            onClick={() => void handleDelete(noteId)}
+                            className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors"
+                            aria-label="ลบโน้ตญาติ"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -192,7 +293,7 @@ export function RelativeNoteTable() {
       {/* Pagination Section - Separate (no box, just aligned) */}
       <div className="flex justify-end">
         <Pagination 
-          currentPage={currentPage} 
+          currentPage={safeCurrentPage} 
           totalPages={totalPages} 
           onPageChange={setCurrentPage} 
         />
@@ -200,11 +301,22 @@ export function RelativeNoteTable() {
 
       <AddRelativeNoteModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={handleModalClose}
         onSubmit={handleSubmit}
         residents={residents}
         rooms={rooms}
         showResidentPicker
+        mode={editingNote ? "edit" : "create"}
+        initialData={
+          editingNote
+            ? {
+                residentId: editingNote.resident_id,
+                relation: editingNote.relation || "",
+                content: editingNote.content || "",
+                sendNote: editingNote.send_note,
+              }
+            : undefined
+        }
       />
 
       {activeContactName ? (
@@ -213,6 +325,8 @@ export function RelativeNoteTable() {
           onClose={() => setActiveContactName(null)}
         />
       ) : null}
+
+      {confirmDialog}
     </div>
   );
 }
