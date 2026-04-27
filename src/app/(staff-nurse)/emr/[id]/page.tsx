@@ -2,13 +2,14 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Calendar, ArrowLeft, AlertTriangle, Stethoscope, ChevronDown } from "lucide-react";
-import { VitalSignsDetailTable } from "@/components/features/EMR/detail/VitalSignsDetailTable";
+import { ArrowLeft, AlertTriangle, Stethoscope, ChevronDown } from "lucide-react";
+import { VitalSignsDetailTable } from "../../../../components/features/EMR/detail/VitalSignsDetailTable";
 import { GraphView } from "@/components/features/EMR/detail/GraphView";
 import { DoctorOrderDetailTable } from "@/components/features/EMR/detail/DoctorOrderDetailTable";
 import { NurseNoteDetailTable } from "@/components/features/EMR/detail/NurseNoteDetailTable";
 import { WoundCareDetailTable } from "@/components/features/EMR/detail/WoundCareDetailTable";
 import { RelativeNoteDetailTable } from "@/components/features/EMR/detail/RelativeNoteDetailTable";
+import { DatePicker } from "@/components/ui/date-picker";
 import { residentService } from "@/services/resident.service";
 import { roomService } from "@/services/room.service";
 import apiClient, { ApiResponse } from "@/lib/axios.ts/api-client";
@@ -34,6 +35,7 @@ export default function PatientDetailPage() {
   const [allergies, setAllergies] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
 
   useEffect(() => {
     const loadData = async () => {
@@ -78,8 +80,6 @@ export default function PatientDetailPage() {
 
     void loadData();
   }, [residentId]);
-
-  const selectedDate = new Date().toLocaleDateString("th-TH");
 
   const residentName = useMemo(() => {
     if (!resident) return "-";
@@ -141,9 +141,13 @@ export default function PatientDetailPage() {
         <div className="flex items-center justify-between">
           <h1 className="text-headline-5 font-bold text-gray-800">เวชระเบียน</h1>
 
-          <div className="flex items-center gap-2 px-4 py-2 border-2 border-blue-500 rounded-lg bg-white">
-            <span className="text-body-small font-medium text-blue-500">{selectedDate}</span>
-            <Calendar className="w-4 h-4 text-blue-500" />
+          <div className="w-[220px]">
+            <DatePicker
+              value={selectedDate}
+              onChange={(date) => setSelectedDate(date || new Date())}
+              placeholder="เลือกวันที่"
+              className="w-full [&>button]:w-full [&>button]:justify-between [&>button]:border-2 [&>button]:border-blue-500 [&>button]:hover:bg-blue-50"
+            />
           </div>
         </div>
 
@@ -238,7 +242,12 @@ export default function PatientDetailPage() {
         </div>
 
         <div>
-          {activeTab === "vital_signs" && <VitalSignsDetailTable patientId={residentId} />}
+          {activeTab === "vital_signs" && (
+            <VitalSignsDetailTable
+              patientId={residentId}
+              selectedDate={selectedDate}
+            />
+          )}
           {activeTab === "graph" && <GraphView patientId={residentId} />}
           {activeTab === "doctor_order" && <DoctorOrderDetailTable patientId={residentId} />}
           {activeTab === "nurse_note" && <NurseNoteDetailTable patientId={residentId} />}
