@@ -72,6 +72,7 @@ class AuthService {
       '1': 'nurse',
       '2': 'kitchen',
       '3': 'relative',
+      '4': 'admin',
     };
     
     return roleIdMap[roleId] || null;
@@ -84,6 +85,16 @@ class AuthService {
     if (!roleName) return null;
 
     const normalizedRole = roleName.trim().toLowerCase();
+
+    if (
+      normalizedRole === 'superuser' ||
+      normalizedRole === 'super user' ||
+      normalizedRole === 'super_user' ||
+      normalizedRole.includes('superuser') ||
+      normalizedRole.includes('super_user')
+    ) {
+      return 'superuser';
+    }
 
     if (
       normalizedRole === 'medical staff' ||
@@ -106,6 +117,14 @@ class AuthService {
       return 'relative';
     }
 
+    if (
+      normalizedRole === 'admin' ||
+      normalizedRole.includes('admin') ||
+      normalizedRole === 'administrator'
+    ) {
+      return 'admin';
+    }
+
     return null;
   }
 
@@ -114,9 +133,9 @@ class AuthService {
    */
   private resolveInternalRole(profile: User): string {
     return (
-      this.mapRoleIdToInternal(profile.role_id) ||
       this.mapRoleNameToInternal(profile.role_name) ||
       this.mapRoleNameToInternal(profile.role?.name) ||
+      this.mapRoleIdToInternal(profile.role_id) ||
       'nurse'
     );
   }
