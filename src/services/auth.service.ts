@@ -3,6 +3,8 @@ import { resolveProfileImage } from '@/lib/profile-image';
 import type {
   LoginRequest,
   LoginResponse,
+  RelativePortalLoginRequest,
+  RelativePortalLoginResponse,
   RegisterRequest,
   ForgotPasswordRequest,
   VerifyOTPRequest,
@@ -185,6 +187,44 @@ class AuthService {
     document.cookie = `auth_token=${apiResult.token}; path=/; max-age=${cookieMaxAge}; SameSite=Lax`;
     document.cookie = `user_role=${mappedRole}; path=/; max-age=${cookieMaxAge}; SameSite=Lax`;
     
+    return userData;
+  }
+
+  /**
+   * Login relative portal user with resident_id/token and birthday password (DDMMYYYY)
+   */
+  async relativePortalLogin(credentials: RelativePortalLoginRequest): Promise<LoginResponse> {
+    const response = await apiClient.post<ApiResponse<RelativePortalLoginResponse>>(
+      '/api/relative/auth/login',
+      credentials
+    );
+
+    const apiResult = response.data.result;
+
+    if (!apiResult.token) {
+      throw new Error('No token received from server');
+    }
+
+    localStorage.setItem('access_token', apiResult.token);
+
+    const userData: LoginResponse = {
+      token: apiResult.token,
+      user_id: apiResult.user_id,
+      username: apiResult.username,
+      email: apiResult.email,
+      first_name: 'ญาติ',
+      last_name: '',
+      profile_image: '',
+      role_name: 'relative',
+      resident_id: apiResult.resident_id,
+    };
+
+    this.setCurrentUser(userData);
+
+    const cookieMaxAge = this.getAuthCookieMaxAge(apiResult.token, credentials.remember);
+    document.cookie = `auth_token=${apiResult.token}; path=/; max-age=${cookieMaxAge}; SameSite=Lax`;
+    document.cookie = `user_role=relative; path=/; max-age=${cookieMaxAge}; SameSite=Lax`;
+
     return userData;
   }
 
