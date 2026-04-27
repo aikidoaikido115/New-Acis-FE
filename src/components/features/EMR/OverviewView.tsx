@@ -1,23 +1,77 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { DatePicker } from "@/components/ui/date-picker";
+import { intakeService } from "@/services/intake.service";
+import { roomService } from "@/services/room.service";
 import { VitalSignsTable } from "./tables/VitalSignsTable";
 import { DoctorOrderTable } from "./tables/DoctorOrderTable";
 import { NurseNoteTable } from "./tables/NurseNoteTable";
 import { WoundCareTable } from "./tables/WoundCareTable";
 import { RelativeNoteTable } from "./tables/RelativeNoteTable";
+import type { Room } from "@/types/room";
+import type { IntakeLabel } from "@/types/intake";
 
 type SubTab = "vital_signs" | "doctor_order" | "nurse_note" | "wound_care" | "relative_note";
 type VitalSignStatus = "all" | "normal" | "abnormal";
+type HelpLevelFilter = "all" | "self" | "partial" | "bedridden";
+
+function getHelpLevelLabelIds(labels: IntakeLabel[], helpLevel: HelpLevelFilter): string[] {
+  if (helpLevel === "all") {
+    return [];
+  }
+
+  if (helpLevel === "self") {
+    return labels
+      .filter((item) => item.label_name.includes("ช่วยเหลือตัวเองได้ทั้งหมด"))
+      .map((item) => item.label_id);
+  }
+
+  if (helpLevel === "partial") {
+    return labels
+      .filter((item) => item.label_name.includes("ช่วยเหลือตัวเองได้บางส่วน"))
+      .map((item) => item.label_id);
+  }
+
+  return labels
+    .filter((item) => item.label_name.includes("ติดเตียง"))
+    .map((item) => item.label_id);
+}
 
 export function OverviewView() {
   const [activeTab, setActiveTab] = useState<SubTab>("vital_signs");
   const [selectedFloor, setSelectedFloor] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState<VitalSignStatus>("all");
-  const [selectedHelpLevel, setSelectedHelpLevel] = useState("ทุกช่วย");
+  const [selectedHelpLevel, setSelectedHelpLevel] = useState<HelpLevelFilter>("all");
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [intakeLabels, setIntakeLabels] = useState<IntakeLabel[]>([]);
+
+  useEffect(() => {
+    const loadFilterData = async () => {
+      try {
+        const [roomData, labelData] = await Promise.all([roomService.getAll(), intakeService.getAllLabels()]);
+        setRooms(roomData || []);
+        setIntakeLabels(labelData || []);
+      } catch {
+        setRooms([]);
+        setIntakeLabels([]);
+      }
+    };
+
+    void loadFilterData();
+  }, []);
+
+  const floorOptions = useMemo(() => {
+    const uniqueFloors = Array.from(new Set((rooms || []).map((room) => Number(room.floor)).filter((value) => Number.isFinite(value))));
+    return uniqueFloors.sort((a, b) => a - b);
+  }, [rooms]);
+
+  const selectedLabelIds = useMemo(
+    () => getHelpLevelLabelIds(intakeLabels, selectedHelpLevel),
+    [intakeLabels, selectedHelpLevel]
+  );
 
   const overviewDatePickerClassName =
     "w-[200px] [&>button]:w-full [&>button]:justify-between [&>button]:border-2 [&>button]:border-blue-500 [&>button]:hover:bg-blue-50";
@@ -45,9 +99,11 @@ export function OverviewView() {
                 className="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-body-small bg-white cursor-pointer text-black"
               >
                 <option value="all">ทุกชั้น</option>
-                <option value="1">ชั้น 1</option>
-                <option value="2">ชั้น 2</option>
-                <option value="3">ชั้น 3</option>
+                {floorOptions.map((floor) => (
+                  <option key={floor} value={String(floor)}>
+                    ชั้น {floor}
+                  </option>
+                ))}
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
             </div>
@@ -58,12 +114,13 @@ export function OverviewView() {
             <div className="relative">
               <select
                 value={selectedHelpLevel}
-                onChange={(e) => setSelectedHelpLevel(e.target.value)}
+                onChange={(e) => setSelectedHelpLevel(e.target.value as HelpLevelFilter)}
                 className="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-body-small bg-white cursor-pointer text-black"
               >
-                <option>ทุกช่วย</option>
-                <option>ช่วยเหลือตัวเองได้</option>
-                <option>ต้องการความช่วยเหลือ</option>
+                <option value="all">ทั้งหมด</option>
+                <option value="self">ช่วยเหลือตัวเองได้</option>
+                <option value="partial">ต้องการความช่วยเหลือ</option>
+                <option value="bedridden">ติดเตียง</option>
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
             </div>
@@ -77,7 +134,7 @@ export function OverviewView() {
                 onChange={(e) => setSelectedStatus(e.target.value as VitalSignStatus)}
                 className="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-body-small bg-white cursor-pointer text-black"
               >
-                <option value="all">ทุกสถานะ</option>
+                <option value="all">ทั้งหมด</option>
                 <option value="normal">ปกติ</option>
                 <option value="abnormal">ต้องติดตาม</option>
               </select>
@@ -85,13 +142,15 @@ export function OverviewView() {
             </div>
           </div>
 
-          {/* Date Picker */}
-          <DatePicker
-            value={selectedDate}
-            onChange={setSelectedDate}
-            placeholder="เลือกวันที่"
-            className={overviewDatePickerClassName}
-          />
+          {/* Date Picker (เฉพาะ Vital Signs) */}
+          {activeTab === "vital_signs" ? (
+            <DatePicker
+              value={selectedDate}
+              onChange={setSelectedDate}
+              placeholder="เลือกวันที่"
+              className={overviewDatePickerClassName}
+            />
+          ) : null}
       </div>
 
       {/* Sub-tabs Navigation */}
@@ -117,6 +176,8 @@ export function OverviewView() {
           <VitalSignsTable
             selectedFloor={selectedFloor}
             selectedStatus={selectedStatus}
+            selectedLabelIds={selectedLabelIds}
+            selectedDate={selectedDate}
           />
         )}
         {activeTab === "doctor_order" && <DoctorOrderTable />}
