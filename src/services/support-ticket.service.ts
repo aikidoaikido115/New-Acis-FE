@@ -2,7 +2,7 @@ import apiClient, { ApiResponse } from "@/lib/axios.ts/api-client";
 
 export interface CreateSupportTicketRequest {
   name: string;
-  email: string;
+  email?: string;
   subject: string;
   message: string;
 }

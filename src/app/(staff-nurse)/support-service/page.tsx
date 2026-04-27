@@ -77,9 +77,7 @@ export default function SupportPage() {
       errors.name = "กรุณากรอกชื่อผู้แจ้ง";
     }
 
-    if (!formData.email.trim()) {
-      errors.email = "กรุณากรอกอีเมล";
-    } else if (!EMAIL_PATTERN.test(formData.email.trim())) {
+    if (formData.email.trim() && !EMAIL_PATTERN.test(formData.email.trim())) {
       errors.email = "รูปแบบอีเมลไม่ถูกต้อง";
     }
 
@@ -177,7 +175,7 @@ export default function SupportPage() {
 
               <div>
                 <label className="block text-body-small font-medium text-gray-700">
-                  อีเมล<span className="text-red-500">*</span>
+                  อีเมล <span className="text-gray-500">(ไม่บังคับ)</span>
                 </label>
                 <Input
                   placeholder="example@email.com"
@@ -185,7 +183,6 @@ export default function SupportPage() {
                   value={formData.email}
                   onChange={(e) => updateField("email", e.target.value)}
                   className="mt-3 h-11 text-black border-gray-300 bg-[rgba(245,245,245,1)] placeholder:text-[#8C929D]"
-                  required
                 />
                 {validationErrors.email && <p className="mt-2 text-caption text-red-600">{validationErrors.email}</p>}
               </div>

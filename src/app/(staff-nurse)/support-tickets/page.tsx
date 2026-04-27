@@ -5,6 +5,7 @@ import { Search, Eye, Trash2 } from "lucide-react";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
+import { useAuth } from "@/hooks/useAuth";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import supportTicketService, { SupportTicket, SupportTicketStatus } from "@/services/support-ticket.service";
 
@@ -52,9 +53,37 @@ function formatThaiDate(value: string) {
   });
 }
 
+function isSuperuserOrHigher(role?: string): boolean {
+  if (!role) return false;
+  const normalizedRole = role.toLowerCase();
+  return (
+    normalizedRole.includes("superuser") ||
+    normalizedRole.includes("super user") ||
+    normalizedRole.includes("super_user") ||
+    normalizedRole.includes("admin")
+  );
+}
+
+function getReporterRoleThai(role?: string): string {
+  if (!role) return "พยาบาล";
+  const normalizedRole = role.toLowerCase().trim();
+
+  if (
+    normalizedRole.includes("kitchen") ||
+    normalizedRole.includes("ครัว") ||
+    normalizedRole.includes("โภชนา")
+  ) {
+    return "ห้องครัว";
+  }
+
+  return "พยาบาล";
+}
+
 export default function SupportTicketsPage() {
+  const { user, isLoading: isAuthLoading } = useAuth();
   const { showToast } = useToast();
   const { confirm, confirmDialog } = useConfirmDialog();
+  const canManageSupportTickets = isSuperuserOrHigher(user?.role_name);
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -71,6 +100,10 @@ export default function SupportTicketsPage() {
   const debouncedSearch = useDebouncedValue(searchTerm, 400);
 
   const loadTickets = useCallback(async () => {
+    if (isAuthLoading) {
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
@@ -79,13 +112,18 @@ export default function SupportTicketsPage() {
         search: debouncedSearch.trim() || undefined,
         status: statusFilter === "all" ? undefined : statusFilter,
       });
-      setTickets(result);
+
+      const visibleTickets = canManageSupportTickets
+        ? result
+        : result.filter((ticket) => ticket.created_by_user_id === user?.user_id);
+
+      setTickets(visibleTickets);
     } catch {
       setError("ไม่สามารถโหลดรายการแจ้งปัญหาได้");
     } finally {
       setIsLoading(false);
     }
-  }, [debouncedSearch, statusFilter]);
+  }, [canManageSupportTickets, debouncedSearch, isAuthLoading, statusFilter, user?.user_id]);
 
   useEffect(() => {
     void loadTickets();
@@ -122,6 +160,15 @@ export default function SupportTicketsPage() {
   };
 
   const handleUpdateStatus = async () => {
+    if (!canManageSupportTickets) {
+      showToast({
+        type: "error",
+        title: "ไม่มีสิทธิ์ดำเนินการ",
+        message: "เฉพาะผู้ใช้ระดับ Superuser ขึ้นไปเท่านั้น",
+      });
+      return;
+    }
+
     if (!selectedTicket || isStatusUpdating) {
       return;
     }
@@ -158,6 +205,15 @@ export default function SupportTicketsPage() {
   };
 
   const handleDeleteTicket = async (ticket: SupportTicket) => {
+    if (!canManageSupportTickets) {
+      showToast({
+        type: "error",
+        title: "ไม่มีสิทธิ์ดำเนินการ",
+        message: "เฉพาะผู้ใช้ระดับ Superuser ขึ้นไปเท่านั้น",
+      });
+      return;
+    }
+
     if (ticket.status !== "resolved") {
       showToast({
         type: "error",
@@ -276,7 +332,7 @@ export default function SupportTicketsPage() {
                     <tr key={ticket.support_ticket_id} className="border-b border-gray-100 hover:bg-gray-50/70">
                       <td className="px-4 py-4 text-body-small text-gray-700">{ticket.subject}</td>
                       <td className="px-4 py-4 text-body-small text-gray-700">{ticket.name}</td>
-                      <td className="px-4 py-4 text-body-small text-gray-600">{ticket.reporter_role}</td>
+                      <td className="px-4 py-4 text-body-small text-gray-600">{getReporterRoleThai(ticket.reporter_role)}</td>
                       <td className="px-4 py-4">
                         <StatusBadge status={ticket.status} />
                       </td>
@@ -292,7 +348,7 @@ export default function SupportTicketsPage() {
                             ดูรายละเอียด
                           </button>
 
-                          {ticket.status === "resolved" && (
+                          {canManageSupportTickets && ticket.status === "resolved" && (
                             <button
                               type="button"
                               onClick={() => void handleDeleteTicket(ticket)}
@@ -364,7 +420,7 @@ export default function SupportTicketsPage() {
                   </div>
                   <div>
                     <p className="text-caption text-gray-500">บทบาทผู้แจ้ง</p>
-                    <p className="text-body-small text-gray-800">{selectedTicket.reporter_role}</p>
+                    <p className="text-body-small text-gray-800">{getReporterRoleThai(selectedTicket.reporter_role)}</p>
                   </div>
                   <div>
                     <p className="text-caption text-gray-500">วันที่แจ้ง</p>
@@ -379,43 +435,45 @@ export default function SupportTicketsPage() {
                   </p>
                 </div>
 
-                <div className="grid gap-3 border-t border-gray-200 pt-4 md:grid-cols-[1fr_auto_auto] md:items-end">
-                  <div>
-                    <label className="text-caption text-gray-500">อัปเดตสถานะ</label>
-                    <select
-                      value={statusDraft}
-                      onChange={(event) => setStatusDraft(event.target.value as SupportTicketStatus)}
-                      disabled={isStatusUpdating || deletingTicketId === selectedTicket.support_ticket_id}
-                      className="mt-1 h-11 w-full rounded-lg border border-gray-300 px-3 text-body-small text-gray-700 focus:border-blue-500 focus:outline-none disabled:bg-gray-100"
-                    >
-                      {STATUS_OPTIONS.filter((item) => item.value !== "all").map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                {canManageSupportTickets ? (
+                  <div className="grid gap-3 border-t border-gray-200 pt-4 md:grid-cols-[1fr_auto_auto] md:items-end">
+                    <div>
+                      <label className="text-caption text-gray-500">อัปเดตสถานะ</label>
+                      <select
+                        value={statusDraft}
+                        onChange={(event) => setStatusDraft(event.target.value as SupportTicketStatus)}
+                        disabled={isStatusUpdating || deletingTicketId === selectedTicket.support_ticket_id}
+                        className="mt-1 h-11 w-full rounded-lg border border-gray-300 px-3 text-body-small text-gray-700 focus:border-blue-500 focus:outline-none disabled:bg-gray-100"
+                      >
+                        {STATUS_OPTIONS.filter((item) => item.value !== "all").map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-                  <button
-                    type="button"
-                    onClick={() => void handleUpdateStatus()}
-                    disabled={isStatusUpdating || deletingTicketId === selectedTicket.support_ticket_id}
-                    className="h-11 rounded-lg bg-blue-600 px-6 text-body-small text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {isStatusUpdating ? "กำลังบันทึก..." : "บันทึกสถานะ"}
-                  </button>
-
-                  {selectedTicket.status === "resolved" && (
                     <button
                       type="button"
-                      onClick={() => void handleDeleteTicket(selectedTicket)}
-                      disabled={deletingTicketId === selectedTicket.support_ticket_id || isStatusUpdating}
-                      className="h-11 rounded-lg border border-red-300 px-6 text-body-small text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                      onClick={() => void handleUpdateStatus()}
+                      disabled={isStatusUpdating || deletingTicketId === selectedTicket.support_ticket_id}
+                      className="h-11 rounded-lg bg-blue-600 px-6 text-body-small text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      {deletingTicketId === selectedTicket.support_ticket_id ? "กำลังลบ..." : "ลบ Ticket"}
+                      {isStatusUpdating ? "กำลังบันทึก..." : "บันทึกสถานะ"}
                     </button>
-                  )}
-                </div>
+
+                    {selectedTicket.status === "resolved" && (
+                      <button
+                        type="button"
+                        onClick={() => void handleDeleteTicket(selectedTicket)}
+                        disabled={deletingTicketId === selectedTicket.support_ticket_id || isStatusUpdating}
+                        className="h-11 rounded-lg border border-red-300 px-6 text-body-small text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {deletingTicketId === selectedTicket.support_ticket_id ? "กำลังลบ..." : "ลบ Ticket"}
+                      </button>
+                    )}
+                  </div>
+                ) : null}
               </div>
             )}
           </div>
