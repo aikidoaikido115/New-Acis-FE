@@ -1,31 +1,33 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { DailySummaryHeader } from './daily-summary-header';
 import { DailyActivities } from './daily-activities';
 import { AdditionalNotes } from './additional-notes';
+import type { RelativeDashboardNote } from '@/services/relative-portal.service';
 
 interface RelativeDashboardContentProps {
   residentName?: string;
-  residentId?: string;
   lastUpdatedAt?: string;
+  notes?: RelativeDashboardNote[];
+  isLoading?: boolean;
+  isInitialLoading?: boolean;
+  error?: string | null;
   onDateChange?: (date: string) => void;
   showPreviewBanner?: boolean;
 }
 
 export function RelativeDashboardContent({ 
   residentName,
-  residentId,
   lastUpdatedAt,
+  notes = [],
+  isLoading = false,
+  isInitialLoading = false,
+  error = null,
   onDateChange,
   showPreviewBanner = false 
 }: RelativeDashboardContentProps) {
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
-  const [lastUpdatedAtState, setLastUpdatedAtState] = useState<string | undefined>(lastUpdatedAt);
-
-  useEffect(() => {
-    setLastUpdatedAtState(lastUpdatedAt);
-  }, [lastUpdatedAt]);
 
   const formatDateKey = (date: Date): string => {
     const yyyy = date.getFullYear();
@@ -33,8 +35,6 @@ export function RelativeDashboardContent({
     const dd = String(date.getDate()).padStart(2, '0');
     return `${yyyy}-${mm}-${dd}`;
   };
-
-  const selectedDateKey = selectedDate ? formatDateKey(selectedDate) : undefined;
 
   const handleDateChange = (date: Date | null) => {
     setSelectedDate(date);
@@ -54,22 +54,50 @@ export function RelativeDashboardContent({
         </div>
       )}
 
-      {/* Header with date */}
-      <DailySummaryHeader 
-        onDateChange={handleDateChange}
-        selectedDate={selectedDate}
-        lastUpdatedAt={lastUpdatedAtState}
-      />
+      {isInitialLoading ? (
+        <>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+            <div className="h-8 w-48 rounded bg-gray-200 animate-pulse" />
+            <div className="h-10 w-64 rounded bg-gray-200 animate-pulse" />
+          </div>
 
-      {/* Daily Activities */}
-      <DailyActivities />
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="h-7 w-56 rounded bg-gray-200 animate-pulse mb-6" />
+            <div className="flex flex-col items-center justify-center py-12 gap-4">
+              <div className="h-24 w-24 rounded-full bg-gray-200 animate-pulse" />
+              <div className="h-6 w-40 rounded bg-gray-200 animate-pulse" />
+            </div>
+          </div>
 
-      {/* Additional Notes */}
-      <AdditionalNotes
-        residentId={residentId}
-        selectedDate={selectedDateKey}
-        onLastUpdatedChange={setLastUpdatedAtState}
-      />
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="h-7 w-64 rounded bg-gray-200 animate-pulse mb-6" />
+            <div className="space-y-3">
+              <div className="h-5 w-full rounded bg-gray-200 animate-pulse" />
+              <div className="h-5 w-11/12 rounded bg-gray-200 animate-pulse" />
+              <div className="h-5 w-10/12 rounded bg-gray-200 animate-pulse" />
+            </div>
+          </div>
+        </>
+      ) : (
+        <>
+          {/* Header with date */}
+          <DailySummaryHeader 
+            onDateChange={handleDateChange}
+            selectedDate={selectedDate}
+            lastUpdatedAt={lastUpdatedAt}
+          />
+
+          {/* Daily Activities */}
+          <DailyActivities />
+
+          {/* Additional Notes */}
+          <AdditionalNotes
+            notes={notes}
+            isLoading={isLoading}
+            error={error}
+          />
+        </>
+      )}
     </div>
   );
 }
