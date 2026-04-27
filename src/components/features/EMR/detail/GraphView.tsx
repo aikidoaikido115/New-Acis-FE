@@ -75,7 +75,17 @@ export function GraphView({ patientId }: GraphViewProps) {
   }
 
   if (chartData.dates.length < 2) {
-    return <div className="p-6 text-sm text-gray-500">ข้อมูลไม่เพียงพอสำหรับแสดงกราฟ</div>;
+    return (
+      <div className="p-6">
+        <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-6 text-center">
+          <p className="text-sm font-medium text-gray-700">ยังไม่สามารถแสดงกราฟได้</p>
+          <p className="mt-1 text-xs text-gray-500">
+            ต้องมีข้อมูลสัญญาณชีพอย่างน้อย 2 ครั้ง (ปัจจุบัน {records.length} ครั้ง)
+          </p>
+          <p className="mt-2 text-xs text-gray-500">กรุณาเพิ่มข้อมูลสัญญาณชีพเพิ่มเติม แล้วกลับมาดูกราฟอีกครั้ง</p>
+        </div>
+      </div>
+    );
   }
 
   // Generate path for heart rate line
