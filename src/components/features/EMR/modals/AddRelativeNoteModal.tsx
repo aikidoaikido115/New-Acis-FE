@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { X, Send } from "lucide-react";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
@@ -16,6 +16,8 @@ interface AddRelativeNoteModalProps {
   residents?: Resident[];
   rooms?: Room[];
   showResidentPicker?: boolean;
+  mode?: "create" | "edit";
+  initialData?: Partial<RelativeNoteFormData>;
 }
 
 export interface RelativeNoteFormData {
@@ -74,6 +76,17 @@ const baseInputClassName =
 
 const fullWidthDatePickerClassName = "w-full [&>button]:w-full [&>button]:justify-between";
 
+const getDefaultTime = (): string => new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" });
+
+const buildFormData = (initialData?: Partial<RelativeNoteFormData>): RelativeNoteFormData => ({
+  residentId: initialData?.residentId || "",
+  date: initialData?.date || formatIsoDate(new Date()),
+  time: initialData?.time || getDefaultTime(),
+  relation: initialData?.relation || "",
+  content: initialData?.content || "",
+  sendNote: initialData?.sendNote ?? true,
+});
+
 export function AddRelativeNoteModal({
   isOpen,
   onClose,
@@ -81,33 +94,24 @@ export function AddRelativeNoteModal({
   residents = [],
   rooms = [],
   showResidentPicker = false,
+  mode = "create",
+  initialData,
 }: AddRelativeNoteModalProps) {
   const { confirm, confirmDialog } = useConfirmDialog();
   const { showToast } = useToast();
-  const [formData, setFormData] = useState<RelativeNoteFormData>({
-    residentId: "",
-    date: formatIsoDate(new Date()),
-    time: new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }),
-    relation: "",
-    content: "",
-    sendNote: true
-  });
+  const initialFormData = useMemo(() => buildFormData(initialData), [initialData]);
+  const [formData, setFormData] = useState<RelativeNoteFormData>(() => buildFormData(initialData));
 
   const firstInputRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
-  const hasUnsavedChanges =
-    formData.relation.trim().length > 0 || formData.content.trim().length > 0;
+  const hasUnsavedChanges = useMemo(
+    () => JSON.stringify(formData) !== JSON.stringify(initialFormData),
+    [formData, initialFormData]
+  );
 
-  const resetForm = () => {
-    setFormData({
-      residentId: "",
-      date: formatIsoDate(new Date()),
-      time: new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }),
-      relation: "",
-      content: "",
-      sendNote: true
-    });
-  };
+  const resetForm = useCallback(() => {
+    setFormData(buildFormData(initialData));
+  }, [initialData]);
 
   const handleClose = useCallback(async () => {
     if (hasUnsavedChanges) {
@@ -131,6 +135,14 @@ export function AddRelativeNoteModal({
       firstInputRef.current.focus();
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    setFormData(buildFormData(initialData));
+  }, [initialData, isOpen]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -215,7 +227,7 @@ export function AddRelativeNoteModal({
           className="bg-white rounded-2xl shadow-xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200"
         >
         <div className="flex items-center justify-between p-4 border-b border-gray-200 sticky top-0 bg-white z-10">
-          <h2 id="modal-title" className="text-lg font-semibold text-slate-800">เพิ่มบันทึกญาติ</h2>
+          <h2 id="modal-title" className="text-lg font-semibold text-slate-800">{mode === "edit" ? "แก้ไขบันทึกญาติ" : "เพิ่มบันทึกญาติ"}</h2>
           <button
             onClick={() => void handleClose()}
             className="text-gray-400 hover:text-gray-600 transition-colors rounded-lg p-1 hover:bg-gray-100"
@@ -318,7 +330,7 @@ export function AddRelativeNoteModal({
               type="submit"
               className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm font-medium"
             >
-              บันทึก
+              {mode === "edit" ? "บันทึกการแก้ไข" : "บันทึก"}
             </button>
           </div>
         </form>

@@ -16,6 +16,8 @@ interface AddNurseNoteModalProps {
   residents?: Resident[];
   rooms?: Room[];
   showResidentPicker?: boolean;
+  mode?: "create" | "edit";
+  initialData?: Partial<NurseNoteFormData>;
 }
 
 export interface NurseNoteFormData {
@@ -76,6 +78,19 @@ const baseInputClassName =
 
 const fullWidthDatePickerClassName = "w-full [&>button]:w-full [&>button]:justify-between";
 
+const getDefaultTime = (): string => new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" });
+
+const buildFormData = (initialData?: Partial<NurseNoteFormData>): NurseNoteFormData => ({
+  residentId: initialData?.residentId || "",
+  date: initialData?.date || formatIsoDate(new Date()),
+  time: initialData?.time || getDefaultTime(),
+  category: initialData?.category || "",
+  content: initialData?.content || "",
+  priority: initialData?.priority || "normal",
+  attachments: initialData?.attachments,
+  sendNote: initialData?.sendNote ?? false,
+});
+
 export function AddNurseNoteModal({
   isOpen,
   onClose,
@@ -83,25 +98,29 @@ export function AddNurseNoteModal({
   residents = [],
   rooms = [],
   showResidentPicker = false,
+  mode = "create",
+  initialData,
 }: AddNurseNoteModalProps) {
   const { confirm, confirmDialog } = useConfirmDialog();
   const { showToast } = useToast();
-  const [formData, setFormData] = useState<NurseNoteFormData>({
-    residentId: "",
-    date: formatIsoDate(new Date()),
-    time: new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }),
-    category: "",
-    content: "",
-    priority: "normal",
-    sendNote: false });
+  const initialFormData = useMemo(() => buildFormData(initialData), [initialData]);
+  const [formData, setFormData] = useState<NurseNoteFormData>(() => buildFormData(initialData));
 
   const firstInputRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
-  const hasUnsavedChanges = useMemo(
-    () => !!(formData.content.trim().length > 0 || formData.attachments?.length),
-    [formData]
-  );
+  const hasUnsavedChanges = useMemo(() => {
+    const formSnapshot = {
+      ...formData,
+      attachments: formData.attachments?.length || 0,
+    };
+    const initialSnapshot = {
+      ...initialFormData,
+      attachments: initialFormData.attachments?.length || 0,
+    };
+
+    return JSON.stringify(formSnapshot) !== JSON.stringify(initialSnapshot);
+  }, [formData, initialFormData]);
 
   // Handle close with confirmation
   const handleClose = useCallback(async () => {
@@ -218,13 +237,13 @@ export function AddNurseNoteModal({
         aria-modal="true"
         aria-labelledby="modal-title"
       >
-        <div 
+        <div
           ref={modalRef}
           className="bg-white rounded-2xl shadow-xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200"
         >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 sticky top-0 bg-white z-10">
-          <h2 id="modal-title" className="text-lg font-semibold text-slate-800">เขียน Nurse Note</h2>
+          <h2 id="modal-title" className="text-lg font-semibold text-slate-800">{mode === "edit" ? "แก้ไข Nurse Note" : "เขียน Nurse Note"}</h2>
           <button 
             onClick={() => void handleClose()} 
             className="text-gray-400 hover:text-gray-600 transition-colors rounded-lg p-1 hover:bg-gray-100"
@@ -384,7 +403,7 @@ export function AddNurseNoteModal({
               type="submit"
               className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm font-medium"
             >
-              บันทึก
+              {mode === "edit" ? "บันทึกการแก้ไข" : "บันทึก"}
             </button>
           </div>
         </form>

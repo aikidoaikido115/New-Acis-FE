@@ -17,6 +17,8 @@ interface AddWoundCareModalProps {
   residents?: Resident[];
   rooms?: Room[];
   showResidentPicker?: boolean;
+  mode?: "create" | "edit";
+  initialData?: Partial<WoundCareFormData>;
 }
 
 export interface WoundCareFormData {
@@ -80,6 +82,22 @@ const baseInputClassName =
 
 const fullWidthDatePickerClassName = "w-full [&>button]:w-full [&>button]:justify-between";
 
+const getDefaultTime = (): string => new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" });
+
+const buildFormData = (initialData?: Partial<WoundCareFormData>): WoundCareFormData => ({
+  residentId: initialData?.residentId || "",
+  date: initialData?.date || formatIsoDate(new Date()),
+  time: initialData?.time || getDefaultTime(),
+  location: initialData?.location || "",
+  woundType: initialData?.woundType || "",
+  size: initialData?.size || "",
+  treatment: initialData?.treatment || "",
+  supplies: initialData?.supplies || "",
+  status: initialData?.status || "",
+  image: initialData?.image,
+  note: initialData?.note || "",
+});
+
 export function AddWoundCareModal({
   isOpen,
   onClose,
@@ -87,44 +105,47 @@ export function AddWoundCareModal({
   residents = [],
   rooms = [],
   showResidentPicker = false,
+  mode = "create",
+  initialData,
 }: AddWoundCareModalProps) {
   const { confirm, confirmDialog } = useConfirmDialog();
   const { showToast } = useToast();
-  const [formData, setFormData] = useState<WoundCareFormData>({
-    residentId: "",
-    date: formatIsoDate(new Date()),
-    time: new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }),
-    location: "",
-    woundType: "",
-    size: "",
-    treatment: "",
-    supplies: "",
-    status: "",
-    note: "",
-  });
+  const initialFormData = useMemo(() => buildFormData(initialData), [initialData]);
+  const [formData, setFormData] = useState<WoundCareFormData>(() => buildFormData(initialData));
 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const firstInputRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
-  const hasUnsavedChanges = useMemo(
-    () => !!(
-      formData.location ||
-      formData.woundType ||
-      formData.size ||
-      formData.treatment ||
-      formData.supplies ||
-      formData.note ||
-      imagePreview
-    ),
-    [formData, imagePreview]
-  );
+  const hasUnsavedChanges = useMemo(() => {
+    const formSnapshot = {
+      ...formData,
+      image: formData.image ? "selected" : "",
+      imagePreview,
+    };
+    const initialSnapshot = {
+      ...initialFormData,
+      image: initialFormData.image ? "selected" : "",
+      imagePreview: initialData?.image ? imagePreview : null,
+    };
+
+    return JSON.stringify(formSnapshot) !== JSON.stringify(initialSnapshot);
+  }, [formData, imagePreview, initialData, initialFormData]);
 
   useEffect(() => {
     if (isOpen && firstInputRef.current) {
       firstInputRef.current.focus();
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    setFormData(buildFormData(initialData));
+    setImagePreview(null);
+  }, [initialData, isOpen]);
 
   const handleClose = useCallback(async () => {
     if (hasUnsavedChanges) {
@@ -138,20 +159,9 @@ export function AddWoundCareModal({
     }
 
     onClose();
-    setFormData({
-      residentId: "",
-      date: formatIsoDate(new Date()),
-      time: new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }),
-      location: "",
-      woundType: "",
-      size: "",
-      treatment: "",
-      supplies: "",
-      status: "",
-      note: "",
-    });
+    setFormData(buildFormData(initialData));
     setImagePreview(null);
-  }, [hasUnsavedChanges, onClose, confirm]);
+  }, [hasUnsavedChanges, onClose, confirm, initialData]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -242,7 +252,7 @@ export function AddWoundCareModal({
           className="bg-white rounded-2xl shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200"
         >
         <div className="flex items-center justify-between p-4 border-b border-gray-200 sticky top-0 bg-white z-10">
-          <h2 id="modal-title" className="text-lg font-semibold text-slate-800">บันทึกการทำแผล</h2>
+          <h2 id="modal-title" className="text-lg font-semibold text-slate-800">{mode === "edit" ? "แก้ไขบันทึกการทำแผล" : "บันทึกการทำแผล"}</h2>
           <button
             onClick={() => void handleClose()}
             className="text-gray-400 hover:text-gray-600 transition-colors rounded-lg p-1 hover:bg-gray-100"
@@ -421,7 +431,7 @@ export function AddWoundCareModal({
               type="submit"
               className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm font-medium"
             >
-              บันทึก
+              {mode === "edit" ? "บันทึกการแก้ไข" : "บันทึก"}
             </button>
           </div>
         </form>
