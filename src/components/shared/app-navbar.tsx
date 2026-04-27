@@ -23,17 +23,44 @@ interface AppNavbarProps {
   onToggleSidebar?: () => void;
 }
 
+function isKitchenRole(role?: string): boolean {
+  if (!role) return false;
+  const lowerRole = role.toLowerCase();
+  return lowerRole.includes("kitchen") || lowerRole.includes("โภชนา") || lowerRole.includes("ครัว");
+}
+
+function isSuperuserRole(role?: string): boolean {
+  if (!role) return false;
+  const lowerRole = role.toLowerCase();
+  return lowerRole.includes("superuser") || lowerRole.includes("super user") || lowerRole.includes("super_user");
+}
+
+function isAdminRole(role?: string): boolean {
+  if (!role) return false;
+  const lowerRole = role.toLowerCase();
+  return lowerRole.includes("admin");
+}
+
+function getHomePathByRole(role?: string): string {
+  if (role?.toLowerCase().includes("relative")) return "/relative/dashboard";
+  if (isKitchenRole(role)) return "/manage-meal";
+  if (isAdminRole(role)) return "/admin/users";
+  if (isSuperuserRole(role)) return "/dashboard";
+  return "/dashboard";
+}
+
 // Sub-Components
-function NavbarLogo() {
+function NavbarLogo({ role }: { role?: string }) {
 
   const router = useRouter();
+  const homePath = getHomePathByRole(role);
 
   return (
     <Link
-      href="/dashboard"
+      href={homePath}
       onClick={(e) => {
         e.preventDefault();
-        router.push("/dashboard");
+        router.push(homePath);
       }}
       className="flex items-center gap-2"
       aria-label="Go to dashboard"
@@ -53,7 +80,7 @@ function ProfileDropdown() {
     try {
       await authService.logout();
       router.push('/login');
-    } catch (error) {
+    } catch {
       // Force navigate even if API fails
       router.push('/login');
     }
@@ -80,29 +107,38 @@ function ProfileDropdown() {
 const ROLE_AVATAR_MAP: Record<string, string> = {
   nurse: DEFAULT_PROFILE_IMAGE,
   kitchen: DEFAULT_PROFILE_IMAGE,
+  admin: DEFAULT_PROFILE_IMAGE,
 };
 
 // Role display name mapping
 const ROLE_DISPLAY_MAP: Record<string, string> = {
   nurse: "เจ้าหน้าที่ดูแล",
   kitchen: "เจ้าหน้าที่ครัว",
+  admin: "ผู้ดูแลระบบ",
 };
 
 
 function getRoleAvatar(role?: string): string {
   if (!role) return ROLE_AVATAR_MAP.nurse;
-  const lowerRole = role.toLowerCase();
-  if (lowerRole.includes("kitchen") || lowerRole.includes("โภชนา") || lowerRole.includes("ครัว")) {
+  if (isKitchenRole(role)) {
     return ROLE_AVATAR_MAP.kitchen;
+  }
+  if (isAdminRole(role)) {
+    return ROLE_AVATAR_MAP.admin;
   }
   return ROLE_AVATAR_MAP.nurse;
 }
 
 function getRoleDisplayName(role?: string): string {
   if (!role) return ROLE_DISPLAY_MAP.nurse;
-  const lowerRole = role.toLowerCase();
-  if (lowerRole.includes("kitchen") || lowerRole.includes("โภชนา") || lowerRole.includes("ครัว")) {
+  if (isSuperuserRole(role)) {
+    return "หัวหน้าเจ้าหน้าที่ดูแล";
+  }
+  if (isKitchenRole(role)) {
     return ROLE_DISPLAY_MAP.kitchen;
+  }
+  if (isAdminRole(role)) {
+    return ROLE_DISPLAY_MAP.admin;
   }
   return ROLE_DISPLAY_MAP.nurse;
 }
@@ -137,9 +173,7 @@ export function AppNavbar({
   const toggleMenu = () => setIsMenuOpen((prev) => !prev);
 
   // Check if user is kitchen staff
-  const isKitchenStaff = user.role?.toLowerCase().includes("kitchen") ||
-                         user.role?.toLowerCase().includes("โภชนา") ||
-                         user.role?.toLowerCase().includes("ครัว");
+  const isKitchenStaff = isKitchenRole(user.role);
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 w-full bg-[#0093EF] text-white shadow-sm">
@@ -153,7 +187,7 @@ export function AppNavbar({
           >
             <Menu size={20} />
           </button>
-          <NavbarLogo />
+          <NavbarLogo role={user.role} />
         </div>
 
         <div className="flex items-center gap-5">
