@@ -5,6 +5,7 @@ import { Search, ChevronDown } from "lucide-react";
 import { Pagination } from "@/components/ui/pagination";
 import { useToast } from "@/components/ui/toast";
 import { DatePicker } from "@/components/ui/date-picker";
+import { useAuth } from "@/hooks/useAuth";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import {
   warehouseService,
@@ -71,8 +72,21 @@ function ApprovalBadge({ status }: { status: ApprovalStatus }) {
 // Checkbox state for bulk actions
 type CheckedMap = Record<string, boolean>;
 
+function isSuperuserOrHigher(role?: string): boolean {
+  if (!role) return false;
+  const normalizedRole = role.toLowerCase();
+  return (
+    normalizedRole.includes("superuser") ||
+    normalizedRole.includes("super user") ||
+    normalizedRole.includes("super_user") ||
+    normalizedRole.includes("admin")
+  );
+}
+
 export function TransactionHistoryTable() {
+  const { user } = useAuth();
   const { showToast } = useToast();
+  const canApproveWarehouseTransactions = isSuperuserOrHigher(user?.role_name);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -158,6 +172,10 @@ export function TransactionHistoryTable() {
   const someChecked = pendingPageIds.some((id) => checkedMap[id]);
 
   const toggleAll = () => {
+    if (!canApproveWarehouseTransactions) {
+      return;
+    }
+
     if (allChecked) {
       setCheckedMap((prev) => {
         const next = { ...prev };
@@ -174,6 +192,10 @@ export function TransactionHistoryTable() {
   };
 
   const toggleOne = (id: string) => {
+    if (!canApproveWarehouseTransactions) {
+      return;
+    }
+
     const transaction = transactions.find((tx) => tx.id === id);
     if (!transaction || transaction.approvalStatus !== "รออนุมัติ") {
       return;
@@ -204,6 +226,10 @@ export function TransactionHistoryTable() {
   const checkedCount = selectedIds.length;
 
   const handleApprove = async () => {
+    if (!canApproveWarehouseTransactions) {
+      return;
+    }
+
     if (selectedIds.length === 0) {
       return;
     }
@@ -224,6 +250,10 @@ export function TransactionHistoryTable() {
   };
 
   const handleReject = async (reason: string) => {
+    if (!canApproveWarehouseTransactions) {
+      return;
+    }
+
     if (!reason.trim()) {
       return;
     }
@@ -254,6 +284,8 @@ export function TransactionHistoryTable() {
       setDetailLoadingId(null);
     }
   };
+
+  const columnCount = canApproveWarehouseTransactions ? 9 : 8;
 
   return (
     <div className="space-y-4">
@@ -346,7 +378,7 @@ export function TransactionHistoryTable() {
       </div>
 
       {/* Bulk Action Bar */}
-      {checkedCount > 0 && (
+      {canApproveWarehouseTransactions && checkedCount > 0 && (
         <div className="rounded-lg px-4 py-2 flex items-center gap-3" style={{ backgroundColor: 'rgba(103, 103, 103, 0.24)' }}>
           <span className="text-body-small text-black font-medium">
             เลือก {checkedCount} รายการ
@@ -375,19 +407,21 @@ export function TransactionHistoryTable() {
           <table className="w-full">
             <thead>
               <tr style={{ backgroundColor: 'rgba(239, 242, 247, 1)', borderBottom: '1px solid rgba(103, 103, 103, 0.48)' }}>
-                <th className="py-3 px-4 w-10">
-                  <input
-                    type="checkbox"
-                    checked={allChecked}
-                    ref={(el) => {
-                      if (el) el.indeterminate = someChecked && !allChecked;
-                    }}
-                    onChange={toggleAll}
-                    disabled={pendingPageIds.length === 0}
-                    className="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500 cursor-pointer"
-                    aria-label="เลือกทั้งหมด"
-                  />
-                </th>
+                {canApproveWarehouseTransactions ? (
+                  <th className="py-3 px-4 w-10">
+                    <input
+                      type="checkbox"
+                      checked={allChecked}
+                      ref={(el) => {
+                        if (el) el.indeterminate = someChecked && !allChecked;
+                      }}
+                      onChange={toggleAll}
+                      disabled={pendingPageIds.length === 0}
+                      className="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500 cursor-pointer"
+                      aria-label="เลือกทั้งหมด"
+                    />
+                  </th>
+                ) : null}
                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700 w-36">
                   รหัสการแก้ไข
                 </th>
@@ -417,19 +451,19 @@ export function TransactionHistoryTable() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={9} className="py-12 px-4 text-center text-sm text-gray-500">
+                  <td colSpan={columnCount} className="py-12 px-4 text-center text-sm text-gray-500">
                     กำลังโหลดข้อมูล...
                   </td>
                 </tr>
               ) : error ? (
                 <tr>
-                  <td colSpan={9} className="py-12 px-4 text-center text-sm text-red-500">
+                  <td colSpan={columnCount} className="py-12 px-4 text-center text-sm text-red-500">
                     {error}
                   </td>
                 </tr>
               ) : paginated.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-12 px-4 text-center">
+                  <td colSpan={columnCount} className="py-12 px-4 text-center">
                     <div className="text-sm text-gray-600">ไม่พบประวัติการทำรายการ</div>
                     <div className="text-xs text-gray-400 mt-1">ยังไม่มีข้อมูลธุรกรรมตามเงื่อนไขที่เลือก</div>
                   </td>
@@ -443,19 +477,21 @@ export function TransactionHistoryTable() {
                     }`}
                     style={{ borderBottom: '1px solid rgba(103, 103, 103, 0.48)' }}
                   >
-                    <td className="py-3 px-4">
-                      {tx.approvalStatus === "รออนุมัติ" ? (
-                        <input
-                          type="checkbox"
-                          checked={!!checkedMap[tx.id]}
-                          onChange={() => toggleOne(tx.id)}
-                          className="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500 cursor-pointer"
-                          aria-label={`เลือกรายการ ${tx.code}`}
-                        />
-                      ) : (
-                        <span className="block h-4 w-4" aria-hidden="true" />
-                      )}
-                    </td>
+                    {canApproveWarehouseTransactions ? (
+                      <td className="py-3 px-4">
+                        {tx.approvalStatus === "รออนุมัติ" ? (
+                          <input
+                            type="checkbox"
+                            checked={!!checkedMap[tx.id]}
+                            onChange={() => toggleOne(tx.id)}
+                            className="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500 cursor-pointer"
+                            aria-label={`เลือกรายการ ${tx.code}`}
+                          />
+                        ) : (
+                          <span className="block h-4 w-4" aria-hidden="true" />
+                        )}
+                      </td>
+                    ) : null}
                     <td className="py-3 px-4 text-xs sm:text-sm text-gray-700 font-medium">{tx.code}</td>
                     <td className="py-3 px-4 text-xs sm:text-sm text-gray-700">{tx.type}</td>
                     <td className="py-3 px-4 text-xs sm:text-sm text-gray-700">{tx.itemCode}</td>
