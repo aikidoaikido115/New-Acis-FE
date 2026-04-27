@@ -6,7 +6,6 @@ import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useToast } from "@/components/ui/toast";
 import { ResidentSearchCombobox, type ResidentComboboxOption } from "./ResidentSearchCombobox";
-import { authService } from "@/services/auth.service";
 
 export interface ResidentOption {
   id: string;
@@ -23,6 +22,8 @@ interface AddDoctorOrderModalProps {
   showResidentPicker?: boolean;
   requireResidentSelection?: boolean;
   defaultResidentId?: string;
+  mode?: "create" | "edit";
+  initialData?: Partial<DoctorOrderFormData>;
 }
 
 export interface DoctorOrderFormData {
@@ -44,6 +45,18 @@ const baseSelectClassName =
   "w-full appearance-none rounded-lg border border-gray-300 bg-white py-2 pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500";
 
 const fullWidthDatePickerClassName = "w-full [&>button]:w-full [&>button]:justify-between";
+
+const buildFormData = (defaultResidentId?: string, initialData?: Partial<DoctorOrderFormData>): DoctorOrderFormData => ({
+  residentId: initialData?.residentId ?? defaultResidentId ?? "",
+  orderDate: initialData?.orderDate || formatIsoDate(new Date()),
+  orderType: initialData?.orderType || "",
+  title: initialData?.title || "",
+  details: initialData?.details || "",
+  startDate: initialData?.startDate || "",
+  endDate: initialData?.endDate || "",
+  frequency: initialData?.frequency || "",
+  orderedBy: initialData?.orderedBy ?? "",
+});
 
 const formatIsoDate = (date: Date): string => {
   const year = date.getFullYear();
@@ -96,28 +109,18 @@ export function AddDoctorOrderModal({
   showResidentPicker = false,
   requireResidentSelection = false,
   defaultResidentId,
+  mode = "create",
+  initialData,
 }: AddDoctorOrderModalProps) {
   const { confirm, confirmDialog } = useConfirmDialog();
   const { showToast } = useToast();
 
-  const defaultOrderedBy = useMemo(() => {
-    const currentUser = authService.getCurrentUser();
-    const firstName = currentUser?.first_name?.trim() || "";
-    const lastName = currentUser?.last_name?.trim() || "";
-    return `${firstName} ${lastName}`.trim();
-  }, []);
+  const initialFormData = useMemo(
+    () => buildFormData(defaultResidentId, initialData),
+    [defaultResidentId, initialData]
+  );
 
-  const [formData, setFormData] = useState<DoctorOrderFormData>({
-    residentId: defaultResidentId || "",
-    orderDate: formatIsoDate(new Date()),
-    orderType: "",
-    title: "",
-    details: "",
-    startDate: "",
-    endDate: "",
-    frequency: "",
-    orderedBy: defaultOrderedBy,
-  });
+  const [formData, setFormData] = useState<DoctorOrderFormData>(initialFormData);
 
   const firstInputRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
@@ -137,18 +140,8 @@ export function AddDoctorOrderModal({
   );
 
   const hasUnsavedChanges = useMemo(
-    () =>
-      !!(
-        formData.title ||
-        formData.details ||
-        formData.startDate ||
-        formData.endDate ||
-        formData.frequency ||
-        formData.orderedBy ||
-        formData.orderType ||
-        (formData.residentId && formData.residentId !== (defaultResidentId || ""))
-      ),
-    [defaultResidentId, formData]
+    () => JSON.stringify(formData) !== JSON.stringify(initialFormData),
+    [formData, initialFormData]
   );
 
   const selectedResident = useMemo(() => {
@@ -159,31 +152,8 @@ export function AddDoctorOrderModal({
   }, [formData.residentId, residentOptions]);
 
   const resetForm = useCallback(() => {
-    setFormData({
-      residentId: defaultResidentId || "",
-      orderDate: formatIsoDate(new Date()),
-      orderType: "",
-      title: "",
-      details: "",
-      startDate: "",
-      endDate: "",
-      frequency: "",
-      orderedBy: defaultOrderedBy,
-    });
-  }, [defaultOrderedBy, defaultResidentId]);
-
-  useEffect(() => {
-    if (!isOpen || !defaultOrderedBy) {
-      return;
-    }
-
-    setFormData((prev) => {
-      if (prev.orderedBy.trim()) {
-        return prev;
-      }
-      return { ...prev, orderedBy: defaultOrderedBy };
-    });
-  }, [defaultOrderedBy, isOpen]);
+    setFormData(initialFormData);
+  }, [initialFormData]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -306,7 +276,7 @@ export function AddDoctorOrderModal({
           className="bg-white rounded-2xl shadow-xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200"
         >
           <div className="flex items-center justify-between p-4 border-b border-gray-200 sticky top-0 bg-white z-10">
-            <h2 id="modal-title" className="text-lg font-semibold text-slate-800">เพิ่มคำสั่งแพทย์</h2>
+            <h2 id="modal-title" className="text-lg font-semibold text-slate-800">{mode === "edit" ? "แก้ไขคำสั่งแพทย์" : "เพิ่มคำสั่งแพทย์"}</h2>
             <button
               onClick={() => void handleClose()}
               className="text-gray-400 hover:text-gray-600 transition-colors rounded-lg p-1 hover:bg-gray-100"
@@ -428,11 +398,11 @@ export function AddDoctorOrderModal({
             </div>
 
             <div>
-              <label htmlFor="doctor-order-ordered-by" className="block text-sm font-medium text-gray-700 mb-1">ผู้สั่ง/ผู้ให้คำแนะนำ</label>
+              <label htmlFor="doctor-order-ordered-by" className="block text-sm font-medium text-gray-700 mb-1">เพิ่มเติม (ไม่บังคับ)</label>
               <input
                 id="doctor-order-ordered-by"
                 type="text"
-                placeholder="เช่น นพ.สมชาย ใจดี (อายุรแพทย์)"
+                placeholder="เช่น หมายเหตุเพิ่มเติม หรือเงื่อนไขการดูแล"
                 value={formData.orderedBy}
                 onChange={(e) => setFormData({ ...formData, orderedBy: e.target.value })}
                 className={baseInputClassName}
@@ -451,7 +421,7 @@ export function AddDoctorOrderModal({
                 type="submit"
                 className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm font-medium"
               >
-                บันทึก
+                {mode === "edit" ? "บันทึกการแก้ไข" : "บันทึก"}
               </button>
             </div>
           </form>
