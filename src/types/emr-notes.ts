@@ -7,6 +7,7 @@ export interface NurseNote {
   priority: "normal" | "urgent";
   send_note: boolean;
   created_by_staff_id?: string;
+  created_by_staff_name?: string;
   created_at: string;
   updated_at: string;
 }
@@ -24,6 +25,7 @@ export interface WoundCareNote {
   image_url?: string | null;
   note?: string | null;
   created_by_staff_id?: string;
+  created_by_staff_name?: string;
   created_at: string;
   updated_at: string;
 }
@@ -36,6 +38,7 @@ export interface RelativeNote {
   content: string;
   send_note: boolean;
   created_by_staff_id?: string;
+  created_by_staff_name?: string;
   created_at: string;
   updated_at: string;
 }
@@ -53,6 +56,7 @@ export interface DoctorOrder {
   frequency?: string | null;
   ordered_by?: string | null;
   created_by_staff_id?: string;
+  created_by_staff_name?: string;
   created_at: string;
   updated_at: string;
 }

@@ -91,6 +91,7 @@ export interface Resident {
   phone_number?: string;
   address?: string;
   blood_type?: string;
+  drug_allergies?: string; // combined drug allergies (legacy)
   allergies?: string; // combined allergies (legacy)
   medical_conditions?: string; // (legacy)
   status: string;
