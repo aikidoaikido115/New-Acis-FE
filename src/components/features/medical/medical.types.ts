@@ -44,6 +44,7 @@ export interface RoutineMedication {
 export interface MedicationHistory {
   id: string;
   time: string;
+  actionAt?: string;
   patientName: string;
   medication: string;
   status: 'ให้แล้ว' | 'งด' | 'รอให้';

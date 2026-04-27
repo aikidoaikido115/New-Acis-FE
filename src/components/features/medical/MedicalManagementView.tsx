@@ -7,12 +7,14 @@ import {
   ChevronDown,
   Download,
   Plus,
+  ArrowUpDown,
   Sunrise,
   Sun,
   Sunset,
   MoonStar,
 } from "lucide-react";
 import { MedicationCard } from "./MedicationCard";
+import { NoteTimelineControls } from "@/components/features/EMR/NoteTimelineControls";
 import { PatientProfileCard } from "./PatientProfileCard";
 import { RoutineMedsTable } from "./tables/RoutineMedsTable";
 import { CombinedMedsTable } from "./tables/CombinedMedsTable";
@@ -41,6 +43,7 @@ import { roomService } from "@/services/room.service";
 import type { DrugAdministrationStatus, DrugPlan } from "@/types/drug-plan";
 import type { Resident } from "@/types/resident";
 import type { Room } from "@/types/room";
+import { getBangkokDateKey } from "@/components/features/EMR/note-timeline";
 
 type ViewType = "main" | "details" | "history";
 
@@ -275,6 +278,8 @@ export function MedicalManagementView() {
   const [selectedFloor, setSelectedFloor] = useState("ทุกชั้น");
   const [selectedHelpLevel, setSelectedHelpLevel] = useState("ทั้งหมด");
   const [selectedStatus, setSelectedStatus] = useState("ทั้งหมด");
+  const [historySortOrder, setHistorySortOrder] = useState<"newest" | "oldest">("newest");
+  const [historySelectedDate, setHistorySelectedDate] = useState<Date | null>(null);
   const [detailsTab, setDetailsTab] = useState<"meds" | "history">("meds");
   const [currentPage, setCurrentPage] = useState(1);
   const [showAddMedicationModal, setShowAddMedicationModal] = useState(false);
@@ -399,6 +404,7 @@ export function MedicalManagementView() {
         const mapped: MedicationHistory[] = (response.items || []).map((item) => ({
           id: item.drug_plan_id,
           time: formatHistoryTime(item.action_at),
+          actionAt: item.action_at || undefined,
           patientName: item.resident_name,
           medication: [item.drug_name, item.drug_dose].filter(Boolean).join(" "),
           status: toHistoryStatus(item.status),
@@ -810,24 +816,46 @@ export function MedicalManagementView() {
   }, [residentMedications, detailSearchTerm]);
 
   const historyBySelectedPatient = useMemo(() => {
+    const sorted = [...historyItems].sort((a, b) => {
+      const aTime = a.actionAt ? new Date(a.actionAt).getTime() : 0;
+      const bTime = b.actionAt ? new Date(b.actionAt).getTime() : 0;
+      return historySortOrder === "newest" ? bTime - aTime : aTime - bTime;
+    });
+
+    const dateKey = historySelectedDate ? getBangkokDateKey(historySelectedDate.toISOString()) : null;
+    const filteredByDate = dateKey
+      ? sorted.filter((item) => getBangkokDateKey(item.actionAt) === dateKey)
+      : sorted;
+
     if (!selectedPatient?.name) {
-      return historyItems;
+      return filteredByDate;
     }
-    return historyItems.filter((item) => item.patientName === selectedPatient.name);
-  }, [historyItems, selectedPatient?.name]);
+    return filteredByDate.filter((item) => item.patientName === selectedPatient.name);
+  }, [historyItems, historySelectedDate, historySortOrder, selectedPatient?.name]);
 
   const visibleHistory = useMemo(() => {
+    const sorted = [...historyItems].sort((a, b) => {
+      const aTime = a.actionAt ? new Date(a.actionAt).getTime() : 0;
+      const bTime = b.actionAt ? new Date(b.actionAt).getTime() : 0;
+      return historySortOrder === "newest" ? bTime - aTime : aTime - bTime;
+    });
+
+    const dateKey = historySelectedDate ? getBangkokDateKey(historySelectedDate.toISOString()) : null;
+    const filteredByDate = dateKey
+      ? sorted.filter((item) => getBangkokDateKey(item.actionAt) === dateKey)
+      : sorted;
+
     if (selectedFloor === "ทุกชั้น") {
-      return historyItems;
+      return filteredByDate;
     }
 
     const floor = Number(selectedFloor);
     if (Number.isNaN(floor)) {
-      return historyItems;
+      return filteredByDate;
     }
 
-    return historyItems.filter((item) => residentNameToFloor.get(item.patientName) === floor);
-  }, [historyItems, residentNameToFloor, selectedFloor]);
+    return filteredByDate.filter((item) => residentNameToFloor.get(item.patientName) === floor);
+  }, [historyItems, historySelectedDate, historySortOrder, residentNameToFloor, selectedFloor]);
 
   const pendingCount = useMemo(
     () => allPatientMedications.reduce((acc, patient) => acc + patient.pendingCount, 0),
@@ -860,17 +888,8 @@ export function MedicalManagementView() {
 
   const renderMainView = () => (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div>
         <h1 className="text-headline-5 font-bold text-gray-800">จัดการยา</h1>
-        <DatePicker
-          value={parseDateValue(selectedDate)}
-          onChange={(date) => {
-            setSelectedDate(date ? formatIsoDate(date) : "");
-            setCurrentPage(1);
-          }}
-          placeholder="เลือกวันที่"
-          className={datePickerClassName}
-        />
       </div>
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -1173,6 +1192,20 @@ export function MedicalManagementView() {
         </>
       ) : (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <NoteTimelineControls
+              selectedDate={historySelectedDate}
+              onDateChange={(date) => {
+                setHistorySelectedDate(date);
+                setCurrentPage(1);
+              }}
+              sortOrder={historySortOrder}
+              onSortOrderChange={(value) => {
+                setHistorySortOrder(value);
+                setCurrentPage(1);
+              }}
+            />
+          </div>
           {isLoadingHistory ? <div className="py-6 text-center text-sm text-gray-600">กำลังโหลดประวัติ...</div> : null}
           <HistoryTable history={historyBySelectedPatient} />
         </div>
@@ -1251,16 +1284,21 @@ export function MedicalManagementView() {
           <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
         </div>
 
-        <div className="ml-auto flex items-center gap-4">
-          <DatePicker
-            value={parseDateValue(selectedDate)}
-            onChange={(date) => {
-              setSelectedDate(date ? formatIsoDate(date) : "");
+        <div className="ml-auto">
+          <NoteTimelineControls
+            selectedDate={historySelectedDate}
+            onDateChange={(date) => {
+              setHistorySelectedDate(date);
               setCurrentPage(1);
             }}
-            placeholder="เลือกวันที่"
-            className={datePickerClassName}
+            sortOrder={historySortOrder}
+            onSortOrderChange={(value) => {
+              setHistorySortOrder(value);
+              setCurrentPage(1);
+            }}
           />
+        </div>
+        <div className="ml-auto flex items-center gap-4">
           <button
             className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg text-body-small font-medium hover:bg-blue-600 transition-colors whitespace-nowrap"
             onClick={() => {
