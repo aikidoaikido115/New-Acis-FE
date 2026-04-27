@@ -1,9 +1,10 @@
 'use client';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { RelativeSidebar } from '@/components/features/relative/sidebar';
 import { AlertTriangle,Calendar,ClipboardList,HeartPulse,IdCard,MapPin,Menu,Phone,Pill,ShieldCheck,User} from 'lucide-react';
 import { AppFooterRelative } from '@/components/features/relative/footer-relative';
 import { BackButton } from '@/components/features/relative/back-button';
+import { relativePortalService, type RelativePatientInfoData } from '@/services/relative-portal.service';
 
 type BasicInfoItem = {
   label: string;
@@ -37,8 +38,6 @@ type PatientInfo = {
   surgeries: string[];
   allergies: string[];
   foodAllergies: string[];
-  adlScore: number;
-  adlNote: string;
   cprStatus: string;
   emergencyHospital: string;
   emergencyHospitalPhone: string;
@@ -77,44 +76,145 @@ function SectionCard({ title, children }: SectionCardProps) {
   );
 }
 
+function PatientInfoSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+        <div className="h-6 w-32 rounded bg-gray-200 animate-pulse mb-6" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <div className="h-5 w-full rounded bg-gray-200 animate-pulse" />
+            <div className="h-5 w-10/12 rounded bg-gray-200 animate-pulse" />
+            <div className="h-5 w-9/12 rounded bg-gray-200 animate-pulse" />
+          </div>
+          <div className="space-y-4">
+            <div className="h-5 w-9/12 rounded bg-gray-200 animate-pulse" />
+            <div className="h-5 w-10/12 rounded bg-gray-200 animate-pulse" />
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+        <div className="h-6 w-36 rounded bg-gray-200 animate-pulse mb-6" />
+        <div className="space-y-4">
+          <div className="h-24 w-full rounded bg-gray-200 animate-pulse" />
+          <div className="h-24 w-full rounded bg-gray-200 animate-pulse" />
+          <div className="h-24 w-full rounded bg-gray-200 animate-pulse" />
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+        <div className="h-6 w-40 rounded bg-gray-200 animate-pulse mb-6" />
+        <div className="space-y-4">
+          <div className="h-20 w-full rounded bg-gray-200 animate-pulse" />
+          <div className="h-20 w-full rounded bg-gray-200 animate-pulse" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const toTelHref = (phone: string) => phone.replace(/[^0-9+]/g, "");
 
-const mockPatientInfo: PatientInfo = {
-  fullName: 'สมชาย ศรีบุญเมือง',
-  nickname: 'พล',
-  gender: 'ชาย',
-  birthDate: '15 มิถุนายน 2504',
-  ageLabel: '63 ปี',
-  idNumber: '1-1234-56789-01-2',
-  address: 'ห้างหุ้นส่วนจำกัดท้องฟ้า เพื่อการดูแลผู้สูงอายุ และการพยาบาลฟ้าใหม่',
-  chronicDiseases: ['ความดันโลหิตสูง', 'โรคหัวใจ', 'เบาหวาน Type 2'],
-  medications: [
-    { name: 'Amlodipine', dose: '5mg', frequency: '1 ครั้ง (เช้า)', notes: 'ก่อนอาหาร' },
-    { name: 'Metformin', dose: '500mg', frequency: '2 ครั้ง (เช้า-เย็น)', notes: 'หลังอาหาร' },
-    { name: 'Aspirin', dose: '81mg', frequency: '1 ครั้ง (เช้า)', notes: '-' },
-    { name: 'Atorvastatin', dose: '20mg', frequency: '1 ครั้ง (ก่อนนอน)', notes: '-' },
-  ],
-  surgeries: ['ผ่าตัดนิ่วในถุงน้ำดี (2567)', 'เปลี่ยนข้อเข่าด้านซ้าย (2563)'],
-  allergies: ['Penicillin', 'Sulfa drugs'],
-  foodAllergies: ['อาหารทะเล'],
-  adlScore: 75,
-  adlNote: 'ยังสามารถช่วยเหลือตนเองได้',
-  cprStatus: 'CPR',
-  emergencyHospital: 'โรงพยาบาลศรีราชา',
-  emergencyHospitalPhone: '02-419-7000',
-  emergencyContacts: [
-    { name: 'สมพร ศรีบุญเมือง', relation: 'บุตรสาว', phone: '081-234-5678' },
-    { name: 'สมศักดิ์ ศรีบุญเมือง', relation: 'บุตรชาย', phone: '089-876-5432' },
-  ],
-};
+function formatThaiDateFromISO(value?: string): string {
+  if (!value) return '-';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return '-';
+  const day = String(parsed.getDate()).padStart(2, '0');
+  const month = [
+    'มกราคม',
+    'กุมภาพันธ์',
+    'มีนาคม',
+    'เมษายน',
+    'พฤษภาคม',
+    'มิถุนายน',
+    'กรกฎาคม',
+    'สิงหาคม',
+    'กันยายน',
+    'ตุลาคม',
+    'พฤศจิกายน',
+    'ธันวาคม',
+  ][parsed.getMonth()];
+  const year = parsed.getFullYear() + 543;
+  return `${day} ${month} ${year}`;
+}
+
+function mapGender(gender?: string): string {
+  const normalized = (gender || '').trim().toLowerCase();
+  if (normalized === 'male' || normalized === 'm') return 'ชาย';
+  if (normalized === 'female' || normalized === 'f') return 'หญิง';
+  return gender || '-';
+}
+
+function toPatientInfoView(data: RelativePatientInfoData): PatientInfo {
+  const fullName = `${data.first_name || ''} ${data.last_name || ''}`.trim() || '-';
+
+  return {
+    fullName,
+    nickname: data.nickname,
+    gender: mapGender(data.gender),
+    birthDate: formatThaiDateFromISO(data.date_of_birth),
+    ageLabel: `${Math.max(data.age || 0, 0)} ปี`,
+    idNumber: data.id_card_number || '-',
+    address: data.purpose_of_stay || '-',
+    chronicDiseases: data.pre_existing_conditions || [],
+    medications: data.medications || [],
+    surgeries: data.surgical_history || [],
+    allergies: data.drug_allergies || [],
+    foodAllergies: data.food_allergies || [],
+    cprStatus: data.resuscitation_status || '-',
+    emergencyHospital: data.emergency_hospital || '-',
+    emergencyHospitalPhone: data.emergency_hospital_phone || '-',
+    emergencyContacts: data.emergency_contacts || [],
+  };
+}
 
 export default function RelativePatientInfoPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [patientInfo] = useState<PatientInfo>(mockPatientInfo);
+  const [patientInfo, setPatientInfo] = useState<PatientInfo | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const displayName = patientInfo.nickname
-    ? `${patientInfo.fullName} (${patientInfo.nickname})`
-    : patientInfo.fullName;
+  useEffect(() => {
+    const fetchPatientInfo = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const data = await relativePortalService.getPatientInfo();
+        setPatientInfo(toPatientInfoView(data));
+      } catch {
+        setError('ไม่สามารถโหลดข้อมูลผู้สูงอายุได้');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void fetchPatientInfo();
+  }, []);
+
+  const isInitialLoading = isLoading && !patientInfo;
+
+  const displayPatientInfo: PatientInfo = patientInfo || {
+    fullName: '-',
+    gender: '-',
+    birthDate: '-',
+    ageLabel: '-',
+    idNumber: '-',
+    address: '-',
+    chronicDiseases: [],
+    medications: [],
+    surgeries: [],
+    allergies: [],
+    foodAllergies: [],
+    cprStatus: '-',
+    emergencyHospital: '-',
+    emergencyHospitalPhone: '-',
+    emergencyContacts: [],
+  };
+
+  const displayName = displayPatientInfo.nickname
+    ? `${displayPatientInfo.fullName} (${displayPatientInfo.nickname})`
+    : displayPatientInfo.fullName;
 
   const basicInfoLeft: BasicInfoItem[] = [
     {
@@ -124,12 +224,12 @@ export default function RelativePatientInfoPage() {
     },
     {
       label: 'วันเกิด',
-      value: `${patientInfo.birthDate} (${patientInfo.ageLabel})`,
+      value: `${displayPatientInfo.birthDate} (${displayPatientInfo.ageLabel})`,
       icon: <Calendar size={16} className="text-gray-500" />,
     },
     {
       label: 'ที่อยู่',
-      value: patientInfo.address,
+      value: displayPatientInfo.address,
       icon: <MapPin size={16} className="text-gray-500" />,
     },
   ];
@@ -137,17 +237,15 @@ export default function RelativePatientInfoPage() {
   const basicInfoRight: BasicInfoItem[] = [
     {
       label: 'เพศ',
-      value: patientInfo.gender,
+      value: displayPatientInfo.gender,
       icon: <User size={16} className="text-gray-500" />,
     },
     {
       label: 'เลขบัตรประชาชน',
-      value: patientInfo.idNumber,
+      value: displayPatientInfo.idNumber,
       icon: <IdCard size={16} className="text-gray-500" />,
     },
   ];
-
-  const adlPercent = Math.min(100, Math.max(0, patientInfo.adlScore));
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -171,9 +269,19 @@ export default function RelativePatientInfoPage() {
 
           <div className="max-w-2xl mx-auto space-y-6">
             <h1 className="text-2xl font-bold text-gray-800">ข้อมูลผู้สูงอายุ</h1>
+
+            {isInitialLoading && <PatientInfoSkeleton />}
+
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-red-600">
+                {error}
+              </div>
+            )}
             
             {/* TODO: เปลี่ยน sectioncard เป็นดึงข้อมูลจริงจาก ระบบเจ้าหน้าที่ */}
             {/* Basic Info */}
+            {!isInitialLoading && (
+            <>
             <SectionCard title="ข้อมูลพื้นฐาน">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
@@ -208,7 +316,7 @@ export default function RelativePatientInfoPage() {
                     โรคประจำตัว
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {patientInfo.chronicDiseases.map((item) => (
+                    {displayPatientInfo.chronicDiseases.map((item) => (
                       <span
                         key={item}
                         className="px-3 py-1 text-xs rounded-full bg-blue-100 text-blue-600"
@@ -216,6 +324,9 @@ export default function RelativePatientInfoPage() {
                         {item}
                       </span>
                     ))}
+                    {displayPatientInfo.chronicDiseases.length === 0 && (
+                      <span className="text-sm text-gray-500">ไม่มีข้อมูล</span>
+                    )}
                   </div>
                 </div>
 
@@ -235,7 +346,7 @@ export default function RelativePatientInfoPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {patientInfo.medications.map((med) => (
+                        {displayPatientInfo.medications.map((med) => (
                           <tr key={med.name} className="border-t border-gray-100">
                             <td className="px-3 py-2 text-gray-700">{med.name}</td>
                             <td className="px-3 py-2 text-gray-700">{med.dose}</td>
@@ -243,6 +354,11 @@ export default function RelativePatientInfoPage() {
                             <td className="px-3 py-2 text-gray-700">{med.notes}</td>
                           </tr>
                         ))}
+                        {displayPatientInfo.medications.length === 0 && (
+                          <tr className="border-t border-gray-100">
+                            <td className="px-3 py-3 text-gray-500" colSpan={4}>ไม่มีข้อมูล</td>
+                          </tr>
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -254,7 +370,7 @@ export default function RelativePatientInfoPage() {
                     ประวัติการผ่าตัด
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {patientInfo.surgeries.map((item) => (
+                    {displayPatientInfo.surgeries.map((item) => (
                       <span
                         key={item}
                         className="px-3 py-1 text-xs rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200"
@@ -262,6 +378,9 @@ export default function RelativePatientInfoPage() {
                         {item}
                       </span>
                     ))}
+                    {displayPatientInfo.surgeries.length === 0 && (
+                      <span className="text-sm text-gray-500">ไม่มีข้อมูล</span>
+                    )}
                   </div>
                 </div>
 
@@ -272,7 +391,7 @@ export default function RelativePatientInfoPage() {
                       แพ้ยา
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      {patientInfo.allergies.map((item) => (
+                      {displayPatientInfo.allergies.map((item) => (
                         <span
                           key={item}
                           className="px-3 py-1 text-xs rounded-full bg-red-100 text-red-600"
@@ -280,6 +399,9 @@ export default function RelativePatientInfoPage() {
                           {item}
                         </span>
                       ))}
+                      {displayPatientInfo.allergies.length === 0 && (
+                        <span className="text-sm text-gray-500">ไม่มีข้อมูล</span>
+                      )}
                     </div>
                   </div>
                   <div>
@@ -288,7 +410,7 @@ export default function RelativePatientInfoPage() {
                       แพ้อาหาร
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      {patientInfo.foodAllergies.map((item) => (
+                      {displayPatientInfo.foodAllergies.map((item) => (
                         <span
                           key={item}
                           className="px-3 py-1 text-xs rounded-full bg-amber-100 text-amber-700"
@@ -296,38 +418,21 @@ export default function RelativePatientInfoPage() {
                           {item}
                         </span>
                       ))}
+                      {displayPatientInfo.foodAllergies.length === 0 && (
+                        <span className="text-sm text-gray-500">ไม่มีข้อมูล</span>
+                      )}
                     </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-                      <ShieldCheck size={16} className="text-gray-500" />
-                      การประเมินกิจวัตรประจำวัน (ADL)
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm text-blue-600 font-semibold">
-                        {patientInfo.adlScore} / 100
-                      </span>
-                      <div className="flex-1 h-2 rounded-full bg-gray-100 overflow-hidden">
-                        <div
-                          className="h-full bg-blue-500"
-                          style={{ width: `${adlPercent}%` }}
-                        />
-                      </div>
-                    </div>
-                    <p className="text-xs text-blue-600 mt-2">{patientInfo.adlNote}</p>
+                <div>
+                  <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
+                    <ShieldCheck size={16} className="text-gray-500" />
+                    การกู้ชีพเมื่อหยุดหายใจ
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-                      <ShieldCheck size={16} className="text-gray-500" />
-                      การกู้ชีพเมื่อหยุดหายใจ
-                    </div>
-                    <span className="inline-flex items-center px-3 py-1 text-xs rounded-full bg-emerald-500 text-white">
-                      {patientInfo.cprStatus}
-                    </span>
-                  </div>
+                  <span className="inline-flex items-center px-3 py-1 text-xs rounded-full bg-emerald-500 text-white">
+                    {displayPatientInfo.cprStatus}
+                  </span>
                 </div>
               </div>
             </SectionCard>
@@ -341,14 +446,14 @@ export default function RelativePatientInfoPage() {
                     โรงพยาบาลกรณีฉุกเฉิน
                   </div>
                   <div className="flex items-center justify-between bg-red-50 border border-red-100 px-4 py-3 rounded-lg">
-                    <span className="text-sm text-gray-700">{patientInfo.emergencyHospital}</span>
+                    <span className="text-sm text-gray-700">{displayPatientInfo.emergencyHospital}</span>
                     <a
-                      href={`tel:${toTelHref(patientInfo.emergencyHospitalPhone)}`}
+                      href={`tel:${toTelHref(displayPatientInfo.emergencyHospitalPhone)}`}
                       className="inline-flex items-center gap-2 text-sm text-red-600 hover:underline"
-                      aria-label={`โทรหา ${patientInfo.emergencyHospital}`}
+                      aria-label={`โทรหา ${displayPatientInfo.emergencyHospital}`}
                     >
                       <Phone size={16} />
-                      {patientInfo.emergencyHospitalPhone}
+                      {displayPatientInfo.emergencyHospitalPhone}
                     </a>
                   </div>
                 </div>
@@ -359,7 +464,7 @@ export default function RelativePatientInfoPage() {
                     ผู้ติดต่อฉุกเฉิน
                   </div>
                   <div className="space-y-2">
-                    {patientInfo.emergencyContacts.map((contact) => (
+                    {displayPatientInfo.emergencyContacts.map((contact) => (
                       <div
                         key={contact.name}
                         className="flex items-center justify-between bg-gray-50 px-4 py-3 rounded-lg"
@@ -378,10 +483,15 @@ export default function RelativePatientInfoPage() {
                         </a>
                       </div>
                     ))}
+                    {displayPatientInfo.emergencyContacts.length === 0 && (
+                      <div className="bg-gray-50 px-4 py-3 rounded-lg text-sm text-gray-500">ไม่มีข้อมูล</div>
+                    )}
                   </div>
                 </div>
               </div>
             </SectionCard>
+            </>
+            )}
           </div>
         </div>
 
