@@ -13,7 +13,19 @@ export default function StaffKitchenLayout({ children }: { children: React.React
   const { isSidebarOpen, setIsSidebarOpen, isSidebarCollapsed, setIsSidebarCollapsed, isReady } = useSidebarState();
 
   return (
-    <ProtectedRoute allowedRoles={["kitchen", "Kitchen", "KITCHEN", "ครัว", "โภชนา"]}>
+    <ProtectedRoute allowedRoles={[
+      "kitchen",
+      "Kitchen",
+      "KITCHEN",
+      "ครัว",
+      "โภชนา",
+      "superuser",
+      "Superuser",
+      "SUPERUSER",
+      "admin",
+      "Admin",
+      "ADMIN",
+    ]}>
       <div className="min-h-screen bg-slate-50 flex flex-col">
         <AppNavbar
           user={{
