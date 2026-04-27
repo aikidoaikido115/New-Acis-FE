@@ -14,12 +14,19 @@ function isKitchenRole(role?: string): boolean {
   return lowerRole.includes("kitchen") || lowerRole.includes("ครัว") || lowerRole.includes("โภชนา");
 }
 
+function isAdminRole(role?: string): boolean {
+  if (!role) return false;
+  const lowerRole = role.toLowerCase();
+  return lowerRole.includes("admin");
+}
+
 export default function ProfileLayout({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const { isSidebarOpen, setIsSidebarOpen, isSidebarCollapsed, setIsSidebarCollapsed, isReady } = useSidebarState();
 
   const roleName = user?.role_name;
   const kitchenRole = isKitchenRole(roleName);
+  const adminRole = isAdminRole(roleName);
 
   return (
     <ProtectedRoute
@@ -34,6 +41,12 @@ export default function ProfileLayout({ children }: { children: React.ReactNode 
         "KITCHEN",
         "ครัว",
         "โภชนา",
+        "admin",
+        "superuser",
+        "Admin",
+        "ADMIN",
+        "Superuser",
+        "SUPERUSER",
       ]}
     >
       <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -48,7 +61,7 @@ export default function ProfileLayout({ children }: { children: React.ReactNode 
 
         <div className="flex flex-1 pt-16">
           <AppSidebar
-            role={kitchenRole ? "kitchen" : "nurse"}
+            role={kitchenRole ? "kitchen" : adminRole ? "admin" : "nurse"}
             isOpen={isSidebarOpen}
             isCollapsed={isSidebarCollapsed}
             isReady={isReady}
