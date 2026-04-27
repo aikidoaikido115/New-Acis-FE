@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Eye, EyeOff, AlertCircle } from "lucide-react";
+import { Eye, EyeOff, AlertCircle, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -12,6 +12,7 @@ import { getAuthErrorMessage } from "@/lib/error-messages";
 
 export function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -20,6 +21,8 @@ export function LoginForm() {
   const [formData, setFormData] = useState({
     usernameOrEmail: "",
     password: "" });
+  const registeredQuery = searchParams.get("registered");
+  const isRegisteredFlow = registeredQuery === "pending_approval" || registeredQuery === "true";
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -55,6 +58,12 @@ export function LoginForm() {
         case "kitchen":
           router.push("/manage-meal");
           break;
+        case "admin":
+          router.push("/admin/users");
+          break;
+        case "superuser":
+          router.push("/dashboard");
+          break;
         case "relative":
           router.push("/relative/dashboard");
           break;
@@ -75,6 +84,20 @@ export function LoginForm() {
       <h2 className="text-headline-5 font-bold mb-8 text-gray-800">เข้าสู่ระบบ</h2>
 
       <form onSubmit={onSubmit} className="space-y-5">
+        {isRegisteredFlow && !error && (
+          <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg">
+            <div className="flex items-start gap-2">
+              <Info className="w-5 h-5 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="font-semibold text-body-small mb-1">สมัครใช้งานสำเร็จแล้ว</p>
+                <p className="text-body-small">
+                  บัญชีของคุณกำลังรอการอนุมัติจากผู้ดูแลระบบ กรุณารอการยืนยันก่อนเข้าสู่ระบบ
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
             <div className="flex items-start gap-2">

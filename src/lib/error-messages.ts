@@ -42,6 +42,19 @@ export function getAuthErrorMessage(error: unknown): ErrorMessage {
   // Backend returns 500 for auth errors, so we need to check the message first
   // Security best practice: Don't reveal whether username or password is wrong
   if (
+    errorMessage.includes('pending approval') ||
+    errorMessage.includes('pending administrator approval') ||
+    errorMessage.includes('pending admin approval') ||
+    errorMessage.includes('not approved') ||
+    errorMessage.includes('account is pending approval')
+  ) {
+    return {
+      title: 'บัญชียังไม่พร้อมใช้งาน',
+      message: 'บัญชีของคุณกำลังรอการอนุมัติจากผู้ดูแลระบบ กรุณารอสักครู่แล้วลองอีกครั้ง',
+    };
+  }
+
+  if (
     errorMessage.includes('invalid username') ||
     errorMessage.includes('invalid email') ||
     errorMessage.includes('invalid password') ||
