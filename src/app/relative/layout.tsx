@@ -35,7 +35,10 @@ export default function RelativeLayout({
   }
 
   return (
-    <ProtectedRoute allowedRoles={["relative", "Relative", "RELATIVE"]}>
+    <ProtectedRoute
+      redirectTo="/relative/login"
+      allowedRoles={["relative", "Relative", "RELATIVE"]}
+    >
       {children}
     </ProtectedRoute>
   );
