@@ -39,7 +39,16 @@ export function LoginFormRelative() {
 
   const residentIdFromQuery = searchParams.get("resident_id")?.trim() || "";
   const tokenFromQuery = searchParams.get("token")?.trim() || "";
-  const hasPortalParams = !!(residentIdFromQuery || tokenFromQuery);
+  const storedResidentId = typeof window !== "undefined"
+    ? localStorage.getItem("relative_portal_resident_id")?.trim() || ""
+    : "";
+  const storedToken = typeof window !== "undefined"
+    ? localStorage.getItem("relative_portal_token")?.trim() || ""
+    : "";
+
+  const effectiveResidentId = residentIdFromQuery || storedResidentId;
+  const effectiveToken = tokenFromQuery || storedToken;
+  const hasPortalParams = !!(effectiveResidentId || effectiveToken);
 
   useEffect(() => {
     if (!hasPortalParams) {
@@ -66,17 +75,17 @@ export function LoginFormRelative() {
       }
 
       const user = await authService.relativePortalLogin({
-        resident_id: residentIdFromQuery || undefined,
-        token: tokenFromQuery || undefined,
+        resident_id: effectiveResidentId || undefined,
+        token: effectiveToken || undefined,
         password: formData.password.trim(),
         remember: rememberMe,
       });
 
-      if (residentIdFromQuery) {
-        localStorage.setItem('relative_portal_resident_id', residentIdFromQuery);
+      if (effectiveResidentId) {
+        localStorage.setItem('relative_portal_resident_id', effectiveResidentId);
       }
-      if (tokenFromQuery) {
-        localStorage.setItem('relative_portal_token', tokenFromQuery);
+      if (effectiveToken) {
+        localStorage.setItem('relative_portal_token', effectiveToken);
       }
 
       const consentAccepted = localStorage.getItem(`consent_accepted_${user.user_id}`);

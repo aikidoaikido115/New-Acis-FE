@@ -46,7 +46,11 @@ export default function AdminUsersPage() {
     setIsLoading(true);
     try {
       const data = await adminService.getUsers();
-      setUsers(data);
+      setUsers(
+        data.filter(
+          (user) => user.status === "active" && !user.roleName.toLowerCase().includes("relative")
+        )
+      );
     } catch {
       showToast({
         title: "โหลดข้อมูลไม่สำเร็จ",

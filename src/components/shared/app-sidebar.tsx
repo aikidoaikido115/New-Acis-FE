@@ -86,6 +86,7 @@ const MENU_ITEMS: Record<UserRole, { main: SidebarItem[]; support: SidebarItem[]
   admin: {
     main: [
       { label: "จัดการผู้ใช้งาน", href: "/admin/users", icon: Shield },
+      { label: "จัดการบัญชีญาติ", href: "/admin/relative-users", icon: Users },
       { label: "อนุมัติการสมัคร", href: "/admin/register-approvals", icon: CheckCircle2 },
       { label: "Audit Log", href: "/admin/audit-logs", icon: FileText },
     ],

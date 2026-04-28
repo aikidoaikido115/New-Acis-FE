@@ -22,6 +22,14 @@ interface BackendAdminUser {
   role?: BackendRole;
 }
 
+interface BackendAdminRelativeUser {
+  user_id: string;
+  relative_id: string;
+  username: string;
+  resident_name: string;
+  created_at: string;
+}
+
 interface BackendAuditLog {
   table_name: string;
   record_id: string;
@@ -58,6 +66,14 @@ export interface AdminAuditEntry {
   newValue?: string;
   createdAt: string;
   severity: AdminAuditSeverity;
+}
+
+export interface AdminRelativeManagedUser {
+  id: string;
+  relativeId: string;
+  username: string;
+  residentName: string;
+  createdAt: string;
 }
 
 const ROLE_NAME_KITCHEN = "kitchen staff";
@@ -107,6 +123,16 @@ function toManagedUser(user: BackendAdminUser): AdminManagedUser {
     roleName,
     isSuperuser: isSuperuserRole(roleName),
     status: user.is_approve ? "active" : "inactive",
+    createdAt: user.created_at,
+  };
+}
+
+function toRelativeManagedUser(user: BackendAdminRelativeUser): AdminRelativeManagedUser {
+  return {
+    id: user.user_id,
+    relativeId: user.relative_id,
+    username: user.username,
+    residentName: user.resident_name,
     createdAt: user.created_at,
   };
 }
@@ -181,6 +207,15 @@ class AdminService {
 
     const response = await apiClient.get<ApiResponse<BackendAuditLog[]>>(endpoint);
     return (response.data.result || []).map((item, index) => toAuditEntry(item, index));
+  }
+
+  async getRelativeUsers(): Promise<AdminRelativeManagedUser[]> {
+    const response = await apiClient.get<ApiResponse<BackendAdminRelativeUser[]>>("/api/admin/users/relatives");
+    return (response.data.result || []).map(toRelativeManagedUser);
+  }
+
+  async deleteRelativeUser(userId: string): Promise<void> {
+    await apiClient.delete(`/api/admin/users/relatives/${userId}`);
   }
 }
 

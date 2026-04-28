@@ -43,6 +43,7 @@ export interface AdminNavItem {
 
 export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   { label: "จัดการผู้ใช้งาน", href: "/admin/users" },
+  { label: "จัดการบัญชีญาติ", href: "/admin/relative-users" },
   { label: "อนุมัติการสมัคร", href: "/admin/register-approvals" },
   { label: "Audit Log", href: "/admin/audit-logs" },
 ];
