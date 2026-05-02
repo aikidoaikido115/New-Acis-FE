@@ -9,16 +9,32 @@ import { useToast } from "@/components/ui/toast";
 import {
   clearCheckInSession,
   loadCheckInSession,
-  saveCheckInRecord,
   saveCheckInSession,
   type CheckInResident,
   type CheckInSession,
 } from "@/components/features/activity/check-in/checkin-storage";
-import { activityAttendanceService } from "@/services/activity-attendance.service";
-import { residentService } from "@/services/resident.service";
-import type { ActivityAttendance } from "@/types/activity-attendance";
+import { activityParticipationService } from "@/services/activity-participation.service";
 
 type ReviewItem = CheckInResident & { photo?: string; rejected?: boolean };
+
+const dataUrlToFile = (dataUrl: string, filename: string) => {
+  const [header, data] = dataUrl.split(",");
+  if (!header || !data) return null;
+  const match = header.match(/data:(.*?);base64/);
+  const mime = match?.[1] || "image/jpeg";
+  try {
+    const binary = atob(data);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return new File([bytes], filename, { type: mime });
+  } catch {
+    return null;
+  }
+};
+
+const getErrorStatus = (error: any) => error?.response?.status ?? error?.status_code ?? error?.status;
 
 export default function ActivityCheckInReviewPage() {
   const { showToast } = useToast();
@@ -29,64 +45,76 @@ export default function ActivityCheckInReviewPage() {
   const [session, setSession] = useState<CheckInSession | null>(null);
   const [selected, setSelected] = useState<ReviewItem | null>(null);
   const [isHistory, setIsHistory] = useState(false);
-  const [attendance, setAttendance] = useState<ActivityAttendance | null>(null);
 
   useEffect(() => {
     const stored = loadCheckInSession(scheduleId);
     const urlParams = new URL(window.location.href).searchParams;
-    const view = urlParams.get("view");
+    const mode = urlParams.get("mode");
     if (stored) {
       setSession(stored);
+      setIsHistory(mode === "history");
       return;
     }
 
-    // If no session in storage or explicitly viewing history, try to load attendance from API
-    const loadAttendance = async () => {
+    const loadParticipations = async () => {
       try {
-        const att = await activityAttendanceService.getByScheduleId(scheduleId);
-        if (!att) return;
-        setAttendance(att);
-        setIsHistory(view === "history" || !att.can_edit);
+        const residents = await activityParticipationService.getResidentsByScheduleId(scheduleId);
+        const participating = residents.filter((resident) => resident.is_participating);
+        setIsHistory(mode === "history");
 
-        // load resident names
-        const ids = Array.from(new Set([...(att.selected_resident_ids || []), ...(att.rejected_resident_ids || [])]));
-        const residents = await Promise.all(ids.map((id) => residentService.getById(id).catch(() => null)));
-        const residentMap = new Map<string, string>();
-        residents.forEach((r) => {
-          if (!r) return;
-          const id = (r as any).resident_id || (r as any).id || "";
-          residentMap.set(String(id), `${r.first_name} ${r.last_name}`.trim());
-        });
+        const photoEntries = await Promise.all(
+          participating.map(async (resident) => {
+            try {
+              const participation = await activityParticipationService.getByCompositeKey(resident.resident_id, scheduleId);
+              const firstUrl = participation.img_urls?.[0]?.url;
+              return firstUrl ? [resident.resident_id, firstUrl] : null;
+            } catch {
+              return null;
+            }
+          })
+        );
 
-        const items = ids.map((id) => ({
-          id,
-          name: residentMap.get(id) || id,
-          nickname: "-",
-          roomNumber: "-",
+        const photos = photoEntries.reduce<Record<string, string>>((acc, entry) => {
+          if (entry) {
+            acc[entry[0]] = entry[1];
+          }
+          return acc;
+        }, {});
+
+        const items = participating.map((resident) => ({
+          id: resident.resident_id,
+          name: `${resident.first_name} ${resident.last_name}`.trim(),
+          nickname: resident.nickname || "-",
+          roomNumber: resident.room_number || "-",
           careType: "-",
-          photo: att.photos?.[id],
-          rejected: (att.rejected_resident_ids || []).includes(id),
+          photo: photos[resident.resident_id],
         }));
 
-        // set as pseudo-session for UI rendering
         setSession({
           scheduleId,
           activityTitle: undefined,
           date: undefined,
           startTime: undefined,
           endTime: undefined,
-          residents: items.map((it) => ({ id: it.id, name: it.name, nickname: it.nickname, roomNumber: it.roomNumber, careType: it.careType })),
-          selectedIds: (att.selected_resident_ids || []),
-          photos: att.photos || {},
-          rejectedIds: att.rejected_resident_ids || [],
-          updatedAt: att.updated_at || new Date().toISOString(),
+          residents: items.map((it) => ({
+            id: it.id,
+            name: it.name,
+            nickname: it.nickname,
+            roomNumber: it.roomNumber,
+            careType: it.careType,
+          })),
+          selectedIds: items.map((it) => it.id),
+          initialSelectedIds: items.map((it) => it.id),
+          photos,
+          rejectedIds: [],
+          updatedAt: new Date().toISOString(),
         });
       } catch (err) {
-        // no attendance yet or network error
+        // no participation yet or network error
       }
     };
 
-    void loadAttendance();
+    void loadParticipations();
   }, [scheduleId]);
 
   const reviewItems = useMemo<ReviewItem[]>(() => {
@@ -131,14 +159,53 @@ export default function ActivityCheckInReviewPage() {
 
   const handleSaveAll = () => {
     if (!session) return;
-    const payload = {
-      selected_resident_ids: session.selectedIds || [],
-      rejected_resident_ids: session.rejectedIds || [],
-      photos: session.photos || {},
+    const selectedSet = new Set(session.selectedIds || []);
+    const initialSelectedSet = new Set(session.initialSelectedIds || session.selectedIds || []);
+    const deselectedIds = Array.from(initialSelectedSet).filter((id) => !selectedSet.has(id));
+
+    const upsertParticipation = async (residentId: string, isParticipating: boolean, photoData?: string) => {
+      const file = photoData ? dataUrlToFile(photoData, `activity-${residentId}.jpg`) : null;
+      const files = file ? [file] : undefined;
+      try {
+        await activityParticipationService.create(
+          {
+            resident_id: residentId,
+            as_id: scheduleId,
+            is_participating: isParticipating,
+          },
+          files
+        );
+      } catch (error: any) {
+        const status = getErrorStatus(error);
+        if (status === 409) {
+          await activityParticipationService.update(
+            residentId,
+            scheduleId,
+            { is_participating: isParticipating },
+            files
+          );
+          return;
+        }
+        throw error;
+      }
+    };
+
+    const updateToNotParticipating = async (residentId: string) => {
+      try {
+        await activityParticipationService.update(residentId, scheduleId, { is_participating: false });
+      } catch (error: any) {
+        const status = getErrorStatus(error);
+        if (status !== 404) throw error;
+      }
     };
     (async () => {
       try {
-        await activityAttendanceService.upsert(scheduleId, payload);
+        await Promise.all(
+          Array.from(selectedSet).map((residentId) =>
+            upsertParticipation(residentId, true, session.photos?.[residentId])
+          )
+        );
+        await Promise.all(deselectedIds.map((residentId) => updateToNotParticipating(residentId)));
         clearCheckInSession(scheduleId);
         showToast({ type: "success", title: "บันทึกภาพถ่ายสำเร็จ" , message: ""});
         router.push("/activity");

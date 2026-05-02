@@ -1,4 +1,6 @@
 import { Clock, MapPin, ImageIcon } from 'lucide-react';
+import type { ActivityParticipation } from '@/types/activity-participation';
+
 interface Activity {
   id: string;
   time: string;
@@ -6,20 +8,49 @@ interface Activity {
   description?: string;
   location?: string;
   image: string;
+  lastUpdatedAt?: string;
 }
 
 interface DailyActivitiesProps {
   activities?: Activity[];
+  participations?: ActivityParticipation[];
+  lastUpdatedAt?: string;
 }
 
-export function DailyActivities({ activities }: DailyActivitiesProps) {
-  const dailyActivities = activities || [];
+export function DailyActivities({ activities, participations, lastUpdatedAt }: DailyActivitiesProps) {
+  // Use participations if provided, otherwise use activities
+  let displayItems: any[] = [];
+
+  if (participations && participations.length > 0) {
+    displayItems = participations.map((p) => ({
+      id: `${p.resident_id}-${p.as_id}`,
+      time: `${p.activity_schedule?.start_time?.substring(0, 5) || '-'}-${p.activity_schedule?.end_time?.substring(0, 5) || '-'}`,
+      title: p.activity_schedule?.activity?.activity_name || 'กิจกรรม',
+      description: p.activity_schedule?.activity?.description,
+      location: p.activity_schedule?.activity?.location,
+      participated: p.is_participating,
+      images: (p.img_urls || []).map((img) => img.url).filter(Boolean),
+      lastUpdatedAt: lastUpdatedAt,
+    }));
+  } else {
+    displayItems = (activities || []).map(a => ({
+      ...a,
+      lastUpdatedAt: lastUpdatedAt || a.lastUpdatedAt,
+    }));
+  }
+
+  const dailyActivities = displayItems;
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
-      <h2 className="text-xl font-semibold text-gray-800 mb-4">
-        กิจกรรมประจำวันที่เข้าร่วม
-      </h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-semibold text-gray-800">
+          กิจกรรมประจำวันที่เข้าร่วม
+        </h2>
+        {lastUpdatedAt && (
+          <span className="text-xs text-gray-500">อัปเดตล่าสุด: {lastUpdatedAt}</span>
+        )}
+      </div>
       {dailyActivities.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-gray-500">
           <span className="mb-4">
@@ -32,39 +63,79 @@ export function DailyActivities({ activities }: DailyActivitiesProps) {
         </div>
       ) : (
         <div className="space-y-4">
-          {dailyActivities.map((activity) => (
-            <div
-              key={activity.id}
-              className="flex flex-col md:flex-row gap-4 p-4 border border-blue-200 bg-blue-50 rounded-lg hover:shadow-md transition-shadow"
-            >
-              {/* Image Placeholder */}
-              <div className="w-full md:w-48 h-32 rounded-lg overflow-hidden bg-linear-to-br from-blue-200 to-blue-300 shrink-0 flex items-center justify-center">
-                <ImageIcon size={48} className="text-blue-600 opacity-50" />
-              </div>
+          {dailyActivities.map((item) => {
+            const hasImages = item.images && item.images.length > 0;
+            // เช็คว่ามีบันทึกการเข้าร่วมหรือไม่
+            const isParticipated = item.participated === true;
 
-              {/* Content */}
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-sm font-semibold text-white bg-blue-500 px-3 py-1.5 rounded flex items-center gap-2">
-                    <Clock className="text-white" size={16} />
-                    {activity.time}
-                  </span>
-                </div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                  {activity.title}
-                </h3>
-                {activity.description && (
-                  <p className="text-sm text-gray-600 mb-2">{activity.description}</p>
-                )}
-                {activity.location && activity.location !== '-' && (
-                  <div className="flex items-center gap-1 text-sm text-gray-500">
-                    <MapPin size={16} />
-                    <span>{activity.location}</span>
+            return (
+              <div
+                key={item.id}
+                className={`flex flex-col md:flex-row gap-4 p-4 border rounded-lg hover:shadow-md transition-shadow ${
+                  isParticipated 
+                    ? "border-blue-200 bg-blue-50" 
+                    : "border-gray-200 bg-white"
+                }`}
+              >
+                {/* Image */}
+                {hasImages ? (
+                  <div className="w-full md:w-48 h-32 rounded-lg overflow-hidden shrink-0">
+                    <img
+                      src={item.images[0]}
+                      alt={item.title}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div className={`w-full md:w-48 h-32 rounded-lg overflow-hidden shrink-0 flex items-center justify-center ${
+                    isParticipated 
+                      ? "bg-linear-to-br from-blue-200 to-blue-300" 
+                      : "bg-linear-to-br from-gray-100 to-gray-200"
+                  }`}>
+                    <ImageIcon size={48} className={`opacity-50 ${isParticipated ? "text-blue-600" : "text-gray-400"}`} />
                   </div>
                 )}
+
+                {/* Content */}
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className={`text-sm font-semibold text-white px-3 py-1.5 rounded flex items-center gap-2 ${
+                      isParticipated ? "bg-blue-500" : "bg-gray-400"
+                    }`}>
+                      <Clock size={16} />
+                      {item.time}
+                    </span>
+                    {item.participated !== undefined && (
+                      <span className={`text-xs px-3 py-1.5 rounded font-semibold ${
+                        item.participated 
+                          ? 'bg-green-100 text-green-700' 
+                          : 'bg-gray-100 text-gray-600'
+                      }`}>
+                        {item.participated ? 'เข้าร่วม' : 'ไม่เข้าร่วม'}
+                      </span>
+                    )}
+                  </div>
+                  <h3 className={`text-lg font-semibold mb-2 ${isParticipated ? "text-gray-800" : "text-gray-500"}`}>
+                    {item.title}
+                  </h3>
+                  {item.description && (
+                    <p className="text-sm text-gray-600 mb-2">{item.description}</p>
+                  )}
+                  {item.location && item.location !== '-' && (
+                    <div className="flex items-center gap-1 text-sm text-gray-500">
+                      <MapPin size={16} />
+                      <span>{item.location}</span>
+                    </div>
+                  )}
+                  {hasImages && item.images.length > 1 && (
+                    <div className="mt-3 text-xs text-gray-600">
+                      มีรูปภาพ {item.images.length} รูป
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

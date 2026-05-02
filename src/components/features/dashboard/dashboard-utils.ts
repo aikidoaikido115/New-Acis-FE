@@ -33,10 +33,7 @@ export type ResidentSnapshot = Pick<
   intake_labels?: string[];
 };
 
-export const SCHEDULE_ITEMS = [
-  { time: "09:00-10:30", title: "กิจกรรมประจำวัน", detail: "กิจกรรมฟื้นฟูสมรรถภาพ", location: "ห้องกิจกรรม" },
-  { time: "14:00-15:30", title: "กิจกรรมประจำสัปดาห์", detail: "กิจกรรมพัฒนากล้ามเนื้อ", location: "โถงกิจกรรม" },
-];
+export const SCHEDULE_ITEMS: { time: string; title: string; detail: string; location: string }[] = [];
 
 export const INVENTORY_ITEMS: Array<{ key: InventoryStatKey; label: string; href: string }> = [
   { key: "lowStock", label: "รายการสินค้าใกล้หมด", href: "/warehouse" },

@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { Dropdown } from "@/components/ui/dropdown";
+import { ActivityCalendar } from "@/components/features/activity/activity-calendar";
 import {
   DashboardCard,
   GenderChart,
@@ -148,6 +149,7 @@ interface DashboardScheduleRowProps {
   activityDate: Date;
   onActivityDateChange: (date: Date) => void;
   scheduleItems: ScheduleItemWithBadge[];
+  schedulesByMonth?: Record<string, number>;
   inventoryCards: InventoryCardItem[];
 }
 
@@ -155,6 +157,7 @@ export function DashboardScheduleRow({
   activityDate,
   onActivityDateChange,
   scheduleItems,
+  schedulesByMonth,
   inventoryCards,
 }: DashboardScheduleRowProps) {
   return (
@@ -163,8 +166,12 @@ export function DashboardScheduleRow({
         title="ตารางกิจกรรม"
         icon={<Calendar className="h-4 w-4" />}
       >
-        <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
-          <MiniCalendar selectedDate={activityDate} />
+        <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
+          <ActivityCalendar 
+            selectedDate={activityDate} 
+            onSelectDate={onActivityDateChange}
+            schedulesByMonth={schedulesByMonth}
+          />
           <div className="space-y-4 max-h-[35vh] overflow-y-auto pr-2 custom-scrollbar">
             {scheduleItems.length > 0 ? (
               scheduleItems.map((item) => (
@@ -179,14 +186,14 @@ export function DashboardScheduleRow({
               ))
             ) : (
               <div className="rounded-xl border border-slate-200 p-6 text-center text-sm text-slate-500">
-                ไม่มีกิจกรรมในวันนี้
+                ไม่มีกิจกรรมในวันที่เลือก
               </div>
             )}
           </div>
         </div>
       </DashboardCard>
 
-      <DashboardCard title="สินค้าคงคลัง" icon={<ShoppingBag className="h-4 w-4" />}>
+      <DashboardCard title="ยาและเวชภัณฑ์" icon={<ShoppingBag className="h-4 w-4" />}>
         <div className="space-y-6 text-sm">
           {inventoryCards.map((item) => (
             <div key={item.label} className="space-y-2">
@@ -203,37 +210,7 @@ export function DashboardScheduleRow({
   );
 }
 
-function MiniCalendar({ selectedDate }: { selectedDate: Date }) {
-  const year = selectedDate.getFullYear();
-  const month = selectedDate.getMonth();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const firstDay = new Date(year, month, 1).getDay();
-  const selectedDay = selectedDate.getDate();
 
-  return (
-    <div className="rounded-xl border border-slate-200 p-4">
-      <div className="flex items-center justify-between text-sm font-semibold text-slate-700">
-        <span>{formatThaiMonthYear(selectedDate)}</span>
-        <ChevronDown className="h-4 w-4" />
-      </div>
-      <div className="mt-4 grid grid-cols-7 gap-2 text-center text-xs text-slate-500">
-        {DAYS_SHORT.map((day) => (
-          <span key={day}>{day}</span>
-        ))}
-      </div>
-      <div className="mt-2 grid grid-cols-7 gap-2 text-center text-xs text-slate-600">
-        {Array.from({ length: firstDay }).map((_, index) => (
-          <span key={`empty-${index}`} />
-        ))}
-        {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => (
-          <span key={day} className={`rounded-full px-2 py-1 ${day === selectedDay ? "bg-blue-600 text-white" : ""}`}>
-            {day}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 function GenderIcon(): ReactNode {
   return (

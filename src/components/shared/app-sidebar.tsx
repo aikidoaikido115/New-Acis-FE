@@ -52,7 +52,7 @@ const MENU_ITEMS: Record<UserRole, { main: SidebarItem[]; support: SidebarItem[]
       { label: "เวชระเบียน", href: "/emr", icon: ClipboardList },
       { label: "จัดการยา", href: "/medicine", icon: Pill },
       { label: "ตารางกิจกรรม", href: "/activity", icon: Calendar },
-      { label: "สินค้าคงคลัง", href: "/warehouse", icon: ShoppingBag },
+      { label: "ยาและเวชภัณฑ์", href: "/warehouse", icon: ShoppingBag },
     ],
     support: [
       { label: "คู่มือการใช้งาน", href: "/user-manual", icon: BookOpen },
@@ -75,7 +75,7 @@ const MENU_ITEMS: Record<UserRole, { main: SidebarItem[]; support: SidebarItem[]
       { label: "เวชระเบียน", href: "/emr", icon: ClipboardList },
       { label: "จัดการยา", href: "/medicine", icon: Pill },
       { label: "ตารางกิจกรรม", href: "/activity", icon: Calendar },
-      { label: "สินค้าคงคลัง", href: "/warehouse", icon: ShoppingBag },
+      { label: "ยาและเวชภัณฑ์", href: "/warehouse", icon: ShoppingBag },
     ],
     support: [
       { label: "คู่มือการใช้งาน", href: "/user-manual", icon: BookOpen },

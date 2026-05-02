@@ -7,12 +7,21 @@ import { MealHistoryTable } from "@/components/features/kitchen/MealHistoryTable
 import { MealHistoryMobileModal } from "@/components/features/kitchen/MealHistoryMobileModal";
 import type { MealHistoryRow, TimeOption } from "@/components/features/kitchen/MealHistory.types";
 import { mealService } from "@/services/meal.service";
+import { useToast } from "@/components/ui/toast";
+import type { Menu } from "@/types/meal"; 
 
 export interface MealHistoryViewProps {
   onBack: () => void;
+  availableMenus: Menu[];
 }
 
-export function MealHistoryView({ onBack }: MealHistoryViewProps) {
+export function MealHistoryView({ onBack, availableMenus }: MealHistoryViewProps) { 
+  const getMenuName = (id: string) => {
+    if (!id) return "ไม่ระบุ";
+    const foundMenu = availableMenus.find(menu => menu.menu_id === id);
+    return foundMenu ? foundMenu.menu_name : 'หาเมนูไม่พบ';
+  }
+  const { showToast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedTime, setSelectedTime] = useState("");
@@ -20,7 +29,6 @@ export function MealHistoryView({ onBack }: MealHistoryViewProps) {
   const [openPopoverId, setOpenPopoverId] = useState<string | null>(null);
   const [historyRows, setHistoryRows] = useState<MealHistoryRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const autoCloseTimer = useRef<NodeJS.Timeout | null>(null);
 
   const timeOptions: TimeOption[] = [
@@ -51,11 +59,9 @@ export function MealHistoryView({ onBack }: MealHistoryViewProps) {
     const fetchMealPlans = async () => {
       try {
         setIsLoading(true);
-        setError(null);
         const mealPlans = await mealService.getAllMealPlans();
 
-        // Transform API response to MealHistoryRow format
-        const rows: MealHistoryRow[] = mealPlans.map((plan) => {
+        const rows: MealHistoryRow[] = mealPlans.flatMap((plan) => {
           const createdDate = new Date(plan.created_at || new Date());
           const dateStr = formatThaiDate(createdDate);
           const timeStr = createdDate.toLocaleTimeString('th-TH', {
@@ -63,34 +69,60 @@ export function MealHistoryView({ onBack }: MealHistoryViewProps) {
             minute: '2-digit',
           });
 
-          return {
-            id: plan.id,
+          const baseId = plan.id || plan.meal_plan_id || Math.random().toString();
+
+          const mainRow: MealHistoryRow = {
+            id: `${baseId}-main`, 
             date: `${dateStr} ${timeStr}`,
-            time: plan.meal_type,
-            menu: plan.menu?.menu_name || "ไม่ระบุ",
-            servings: String(plan.main_amount),
+            time: getThaiMealLabel(plan.meal_type),
+            menu: getMenuName(plan.menu_id), 
+            servings: String(plan.main_amount || 0),
             notes: plan.menu?.description || "",
-            createdBy: "ระบบ", // This would need to come from plan if available
+            createdBy: plan.staff_name || "ระบบ", 
           };
+
+          const resultRows = [mainRow];
+
+          if (plan.backup_menu_id) {
+            const backupRow: MealHistoryRow = {
+              id: `${baseId}-backup`,
+              date: `${dateStr} ${timeStr}`,
+              time: getThaiMealLabel(plan.meal_type), 
+              menu: `${getMenuName(plan.backup_menu_id)} (เมนูรอง)`, 
+              servings: String(plan.backup_amount || 0),
+              notes: "เมนูรองสำหรับผู้แพ้อาหาร",
+              createdBy: plan.staff_name || "ระบบ", 
+            };
+            resultRows.push(backupRow);
+          }
+
+          return resultRows;
         });
 
         setHistoryRows(rows);
       } catch (err) {
         console.error("Failed to fetch meal plans:", err);
-        setError("ไม่สามารถโหลดข้อมูลได้");
+        showToast({
+          title: "เกิดข้อผิดพลาด",
+          message: "ไม่สามารถดึงข้อมูลประวัติแผนอาหารได้ กรุณาลองใหม่อีกครั้ง",
+          type: "error",
+        });
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchMealPlans();
-  }, []);
+  }, [showToast, availableMenus]);
 
   const filteredRows = useMemo(() => {
     return historyRows.filter((row) => {
       const matchesSearch = !searchTerm.trim() ||
         row.menu.toLowerCase().includes(searchTerm.trim().toLowerCase());
-      const matchesTime = !selectedTime || row.time === selectedTime;
+      
+      const targetTimeLabel = selectedTime ? getThaiMealLabel(selectedTime) : "";
+      const matchesTime = !selectedTime || row.time === targetTimeLabel;
+
       const rowDateOnly = row.date.split(" ")[0];
       const matchesDate = !selectedDate || rowDateOnly === formatThaiDate(selectedDate);
       return matchesSearch && matchesTime && matchesDate;
@@ -141,12 +173,6 @@ export function MealHistoryView({ onBack }: MealHistoryViewProps) {
       <div className="flex items-center justify-between">
         <h1 className="text-headline-5 font-bold text-gray-800">รายการแผนอาหารที่บันทึกไว้</h1>
       </div>
-
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-2 text-sm text-red-700">
-          {error}
-        </div>
-      )}
 
       {isLoading ? (
         <div className="flex items-center justify-center py-8">

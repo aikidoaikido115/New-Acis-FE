@@ -120,6 +120,26 @@ export function ActivityFormModal({
       return;
     }
 
+    // Validate backdated activities (only allow 1 day in the past)
+    const selectedDate = parseLocalDate(formData.date);
+    if (selectedDate) {
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      
+      // Normalize dates to compare (ignore time)
+      const normalizeDate = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      const normalizedSelected = normalizeDate(selectedDate);
+      const normalizedYesterday = normalizeDate(yesterday);
+      const normalizedToday = normalizeDate(today);
+
+      // Check if date is more than 1 day in the past
+      if (normalizedSelected < normalizedYesterday) {
+        alert("ไม่สามารถสร้างกิจกรรมย้อนหลังเกิน 1 วันได้");
+        return;
+      }
+    }
+
     onSubmit(formData);
     handleClose();
   };

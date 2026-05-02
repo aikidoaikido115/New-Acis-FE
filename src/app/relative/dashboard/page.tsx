@@ -55,6 +55,7 @@ export default function RelativeDashboard() {
         {/* Content */}
         <div className="flex-1 p-8 pt-20 lg:pt-8">
           <RelativeDashboardContent
+            residentId={dashboardData?.resident_id}
             residentName={dashboardData?.resident_name}
             lastUpdatedAt={dashboardData?.last_updated_at}
             notes={dashboardData?.notes || []}

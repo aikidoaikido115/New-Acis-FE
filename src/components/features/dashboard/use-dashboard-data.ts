@@ -21,7 +21,7 @@ import {
   formatThaiDate,
   getScheduleItemsForDate,
   isSameDay,
-  resolveTimeOfDayKey,
+  resolveTimeOfDayKeys,
   toDateInputValue,
   type ResidentSnapshot,
   type InventoryStatKey,
@@ -113,6 +113,7 @@ export function useDashboardData() {
   );
 
   const [scheduleItemsApi, setScheduleItemsApi] = useState<ScheduleItemWithBadge[]>([]);
+  const [schedulesByMonth, setSchedulesByMonth] = useState<Record<string, number>>({});
 
   useEffect(() => {
     let mounted = true;
@@ -136,6 +137,43 @@ export function useDashboardData() {
     void load();
     return () => { mounted = false; };
   }, [activityDate, scheduleBadge]);
+
+// Load schedules for the current month to display activity count on calendar
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        const allSchedules = await activityScheduleService.getAll();
+        if (!mounted) return;
+        
+        // Group schedules by date
+        const byDate: Record<string, number> = {};
+        (allSchedules || []).forEach((s) => {
+          if (s.date) {
+            // 1. นำข้อมูลมาแปลงเป็น Date Object เพื่อปรับ Timezone ให้ตรงกับเครื่องผู้ใช้ (ไทย)
+            const d = new Date(s.date);
+            
+            // 2. เช็คว่าเป็นวันที่ที่ถูกต้อง ไม่ใช่ Invalid Date
+            if (!Number.isNaN(d.getTime())) {
+              const year = d.getFullYear();
+              const month = String(d.getMonth() + 1).padStart(2, "0");
+              const day = String(d.getDate()).padStart(2, "0");
+              
+              // 3. ประกอบร่าง YYYY-MM-DD ที่เป็นเวลา Local แล้ว
+              const key = `${year}-${month}-${day}`; 
+              
+              byDate[key] = (byDate[key] || 0) + 1;
+            }
+          }
+        });
+        setSchedulesByMonth(byDate);
+      } catch (err) {
+        setSchedulesByMonth({});
+      }
+    };
+    void load();
+    return () => { mounted = false; };
+  }, []);
 
   const scheduleItems = useMemo<ScheduleItemWithBadge[]>(
     () => (scheduleItemsApi.length ? scheduleItemsApi : getScheduleItemsForDate(activityDate).map((item) => ({ ...item, badge: scheduleBadge }))),
@@ -380,6 +418,7 @@ export function useDashboardData() {
     vitalStats,
     medicineStatus,
     scheduleItems,
+    schedulesByMonth,
     inventoryCards,
     refreshResidents,
   };

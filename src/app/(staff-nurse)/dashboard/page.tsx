@@ -100,6 +100,7 @@ export default function Page() {
     vitalStats,
     medicineStatus,
     scheduleItems,
+    schedulesByMonth,
     inventoryCards,
     refreshResidents,
   } = useDashboardData();
@@ -366,6 +367,7 @@ export default function Page() {
           activityDate={activityDate}
           onActivityDateChange={setActivityDate}
           scheduleItems={scheduleItems}
+          schedulesByMonth={schedulesByMonth}
           inventoryCards={inventoryCards}
         />
       </div>

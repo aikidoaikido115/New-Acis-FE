@@ -5,10 +5,9 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Camera, Search } from "lucide-react";
 import { BackButton } from "@/components/features/relative/back-button";
 import { useToast } from "@/components/ui/toast";
+import { activityParticipationService } from "@/services/activity-participation.service";
 import { residentService } from "@/services/resident.service";
-import { activityAttendanceService } from "@/services/activity-attendance.service";
-import type { ActivityAttendance } from "@/types/activity-attendance";
-import type { ResidentOverviewItem } from "@/types/resident";
+import type { ResidentByScheduleResponse } from "@/types/activity-participation";
 import {
   saveCheckInRecord,
   saveCheckInSession,
@@ -56,41 +55,69 @@ export default function ActivityCheckInPage() {
   const activityDate = formatThaiDate(searchParams.get("date"));
   const activityTime = `${formatTime(searchParams.get("start"))}-${formatTime(searchParams.get("end"))}`;
 
-  const [residents, setResidents] = useState<ResidentOverviewItem[]>([]);
+  const [residents, setResidents] = useState<ResidentByScheduleResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [attendance, setAttendance] = useState<ActivityAttendance | null>(null);
-  const [isReadOnly, setIsReadOnly] = useState(false);
+  const [initialSelectedIds, setInitialSelectedIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [floorFilter, setFloorFilter] = useState("all");
   const [careFilter, setCareFilter] = useState("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [cameraSupported, setCameraSupported] = useState(false);
   const [showDeviceWarning, setShowDeviceWarning] = useState(false);
+  const [hasPhotos, setHasPhotos] = useState(false); // Track if schedule has any photos
 
   useEffect(() => {
     setCameraSupported(Boolean(navigator?.mediaDevices?.getUserMedia));
   }, []);
 
+  // Load photos for this schedule
+  useEffect(() => {
+    const loadPhotos = async () => {
+      try {
+        const participations = await activityParticipationService.getAll();
+        const scheduleParticipations = participations.filter(p => p.as_id === scheduleId);
+        const hasAnyPhotos = scheduleParticipations.some(p => (p.img_urls?.length ?? 0) > 0);
+        setHasPhotos(hasAnyPhotos);
+      } catch {
+        setHasPhotos(false);
+      }
+    };
+    void loadPhotos();
+  }, [scheduleId]);
+
   const loadResidents = useCallback(async () => {
+    if (!scheduleId) return;
     setIsLoading(true);
     try {
-      const pageSize = 100;
-      let page = 1;
-      let totalPages = 1;
-      const items: ResidentOverviewItem[] = [];
+      const items = await activityParticipationService.getResidentsByScheduleId(scheduleId);
+      let filteredItems = items;
 
-      do {
-        const response = await residentService.getOverview({
-          status: "active",
-          page,
-          page_size: pageSize,
-        });
-        items.push(...(response.items || []));
-        totalPages = response.pagination?.total_pages || 1;
-        page += 1;
-      } while (page <= totalPages);
+      try {
+        const pageSize = 100;
+        let page = 1;
+        let totalPages = 1;
+        const activeIds = new Set<string>();
 
-      setResidents(items);
+        do {
+          const overview = await residentService.getOverview({ status: "active", page, page_size: pageSize });
+          overview.items?.forEach((resident) => {
+            if (resident.resident_id) activeIds.add(resident.resident_id);
+          });
+          totalPages = overview.pagination?.total_pages || 1;
+          page += 1;
+        } while (page <= totalPages);
+
+        filteredItems = items.filter((item) => activeIds.has(item.resident_id));
+      } catch {
+        filteredItems = items;
+      }
+
+      const participating = new Set(
+        filteredItems.filter((item) => item.is_participating).map((item) => item.resident_id)
+      );
+      setResidents(filteredItems);
+      setSelectedIds(participating);
+      setInitialSelectedIds(participating);
     } catch (error: any) {
       showToast({
         type: "error",
@@ -98,34 +125,16 @@ export default function ActivityCheckInPage() {
         message: error?.message || "ไม่สามารถโหลดรายชื่อผู้สูงอายุได้",
       });
       setResidents([]);
+      setSelectedIds(new Set());
+      setInitialSelectedIds(new Set());
     } finally {
       setIsLoading(false);
     }
-  }, [showToast]);
+  }, [scheduleId, showToast]);
 
   useEffect(() => {
     void loadResidents();
   }, [loadResidents]);
-
-  useEffect(() => {
-    if (!scheduleId) return;
-    let mounted = true;
-    const loadAttendance = async () => {
-      try {
-        const att = await activityAttendanceService.getByScheduleId(scheduleId);
-        if (!mounted) return;
-        setAttendance(att || null);
-        if (att) {
-          setSelectedIds(new Set(att.selected_resident_ids || []));
-          setIsReadOnly(!att.can_edit);
-        }
-      } catch (err) {
-        // ignore; no attendance yet
-      }
-    };
-    void loadAttendance();
-    return () => { mounted = false; };
-  }, [scheduleId]);
 
   const residentOptions = useMemo<CheckInResident[]>(() => {
     return residents
@@ -181,8 +190,47 @@ export default function ActivityCheckInPage() {
 
   const selectedCount = selectedIds.size;
 
+  // Calculate check-in time window
+  const calculateTimeWindow = () => {
+    const startTimeStr = searchParams.get("start");
+    if (!startTimeStr) return { isWithinWindow: true, hasExpired: false, isUpcoming: false };
+
+    try {
+      const startDate = new Date(startTimeStr);
+      if (Number.isNaN(startDate.getTime())) {
+        return { isWithinWindow: true, hasExpired: false, isUpcoming: false };
+      }
+
+      const now = new Date();
+      const windowStart = new Date(
+        startDate.getFullYear(),
+        startDate.getMonth(),
+        startDate.getDate()
+      );
+      // Calculate window end: next day at 12:00 (noon)
+      const windowEnd = new Date(windowStart);
+      windowEnd.setDate(windowEnd.getDate() + 1);
+      windowEnd.setHours(12, 0, 0, 0);
+
+      const isUpcoming = now < windowStart;
+      const isWithinWindow = now >= windowStart && now <= windowEnd;
+      const hasExpired = now > windowEnd;
+
+      return { isWithinWindow, hasExpired, isUpcoming };
+    } catch {
+      return { isWithinWindow: true, hasExpired: false, isUpcoming: false };
+    }
+  };
+
+  const { isWithinWindow, hasExpired, isUpcoming } = calculateTimeWindow();
+
+  const handleViewPhotos = () => {
+    const session = buildSession();
+    saveCheckInSession(session);
+    router.push(`/activity/check-in/${scheduleId}/review?mode=history`);
+  };
+
   const toggleResident = (residentId: string) => {
-    if (isReadOnly) return;
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(residentId)) {
@@ -195,12 +243,47 @@ export default function ActivityCheckInPage() {
   };
 
   const toggleAll = () => {
-    if (isReadOnly) return;
     if (selectedCount === filteredResidents.length) {
       setSelectedIds(new Set());
     } else {
       setSelectedIds(new Set(filteredResidents.map((resident) => resident.id)));
     }
+  };
+
+  const getErrorStatus = (error: any) => error?.response?.status ?? error?.status_code ?? error?.status;
+
+  const saveParticipationSelection = async () => {
+    const selected = Array.from(selectedIds);
+    const deselected = Array.from(initialSelectedIds).filter((id) => !selectedIds.has(id));
+
+    const upsertParticipation = async (residentId: string, isParticipating: boolean) => {
+      try {
+        await activityParticipationService.create({
+          resident_id: residentId,
+          as_id: scheduleId,
+          is_participating: isParticipating,
+        });
+      } catch (error: any) {
+        const status = getErrorStatus(error);
+        if (status === 409) {
+          await activityParticipationService.update(residentId, scheduleId, { is_participating: isParticipating });
+          return;
+        }
+        throw error;
+      }
+    };
+
+    const updateToNotParticipating = async (residentId: string) => {
+      try {
+        await activityParticipationService.update(residentId, scheduleId, { is_participating: false });
+      } catch (error: any) {
+        const status = getErrorStatus(error);
+        if (status !== 404) throw error;
+      }
+    };
+
+    await Promise.all(selected.map((residentId) => upsertParticipation(residentId, true)));
+    await Promise.all(deselected.map((residentId) => updateToNotParticipating(residentId)));
   };
 
   const buildSession = (): CheckInSession => {
@@ -213,32 +296,34 @@ export default function ActivityCheckInPage() {
       endTime: searchParams.get("end") || undefined,
       residents: selectedResidents,
       selectedIds: selectedResidents.map((resident) => resident.id),
+      initialSelectedIds: Array.from(initialSelectedIds),
       photos: {},
       rejectedIds: [],
       updatedAt: new Date().toISOString(),
     };
   };
 
-  const handleSaveOnly = () => {
-    if (isReadOnly) {
-      router.push(`/activity/check-in/${scheduleId}/review?view=history`);
-      return;
-    }
+  const handleSaveOnly = async () => {
     if (selectedCount === 0) {
       showToast({ type: "error", title: "กรุณาเลือกรายชื่ออย่างน้อย 1 คน",message: ""  });
       return;
     }
-    const session = buildSession();
-    saveCheckInRecord(session);
-    showToast({ type: "success", title: "บันทึกรายชื่อสำเร็จ",message: ""  });
-    router.push("/activity");
+    try {
+      await saveParticipationSelection();
+      const session = buildSession();
+      saveCheckInRecord(session);
+      showToast({ type: "success", title: "บันทึกรายชื่อสำเร็จ",message: ""  });
+      router.push("/activity");
+    } catch (error: any) {
+      showToast({
+        type: "error",
+        title: "บันทึกไม่สำเร็จ",
+        message: error?.message || "ไม่สามารถบันทึกรายชื่อได้",
+      });
+    }
   };
 
   const handleSaveAndCapture = () => {
-    if (isReadOnly) {
-      router.push(`/activity/check-in/${scheduleId}/review?view=history`);
-      return;
-    }
     if (selectedCount === 0) {
       showToast({ type: "error", title: "กรุณาเลือกรายชื่ออย่างน้อย 1 คน" ,message: "" });
       return;
@@ -255,6 +340,13 @@ export default function ActivityCheckInPage() {
     const session = buildSession();
     saveCheckInSession(session);
     router.push(`/activity/check-in/${scheduleId}/camera`);
+  };
+
+  const handleViewHistory = () => {
+    const session = buildSession();
+    saveCheckInSession(session);
+    // Navigate to review page in history/read-only mode
+    router.push(`/activity/check-in/${scheduleId}/review?mode=history`);
   };
 
   return (
@@ -395,7 +487,6 @@ export default function ActivityCheckInPage() {
                     type="checkbox"
                     checked={filteredResidents.length > 0 && selectedCount === filteredResidents.length}
                     onChange={toggleAll}
-                    disabled={isReadOnly}
                   />
                 </th>
                 <th className="px-4 py-3">ชื่อ-นามสกุล</th>
@@ -425,7 +516,6 @@ export default function ActivityCheckInPage() {
                         type="checkbox"
                         checked={selectedIds.has(resident.id)}
                         onChange={() => toggleResident(resident.id)}
-                        disabled={isReadOnly}
                       />
                     </td>
                     <td className="px-4 py-3 text-slate-800">{resident.name}</td>
@@ -441,23 +531,19 @@ export default function ActivityCheckInPage() {
       </div>
 
       <div className="mt-6 flex flex-wrap items-center justify-center gap-4 ">
-        {isReadOnly ? (
+        {isWithinWindow && (
           <button
             type="button"
-            onClick={() => router.push(`/activity/check-in/${scheduleId}/review?view=history`)}
-            className="inline-flex items-center gap-2 rounded-lg bg-[#0093EF] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-500"
+            onClick={handleSaveOnly}
+            className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
           >
-            ตรวจสอบรูป
+            บันทึกรายชื่อเท่านั้น (ไม่ถ่ายรูป)
           </button>
-        ) : (
-          <>
-            <button
-              type="button"
-              onClick={handleSaveOnly}
-              className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
-            >
-              บันทึกรายชื่อเท่านั้น (ไม่ถ่ายรูป)
-            </button>
+        )}
+        
+        {/* Time-window check-in button */}
+        {isWithinWindow ? (
+          <div className="inline-flex items-center gap-2">
             <button
               type="button"
               onClick={handleSaveAndCapture}
@@ -465,11 +551,41 @@ export default function ActivityCheckInPage() {
                 cameraSupported ? "bg-[#0093EF] hover:bg-blue-500" : "bg-slate-300"
               }`}
               aria-disabled={!cameraSupported}
+              title="กรอบเวลาเช็คชื่อ: วันจัดกิจกรรมจนถึงเที่ยงของวันถัดไป"
             >
               <Camera className="h-4 w-4" />
               บันทึกและเริ่มการถ่ายภาพ
             </button>
-          </>
+            
+            {hasPhotos && (
+              <button
+                type="button"
+                onClick={handleViewPhotos}
+                className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-amber-600"
+                title="มีรูปภาพ คลิกเพื่อดูรายละเอียด"
+              >
+                ตรวจสอบรูปภาพ
+              </button>
+            )}
+          </div>
+        ) : isUpcoming ? (
+          <button
+            type="button"
+            className="inline-flex items-center gap-2 rounded-lg bg-slate-200 px-5 py-3 text-sm font-semibold text-slate-500 shadow-sm cursor-not-allowed"
+            title="ยังไม่ถึงวันจัดกิจกรรม"
+            aria-disabled="true"
+          >
+            ยังไม่ถึงวันกิจกรรม
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={handleViewHistory}
+            className="inline-flex items-center gap-2 rounded-lg bg-slate-400 px-5 py-3 text-sm font-semibold text-white shadow-sm transition cursor-default"
+            title="หมดเวลาเช็คชื่อแล้ว (ดูประวัติเท่านั้น)"
+          >
+            ดูประวัติ
+          </button>
         )}
       </div>
     </div>

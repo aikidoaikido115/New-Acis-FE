@@ -28,7 +28,7 @@ describe('AppSidebar', () => {
         'เวชระเบียน',
         'จัดการยา',
         'ตารางกิจกรรม',
-        'สินค้าคงคลัง',
+        'ยาและเวชภัณฑ์',
       ];
       for (const label of expectedMain) {
         expect(screen.getByText(label)).toBeInTheDocument();
@@ -46,7 +46,7 @@ describe('AppSidebar', () => {
         { label: 'เวชระเบียน', href: '/emr' },
         { label: 'จัดการยา', href: '/medicine' },
         { label: 'ตารางกิจกรรม', href: '/activity' },
-        { label: 'สินค้าคงคลัง', href: '/warehouse' },
+        { label: 'ยาและเวชภัณฑ์', href: '/warehouse' },
         { label: 'คู่มือการใช้งาน', href: '/user-manual' },
         { label: 'แจ้งปัญหาการใช้งาน', href: '/support-service' },
       ];

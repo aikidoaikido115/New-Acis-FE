@@ -2,18 +2,16 @@
 import { useEffect, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { MealHistoryView } from "./MealHistoryView";
-import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import apiClient, { ApiResponse } from "@/lib/axios.ts/api-client";
 import { mealService } from "@/services/meal.service";
 import { useToast } from "@/components/ui/toast";
 import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
-import type { Menu } from "@/types/meal";
+import type { Menu, CreateMealPlanRequest } from "@/types/meal";
 
 type MealView = "main" | "history";
 type MealKey = "breakfast" | "lunch" | "dinner";
 
-// SVG icons as React components
 const BreakfastIcon = () => (
   <svg width="22" height="10" viewBox="0 0 22 10" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M19.25 8.25L17.0775 6.6275L18.15 4.125L15.4 3.80875L15.125 1.1L12.6225 2.1725L11 0L9.3775 2.1725L6.875 1.1L6.55875 3.85L3.85 4.125L4.9225 6.6275L2.75 8.25H0V9.625H22V8.25H19.25ZM5.5 8.25C5.54887 6.8085 6.14272 5.43919 7.16171 4.41842C8.1807 3.39764 9.54896 2.80139 10.9904 2.75C12.4336 2.79648 13.8053 3.38927 14.8281 4.40851C15.8509 5.42774 16.4485 6.79735 16.5 8.24038L5.5 8.25Z" fill="black"/>
@@ -39,7 +37,8 @@ const mealTabs = [
 ] as const;
 
 interface SecondaryMenu {
-  menu: string;
+  menuId: string;
+  menuName: string;
   servings: number | string;
   note: string;
 }
@@ -75,13 +74,7 @@ interface MenuResult {
   description: string;
 }
 
-interface CreateMealPlanPayload {
-  menu_id: string;
-  backup_menu_id: string;
-  main_amount: number;
-  backup_amount?: number;
-  meal_type: MealKey;
-}
+interface CreateMealPlanPayload extends CreateMealPlanRequest {}
 
 const createEmptyMealData = (): MealData => ({
   mainMenuId: "",
@@ -96,7 +89,6 @@ export default function ManageMealPage() {
   const { showToast } = useToast();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [view, setView] = useState<MealView>("main");
-  const [saveError, setSaveError] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
   const [allergyStats, setAllergyStats] = useState<ResidentAllergyStatsResponse | null>(null);
   const [totalResidents, setTotalResidents] = useState<number | null>(null);
@@ -107,6 +99,11 @@ export default function ManageMealPage() {
   const [newMenuName, setNewMenuName] = useState("");
   const [newMenuNote, setNewMenuNote] = useState("");
   const [isAddingMenu, setIsAddingMenu] = useState(false);
+  const [humanInTheLoop, setHumanInTheLoop] = useState(false);
+  
+  // เก็บ warning message เฉพาะกรณีที่ต้องการจัดการ state ภายใน
+  const [aiWarningMessage, setAiWarningMessage] = useState<string>("");
+
   const [mealsData, setMealsData] = useState<Record<MealKey, MealData>>({
     breakfast: createEmptyMealData(),
     lunch: createEmptyMealData(),
@@ -192,88 +189,103 @@ export default function ManageMealPage() {
     fetchMenus();
   }, [showToast]);
 
-  const handleSave = async () => {
+  const handleSave = async (activeTab: MealKey) => {
     if (isSaving) {
       return;
     }
     setIsSaving(true);
-    setSaveError("");
+    setAiWarningMessage(""); // Clear warning state
 
     try {
-      for (const tab of mealTabs) {
-        const mealKey = tab.key;
-        const meal = mealsData[mealKey];
+      const tab = mealTabs.find(t => t.key === activeTab);
+      if (!tab) {
+        throw new Error("ไม่พบข้อมูลมื้ออาหาร");
+      }
 
-        // Validate main menu
-        if (!meal.mainMenuId.trim()) {
-          throw new Error(`กรุณาเลือกเมนูหลักของ${tab.label}`);
+      const meal = mealsData[activeTab];
+
+      // Validation
+      if (!meal.mainMenuId.trim()) {
+        throw new Error(`กรุณาเลือกเมนูหลักของ${tab.label}`);
+      }
+      if (!meal.mainServings || Number(meal.mainServings) <= 0) {
+        throw new Error(`กรุณากรอกจำนวนเมนูหลักของ${tab.label}`);
+      }
+
+      let mainMenuId = meal.mainMenuId;
+      if (meal.mainMenuId === "custom") {
+        const newMenu = await mealService.createMenu({
+          menu_name: meal.mainMenuName.trim(),
+          description: meal.mainNote?.trim() || "",
+        });
+        mainMenuId = newMenu.menu_id;
+      }
+
+      let backupMenuId: string | undefined = undefined;
+      let backupAmount: number | undefined = undefined;
+
+      const secondary = meal.secondaryMenus[0];
+      const hasSecondary = secondary
+        ? secondary.menuId.trim() !== "" || String(secondary.servings).trim() !== ""
+        : false;
+
+      if (secondary && hasSecondary) {
+        if (!secondary.menuId.trim()) {
+          throw new Error(`กรุณากรอกชื่อเมนูรองของ${tab.label}`);
         }
-        if (!meal.mainServings || Number(meal.mainServings) <= 0) {
-          throw new Error(`กรุณากรอกจำนวนเมนูหลักของ${tab.label}`);
+        if (!secondary.servings || Number(secondary.servings) <= 0) {
+          throw new Error(`กรุณากรอกจำนวนเมนูรองของ${tab.label}`);
         }
+        backupMenuId = secondary.menuId;
+        backupAmount = Number.parseInt(String(secondary.servings), 10) || 0;
+      }
 
-        // Use existing menu or create new one
-        let mainMenuId = meal.mainMenuId;
-        if (meal.mainMenuId === "custom") {
-          // Create new menu
-          const newMenu = await mealService.createMenu({
-            menu_name: meal.mainMenuName.trim(),
-            description: meal.mainNote?.trim() || "",
-          });
-          mainMenuId = newMenu.menu_id;
+      const payload: CreateMealPlanRequest = {
+        menu_id: mainMenuId,
+        main_amount: Number.parseInt(String(meal.mainServings), 10) || 0,
+        meal_type: activeTab as "breakfast" | "lunch" | "dinner",
+        human_in_the_loop: humanInTheLoop,
+      };
+
+      if (backupMenuId && backupMenuId.trim()) {
+        payload.backup_menu_id = backupMenuId;
+        if (backupAmount !== undefined && backupAmount > 0) {
+          payload.backup_amount = backupAmount;
         }
+      }
 
-        let backupMenuId = mainMenuId;
-        let backupAmount: number | undefined = undefined;
-
-        const secondary = meal.secondaryMenus[0];
-        const hasSecondary = secondary
-          ? secondary.menu.trim() !== "" || String(secondary.servings).trim() !== "" || secondary.note.trim() !== ""
-          : false;
-
-        if (secondary && hasSecondary) {
-          if (!secondary.menu.trim()) {
-            throw new Error(`กรุณากรอกชื่อเมนูรองของ${tab.label}`);
-          }
-          if (!secondary.servings || Number(secondary.servings) <= 0) {
-            throw new Error(`กรุณากรอกจำนวนเมนูรองของ${tab.label}`);
-          }
-          backupMenuId = await mealService.createMenu({
-            menu_name: secondary.menu.trim(),
-            description: secondary.note?.trim() || "",
-          }).then(menu => menu.menu_id);
-          backupAmount = Number.parseInt(String(secondary.servings), 10) || 0;
-        }
-
-        const payload = {
-          menu_id: mainMenuId,
-          backup_menu_id: backupMenuId !== mainMenuId ? backupMenuId : undefined,
-          main_amount: Number.parseInt(String(meal.mainServings), 10) || 0,
-          meal_type: mealKey as "breakfast" | "lunch" | "dinner",
-          human_in_the_loop: true, // Always use manual mode, skip AI
-          backup_amount: backupAmount,
-        };
-
+      if (humanInTheLoop) {
         await mealService.createMealPlanManual(payload);
+      } else {
+        const result = await mealService.createMealPlan(payload);
+        
+        if (result?.has_ai_warning) {
+          // แจ้งเตือนแบบ Error ชัดๆ ให้ผู้ใช้รับทราบ
+          showToast({
+            title: "ตรวจพบเมนูเสี่ยงแพ้",
+            message: "กรุณาตรวจสอบเมนูอีกครั้ง เนื่องจากมีโอกาสเจอเมนูเสี่ยงแพ้",
+            type: "info",
+          });
+          setIsSaving(false);
+          return;
+        }
       }
 
       showToast({
         title: "บันทึกสำเร็จ",
-        message: "ระบบได้บันทึกข้อมูลการจัดเตรียมอาหารเรียบร้อยแล้ว",
+        message: `ระบบได้บันทึกข้อมูลการจัดเตรียมอาหาร${tab.label}เรียบร้อยแล้ว`,
         type: "success",
       });
 
-      // Clear form
-      setMealsData({
-        breakfast: createEmptyMealData(),
-        lunch: createEmptyMealData(),
-        dinner: createEmptyMealData(),
-      });
+      setMealsData(prev => ({
+        ...prev,
+        [activeTab]: createEmptyMealData()
+      }));
+      setAiWarningMessage("");
     } catch (err: unknown) {
       const message = typeof (err as { message?: string })?.message === "string"
         ? (err as { message: string }).message
         : "บันทึกข้อมูลไม่สำเร็จ";
-      setSaveError(message);
       showToast({
         title: "เกิดข้อผิดพลาด",
         message: message,
@@ -285,6 +297,11 @@ export default function ManageMealPage() {
   };
 
   const handleAddMenu = () => {
+    setShowAddMenuModal(true);
+  };
+
+  const handleCreateMenu = (menuName: string) => {
+    setNewMenuName(menuName);
     setShowAddMenuModal(true);
   };
 
@@ -300,15 +317,10 @@ export default function ManageMealPage() {
         menu_name: newMenuName.trim(),
         description: newMenuNote.trim() || "",
       });
-
-      // Add to available menus
       setAvailableMenus(prev => [...prev, newMenu]);
-
-      // Reset form
       setNewMenuName("");
       setNewMenuNote("");
       setShowAddMenuModal(false);
-
       showToast({ message: "เพิ่มเมนูใหม่สำเร็จ", type: "success" });
     } catch (error) {
       console.error("Failed to create menu:", error);
@@ -321,7 +333,10 @@ export default function ManageMealPage() {
   return (
     <div className="p-4 sm:p-8 w-full max-w-full">
       {view === "history" ? (
-        <MealHistoryView onBack={() => setView("main")} />
+        <MealHistoryView onBack={() => setView("main")} 
+        availableMenus={availableMenus}
+        />
+        
       ) : (
         <MealMainView
           selectedDate={selectedDate}
@@ -329,21 +344,24 @@ export default function ManageMealPage() {
           onShowHistory={() => setView("history")}
           mealsData={mealsData}
           setMealsData={setMealsData}
-          saveError={saveError}
           isSaving={isSaving}
-          onSave={handleSave}
           allergyStats={allergyStats}
           totalResidents={totalResidents}
           statsError={statsError}
           availableMenus={availableMenus}
+          setAvailableMenus={setAvailableMenus}
           isLoadingMenus={isLoadingMenus}
           onAddMenu={handleAddMenu}
+          humanInTheLoop={humanInTheLoop}
+          onHumanInTheLoopChange={setHumanInTheLoop}
+          onCreateMenu={handleCreateMenu}
+          onSaveWithTab={handleSave}
         />
       )}
 
       {/* Add Menu Modal */}
       {showAddMenuModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">เพิ่มเมนูใหม่</h3>
             <div className="space-y-4">
@@ -355,19 +373,19 @@ export default function ManageMealPage() {
                   placeholder="กรอกชื่อเมนู"
                   value={newMenuName}
                   onChange={(e) => setNewMenuName(e.target.value)}
-                  className="w-full"
+                  className="w-full px-3 py-2 text-slate-500 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  รายละเอียดเมนู
+                  รายละเอียดเมนู <span className="text-red-500">*</span>
                 </label>
                 <textarea
-                  placeholder="กรอกรายละเอียดเมนู (ไม่บังคับ)"
+                  placeholder={"กรอกส่วนประกอบเมนู \nเช่น นม, ไข่, \nใช้ , คั่นระหว่างส่วนประกอบ"}
                   value={newMenuNote}
                   onChange={(e) => setNewMenuNote(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  rows={3}
+                  className="w-full px-3 py-2 text-slate-500 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
+                  rows={4}
                 />
               </div>
             </div>
@@ -399,21 +417,25 @@ export default function ManageMealPage() {
     </div>
   );
 }
+
 interface MealMainViewProps {
   selectedDate: Date;
   onDateChange: (date: Date | null) => void;
   onShowHistory: () => void;
   mealsData: Record<MealKey, MealData>;
   setMealsData: Dispatch<SetStateAction<Record<MealKey, MealData>>>;
-  saveError: string;
   isSaving: boolean;
-  onSave: () => void;
   allergyStats: ResidentAllergyStatsResponse | null;
   totalResidents: number | null;
   statsError: string;
   availableMenus: Menu[];
+  setAvailableMenus: Dispatch<SetStateAction<Menu[]>>; 
   isLoadingMenus: boolean;
   onAddMenu: () => void;
+  humanInTheLoop: boolean;
+  onHumanInTheLoopChange: (value: boolean) => void;
+  onCreateMenu: (menuName: string) => void;
+  onSaveWithTab: (tab: MealKey) => Promise<void>;
 }
 
 function MealMainView({
@@ -422,17 +444,21 @@ function MealMainView({
   onShowHistory,
   mealsData,
   setMealsData,
-  saveError,
   isSaving,
-  onSave,
   allergyStats,
   totalResidents,
   statsError,
   availableMenus,
+  setAvailableMenus,
   isLoadingMenus,
   onAddMenu,
+  humanInTheLoop,
+  onHumanInTheLoopChange,
+  onCreateMenu,
+  onSaveWithTab,
 }: MealMainViewProps) {
   const [activeTab, setActiveTab] = useState<MealKey>("breakfast");
+  const [isAllergyListOpen, setIsAllergyListOpen] = useState(true);
 
   const updateMealData = (key: MealKey, updates: Partial<MealData>) => {
     setMealsData(prev => ({
@@ -446,19 +472,22 @@ function MealMainView({
     if (current.secondaryMenus.length > 0) {
       return;
     }
-    updateMealData(mealKey, { secondaryMenus: [{ menu: "", servings: "", note: "" }] });
+    updateMealData(mealKey, { secondaryMenus: [{ menuId: "", menuName: "", servings: "", note: "" }] });
   };
 
-  const updateSecondaryMenu = (mealKey: MealKey, index: number, field: keyof SecondaryMenu, value: string) => {
-    const current = mealsData[mealKey];
-    const updated = [...current.secondaryMenus];
-    updated[index] = { ...updated[index], [field]: value };
-    updateMealData(mealKey, { secondaryMenus: updated });
+  const updateSecondaryMenu = (mealKey: MealKey, index: number, updates: Partial<SecondaryMenu>) => {
+    setMealsData(prev => {
+      const currentMeal = prev[mealKey];
+      const updatedSecondary = [...currentMeal.secondaryMenus];
+      updatedSecondary[index] = { ...updatedSecondary[index], ...updates };
+      return {
+        ...prev,
+        [mealKey]: { ...currentMeal, secondaryMenus: updatedSecondary }
+      };
+    });
   };
 
   const currentMealData = mealsData[activeTab];
-
-  // Convert menus to dropdown options
   const menuOptions = availableMenus.map(menu => ({
     value: menu.menu_id,
     label: menu.menu_name
@@ -466,73 +495,90 @@ function MealMainView({
 
   return (
     <>
-      {saveError && (
-        <div className="mb-4 text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-2 text-sm whitespace-pre-line">
-          {saveError}
-        </div>
-      )}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
         <h2 className="text-headline-6 font-bold text-gray-800">
           จัดการมื้ออาหาร
         </h2>
-
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto sm:ml-auto">
-          <div className="w-40 sm:w-44 relative z-10">
-            <DatePicker
-              value={selectedDate}
-              onChange={onDateChange}
-              className="w-full"
-            />
-          </div>
+        <div className="flex flex-row items-center justify-between sm:justify-end gap-2 w-full sm:w-auto sm:ml-auto">  
           <button
             onClick={onShowHistory}
-            className="whitespace-nowrap px-3 py-2 border border-gray-300 bg-gray-100 text-gray-700 rounded-lg text-body-small font-medium hover:bg-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-600"
+            className="whitespace-nowrap px-2 sm:px-3 py-2 border border-gray-300 bg-gray-100 text-gray-700 rounded-lg text-[12px] sm:text-body-small font-medium hover:bg-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-600 shrink-0"
           >
-            [ รายการแผนอาหารที่บันทึกไว้ ]
+            <span className="text-sm">[ รายการแผนอาหารที่บันทึก ]</span>
           </button>
         </div>
       </div>
 
-      {/* Allergy stats - bigger size */}
-      <div className="flex flex-wrap gap-2 mb-2">
-        {statsError ? (
-          <span className="rounded-full border border-rose-200 bg-rose-50 px-4 py-1.5 text-sm font-semibold text-rose-700">
-            {statsError}
-          </span>
-        ) : (
-          [
-            {
-              label: `ทั้งหมด ${
-                allergyStats
-                  ? (allergyStats.total_allergic ?? 0) + (allergyStats.total_not_allergic ?? 0)
-                  : (totalResidents !== null ? totalResidents : "-")
-              } คน`,
-              tone: "bg-slate-100 text-slate-700 border-slate-200",
-            },
-            {
-              label: allergyStats
-                ? `ไม่แพ้ ${allergyStats.total_not_allergic ?? 0} คน`
-                : "ไม่แพ้ - คน",
-              tone: "bg-emerald-100 text-emerald-700 border-emerald-200",
-            },
-            {
-              label: allergyStats
-                ? `แพ้ ${allergyStats.total_allergic ?? 0} คน`
-                : "แพ้ - คน",
-              tone: "bg-rose-100 text-rose-700 border-rose-200",
-            },
-          ].map((stat) => (
-            <span
-              key={stat.label}
-              className={`rounded-full border px-4 py-1.5 text-sm font-semibold ${stat.tone}`}
-            >
-              {stat.label}
+      <div className="mb-6">
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          {statsError ? (
+            <span className="rounded-full border border-rose-200 bg-rose-50 px-4 py-1.5 text-sm font-semibold text-rose-700">
+              {statsError}
             </span>
-          ))
+          ) : (
+            [
+              {
+                label: `ทั้งหมด ${
+                  allergyStats
+                    ? (allergyStats.total_allergic ?? 0) + (allergyStats.total_not_allergic ?? 0)
+                    : (totalResidents !== null ? totalResidents : "-")
+                } คน`,
+                tone: "bg-slate-100 text-slate-700 border-slate-200",
+              },
+              {
+                label: allergyStats
+                  ? `ไม่แพ้ ${allergyStats.total_not_allergic ?? 0} คน`
+                  : "ไม่แพ้ - คน",
+                tone: "bg-emerald-100 text-emerald-700 border-emerald-200",
+              },
+              {
+                label: allergyStats
+                  ? `แพ้ ${allergyStats.total_allergic ?? 0} คน`
+                  : "แพ้ - คน",
+                tone: "bg-rose-100 text-rose-700 border-rose-200",
+              },
+            ].map((stat) => (
+              <span
+                key={stat.label}
+                className={`rounded-full border px-4 py-1.5 text-sm font-semibold ${stat.tone}`}
+              >
+                {stat.label}
+              </span>
+            ))
+          )}
+        </div>
+        {allergyStats && allergyStats.allergy_details && allergyStats.allergy_details.length > 0 && (
+          <div className="bg-rose-50 border border-rose-200 rounded-lg p-4 transition-all duration-300">
+            <div 
+              className="flex items-center justify-between cursor-pointer select-none"
+              onClick={() => setIsAllergyListOpen(!isAllergyListOpen)}
+            >
+              <h3 className="text-sm font-semibold text-rose-700">รายการการแพ้อาหารของผู้พักอาศัย</h3>
+              <button 
+                type="button" 
+                className="text-rose-500 hover:text-rose-700 transition-transform duration-200 focus:outline-none"
+                style={{ transform: isAllergyListOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+            </div>
+            {isAllergyListOpen && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                {allergyStats.allergy_details.map((detail, idx) => (
+                  <div key={idx} className="flex items-center justify-between text-xs bg-white rounded px-3 py-2 border border-rose-100 shadow-sm">
+                    <span className="text-gray-700">{detail.allergy_name}</span>
+                    <span className="font-semibold text-rose-600">{detail.resident_count} คน</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         )}
       </div>
 
-      {/* Tab Navigation with icons */}
+      {/* Tab Navigation */}
       <div className="border-b border-gray-200 mb-6">
         <nav className="flex gap-2 sm:gap-4">
           {mealTabs.map(tab => (
@@ -552,7 +598,7 @@ function MealMainView({
         </nav>
       </div>
 
-      {/* Content for active tab */}
+      {/* Content */}
       <div className="space-y-4">
         <section className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-6 shadow-sm">
           <div className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-sm font-semibold text-gray-700">
@@ -563,8 +609,8 @@ function MealMainView({
             {/* Main Menu */}
             <div className="space-y-2">
               <h3 className="text-body-small font-semibold text-gray-700">เมนูหลัก</h3>
-              <div className="grid grid-cols-3 gap-3 items-end">
-                <div>
+              <div className="flex flex-row gap-3 items-end w-full md:w-4/5 lg:w-2/3">
+                <div className="flex-1">
                   <label className="block text-xs text-gray-500 mb-1">
                     เมนู <span className="text-red-500">*</span>
                   </label>
@@ -580,14 +626,11 @@ function MealMainView({
                     }}
                     placeholder="เลือกเมนูหลัก"
                     allowCreate={true}
-                    onCreate={(menuName) => {
-                      setNewMenuName(menuName);
-                      onAddMenu();
-                    }}
+                    onCreate={onCreateMenu}
                     createLabel="+ เพิ่มเมนู"
                   />
                 </div>
-                <div>
+                <div className="w-24 sm:w-32 shrink-0">
                   <label className="block text-xs text-gray-500 mb-1">
                     จำนวน (เสิร์ฟ) <span className="text-red-500">*</span>
                   </label>
@@ -596,7 +639,7 @@ function MealMainView({
                     inputMode="numeric"
                     pattern="[0-9]*"
                     placeholder="0"
-                    className="bg-white border-gray-200 focus:border-blue-500 focus:ring-blue-500 text-slate-500 placeholder:text-slate-500"
+                    className="bg-white border-gray-200 focus:border-blue-500 focus:ring-blue-500 text-slate-500 placeholder:text-slate-500 w-full"
                     value={currentMealData.mainServings ?? ""}
                     onChange={(e) => {
                       const val = e.target.value.replace(/[^\d]/g, "");
@@ -605,29 +648,19 @@ function MealMainView({
                     required
                   />
                 </div>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">หมายเหตุ</label>
-                  <Input
-                    placeholder="หมายเหตุ"
-                    className="bg-white border-gray-200 focus:border-blue-500 focus:ring-blue-500 text-slate-500 placeholder:text-slate-500"
-                    value={currentMealData.mainNote ?? ""}
-                    onChange={(e) => updateMealData(activeTab, { mainNote: e.target.value })}
-                  />
-                </div>
               </div>
             </div>
 
             {/* Secondary Menus */}
             <div className="space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <h3 className="text-body-small font-semibold text-gray-700">
-                  เมนูรอง (สำหรับคนแพ้อาหาร)
-                </h3>
-                <span className="text-xs text-gray-500">
-                  หากไม่มีคนแพ้อาหาร สามารถเว้นว่างไว้ได้
-                </span>
-              </div>
-
+             <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-body-small font-semibold text-gray-700">
+                เมนูรอง (สำหรับคนแพ้อาหาร)
+              </h3>
+              <h4 className="text-xs text-gray-500">
+                หากไม่มีคนแพ้อาหาร สามารถเว้นว่างไว้ได้
+              </h4>
+            </div>
               <div className="space-y-3">
                 {currentMealData.secondaryMenus.length === 0 ? (
                   <button
@@ -639,53 +672,43 @@ function MealMainView({
                   </button>
                 ) : (
                   currentMealData.secondaryMenus.slice(0, 1).map((secondary, index) => (
-                    <div key={index} className="grid grid-cols-3 gap-3 items-end">
-                      <div>
-                        <label className="block text-xs text-gray-500 mb-1">
-                          เมนู
-                        </label>
-                        <SearchableDropdown
-                          options={menuOptions}
-                          value={secondary.menu}
-                          onChange={(menuId) => {
-                            const selectedMenu = availableMenus.find(m => m.menu_id === menuId);
-                            updateSecondaryMenu(activeTab, index, 'menu', selectedMenu?.menu_name || "");
-                          }}
-                          placeholder="เลือกเมนูรอง"
-                          allowCreate={true}
-                          onCreate={(menuName) => {
-                            updateSecondaryMenu(activeTab, index, 'menu', menuName);
-                          }}
-                          createLabel="+ เพิ่มเมนู"
-                        />
+                      <div key={index} className="flex flex-row gap-3 items-end w-full md:w-4/5 lg:w-2/3">
+                        <div className="flex-1">
+                          <label className="block text-xs text-gray-500 mb-1">เมนู</label>
+                          <SearchableDropdown
+                            options={menuOptions}
+                            value={secondary.menuId}
+                            onChange={(menuId) => {
+                              const selectedMenu = availableMenus.find(m => String(m.menu_id) === String(menuId));
+                              if (selectedMenu) {
+                                updateSecondaryMenu(activeTab, index, {
+                                  menuId: String(menuId),
+                                  menuName: selectedMenu.menu_name
+                                });
+                              }
+                            }}
+                            placeholder="เลือกเมนูรอง"
+                            allowCreate={true}
+                            onCreate={onCreateMenu}
+                            createLabel="+ เพิ่มเมนู"
+                          />
+                        </div>
+                        <div className="w-24 sm:w-32 shrink-0">
+                          <label className="block text-xs text-gray-500 mb-1">จำนวน (เสิร์ฟ)</label>
+                          <Input
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            placeholder="0"
+                            className="bg-white border-gray-200 focus:border-blue-500 focus:ring-blue-500 text-slate-500 placeholder:text-slate-500 w-full"
+                            value={secondary.servings ?? ""}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/[^\d]/g, "");
+                              updateSecondaryMenu(activeTab, index, { servings: val });
+                            }}
+                          />
+                        </div>
                       </div>
-                      <div>
-                        <label className="block text-xs text-gray-500 mb-1">
-                          จำนวน (เสิร์ฟ)
-                        </label>
-                        <Input
-                          type="text"
-                          inputMode="numeric"
-                          pattern="[0-9]*"
-                          placeholder="0"
-                          className="bg-white border-gray-200 focus:border-blue-500 focus:ring-blue-500 text-slate-500 placeholder:text-slate-500"
-                          value={secondary.servings ?? ""}
-                          onChange={(e) => {
-                            const val = e.target.value.replace(/[^\d]/g, "");
-                            updateSecondaryMenu(activeTab, index, 'servings', val);
-                          }}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-gray-500 mb-1">หมายเหตุ</label>
-                        <Input
-                          placeholder="หมายเหตุ"
-                          className="bg-white border-gray-200 focus:border-blue-500 focus:ring-blue-500 text-slate-500 placeholder:text-slate-500"
-                          value={secondary.note ?? ""}
-                          onChange={(e) => updateSecondaryMenu(activeTab, index, 'note', e.target.value)}
-                        />
-                      </div>
-                    </div>
                   ))
                 )}
               </div>
@@ -694,14 +717,27 @@ function MealMainView({
         </section>
       </div>
 
-      <div className="mt-6 flex justify-center">
+      <div className="mt-4 flex items-center gap-2 justify-center">
+        <input
+          id="human-in-the-loop"
+          type="checkbox"
+          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          checked={humanInTheLoop}
+          onChange={(e) => onHumanInTheLoopChange(e.target.checked)}
+        />
+        <label htmlFor="human-in-the-loop" className="text-sm text-gray-700">
+          ปิดระบบ AI ตรวจสอบการแพ้อาหาร (กรุณาตรวจสอบความถูกต้องก่อนบันทึก)
+        </label>
+      </div>
+
+      <div className="mt-3 flex justify-center">
         <button
           type="button"
           className="rounded-xl bg-[#4B7B5A] px-6 py-2.5 text-body-small font-semibold text-white hover:bg-[#3E694C] transition-colors disabled:cursor-not-allowed disabled:opacity-70"
-          onClick={onSave}
+          onClick={() => onSaveWithTab(activeTab)}
           disabled={isSaving}
         >
-          บันทึกการจัดเตรียมอาหาร 
+          บันทึก{mealTabs.find(t => t.key === activeTab)?.label}
         </button>
       </div>
     </>
