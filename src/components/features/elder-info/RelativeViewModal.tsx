@@ -13,7 +13,6 @@ export function RelativeViewModal({ isOpen, onClose, residentName, residentId }:
   if (!isOpen) return null;
 
   const handleDateChange = (date: string) => {
-    // TODO: Fetch data for the selected date
     console.log('Selected date:', date);
   };
 

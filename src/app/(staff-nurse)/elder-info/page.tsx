@@ -532,14 +532,16 @@ export default function Page() {
 
   const syncAllergies = async (residentId: string, foodAllergies: string, drugAllergies: string) => {
     const foodNames = normalizeLines(foodAllergies);
-    if (foodNames.length > 0) {
-      await allergyService.createByResident(residentId, foodNames.map((name) => ({ allergy_name: name })));
-    }
+    await allergyService.createByResident(
+      residentId, 
+      foodNames.map((name) => ({ allergy_name: name }))
+    );
 
     const drugNames = normalizeLines(drugAllergies);
-    if (drugNames.length > 0) {
-      await drugAllergyService.createByResident(residentId, drugNames.map((name) => ({ allergy_name: name })));
-    }
+    await drugAllergyService.createByResident(
+      residentId, 
+      drugNames.map((name) => ({ allergy_name: name }))
+    );
   };
 
   const ensureDrugMaster = async (name: string, dose: string) => {

@@ -334,7 +334,7 @@ export function ResidentFormModal({ isOpen, onClose, onSubmit, isLoading = false
               <Textarea
                 name="drugAllergies"
                 value={formData.drugAllergies}
-                onChange={form.handleChange}
+                onChange={(e) => set({ drugAllergies: e.target.value })}
                 placeholder={`กรอกยาที่แพ้ แยกแต่ละบรรทัด เช่น\nเพนิซิลลิน\nซัลฟา\nแอสไพริน`}
                 className={cn(inputClass, "h-20 resize-none")}
               />
@@ -344,7 +344,7 @@ export function ResidentFormModal({ isOpen, onClose, onSubmit, isLoading = false
               <Textarea
                 name="foodAllergies"
                 value={formData.foodAllergies}
-                onChange={form.handleChange}
+                onChange={(e) => set({ foodAllergies: e.target.value })}
                 placeholder={`กรอกอาหารที่แพ้ แยกแต่ละบรรทัด เช่น\nกุ้ง\nปู\nถั่วลิสง`}
                 className={cn(inputClass, "h-20 resize-none")}
               />
