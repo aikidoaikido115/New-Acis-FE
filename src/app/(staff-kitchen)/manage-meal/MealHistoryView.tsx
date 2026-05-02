@@ -61,6 +61,12 @@ export function MealHistoryView({ onBack, availableMenus }: MealHistoryViewProps
         setIsLoading(true);
         const mealPlans = await mealService.getAllMealPlans();
 
+        mealPlans.sort((a, b) => {
+          const dateA = new Date(a.created_at || 0).getTime();
+          const dateB = new Date(b.created_at || 0).getTime();
+          return dateB - dateA;
+        });
+
         const rows: MealHistoryRow[] = mealPlans.flatMap((plan) => {
           const createdDate = new Date(plan.created_at || new Date());
           const dateStr = formatThaiDate(createdDate);
@@ -171,7 +177,7 @@ export function MealHistoryView({ onBack, availableMenus }: MealHistoryViewProps
       </button>
 
       <div className="flex items-center justify-between">
-        <h1 className="text-headline-5 font-bold text-gray-800">รายการแผนอาหารที่บันทึกไว้</h1>
+        <h1 className="text-headline-5 font-bold text-gray-800">รายการแผนอาหารที่บันทึก</h1>
       </div>
 
       {isLoading ? (
