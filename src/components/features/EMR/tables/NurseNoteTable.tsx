@@ -15,13 +15,13 @@ import { roomService } from "@/services/room.service";
 import type { NurseNote } from "@/types/emr-notes";
 import type { Resident } from "@/types/resident";
 import type { Room } from "@/types/room";
-import { filterAndSortByTimeline, formatBangkokDateTime, type TimelineSortOrder } from "../note-timeline";
+import { filterAndSortByTimeline, formatBangkokDateKey, formatBangkokDateTime, type TimelineSortOrder } from "../note-timeline";
 
 export function NurseNoteTable() {
   const { showToast } = useToast();
   const { confirm, confirmDialog } = useConfirmDialog();
   const [currentPage, setCurrentPage] = useState(1);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [sortOrder, setSortOrder] = useState<TimelineSortOrder>("newest");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<NurseNote | null>(null);
@@ -32,13 +32,14 @@ export function NurseNoteTable() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const pageSize = 10;
+  const selectedDateKey = useMemo(() => formatBangkokDateKey(selectedDate || new Date()), [selectedDate]);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
       const [noteData, residentData, roomData] = await Promise.all([
-        nurseNoteService.getOverview(),
+        nurseNoteService.getOverview(selectedDateKey),
         residentService.getAll(),
         roomService.getAll(),
       ]);
@@ -50,7 +51,7 @@ export function NurseNoteTable() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [selectedDateKey]);
 
   useEffect(() => {
     void loadData();
@@ -182,6 +183,7 @@ export function NurseNoteTable() {
           onDateChange={handleDateChange}
           sortOrder={sortOrder}
           onSortOrderChange={handleSortOrderChange}
+          showClearButton={false}
         />
 
         <button className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors" onClick={handleOpenCreateModal}>

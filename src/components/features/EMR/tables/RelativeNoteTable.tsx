@@ -15,13 +15,13 @@ import { roomService } from "@/services/room.service";
 import type { RelativeNote } from "@/types/emr-notes";
 import type { Resident } from "@/types/resident";
 import type { Room } from "@/types/room";
-import { filterAndSortByTimeline, formatBangkokDateTime, type TimelineSortOrder } from "../note-timeline";
+import { filterAndSortByTimeline, formatBangkokDateKey, formatBangkokDateTime, type TimelineSortOrder } from "../note-timeline";
 
 export function RelativeNoteTable() {
   const { showToast } = useToast();
   const { confirm, confirmDialog } = useConfirmDialog();
   const [currentPage, setCurrentPage] = useState(1);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [sortOrder, setSortOrder] = useState<TimelineSortOrder>("newest");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<RelativeNote | null>(null);
@@ -32,13 +32,14 @@ export function RelativeNoteTable() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const pageSize = 10;
+  const selectedDateKey = useMemo(() => formatBangkokDateKey(selectedDate || new Date()), [selectedDate]);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
       const [noteData, residentData, roomData] = await Promise.all([
-        relativeNoteService.getOverview(),
+        relativeNoteService.getOverview(selectedDateKey),
         residentService.getAll(),
         roomService.getAll(),
       ]);
@@ -50,7 +51,7 @@ export function RelativeNoteTable() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [selectedDateKey]);
 
   useEffect(() => {
     void loadData();
@@ -180,6 +181,7 @@ export function RelativeNoteTable() {
           onDateChange={handleDateChange}
           sortOrder={sortOrder}
           onSortOrderChange={handleSortOrderChange}
+          showClearButton={false}
         />
 
         <button
