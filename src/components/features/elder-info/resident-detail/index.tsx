@@ -186,7 +186,7 @@ export function ResidentDetailModal({ isOpen, onClose, residentId }: ResidentDet
           </div>
         )}
       </div>
-      <style jsx>{`
+      <style>{`
         .print-only {
           display: none;
         }
