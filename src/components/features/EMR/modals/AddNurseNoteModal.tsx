@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { X, MessageSquare, AlertTriangle, Image as ImageIcon, Send } from "lucide-react";
+import { X, MessageSquare, AlertTriangle } from "lucide-react";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -216,11 +216,6 @@ export function AddNurseNoteModal({
     onClose();
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    setFormData({ ...formData, attachments: files });
-  };
-
   // Handle backdrop click
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) {
@@ -356,39 +351,7 @@ export function AddNurseNoteModal({
             </fieldset>
           </div>
 
-          {/* Attachments */}
-          <div>
-            <label htmlFor="nurse-note-upload" className="block text-sm font-medium text-gray-700 mb-1">แนบรูปภาพ</label>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-blue-500 transition-colors cursor-pointer">
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={handleFileUpload}
-                className="hidden"
-                id="nurse-note-upload"
-                aria-label="อัปโหลดรูปภาพ"
-              />
-              <label htmlFor="nurse-note-upload" className="cursor-pointer flex flex-col items-center">
-                <ImageIcon className="w-6 h-6 text-gray-400 mb-1" />
-                <span className="text-sm text-gray-600">ถ่ายรูป / เลือกรูป</span>
-              </label>
-            </div>
-          </div>
 
-          {/* Send Note Checkbox */}
-          <div className="bg-blue-50 rounded-lg p-3">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.sendNote}
-                onChange={(e) => setFormData({ ...formData, sendNote: e.target.checked })}
-                className="w-4 h-4 text-blue-500 rounded focus:ring-blue-500"
-              />
-              <Send className="w-4 h-4 text-blue-500" />
-              <span className="text-sm text-blue-700 font-medium">ส่ง Note นี้ให้ญาติ</span>
-            </label>
-          </div>
 
           {/* Buttons */}
           <div className="flex items-center justify-end gap-3 pt-2 sticky bottom-0 bg-white pb-2">
