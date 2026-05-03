@@ -170,7 +170,7 @@ const buildNurseNotifications = async (now: Date): Promise<NotificationItemData[
     if (vitalCount > 0) {
       notifications.push({
         id: `vital-${dateKey}`,
-        title: `รายการ vital signs ผิดปกติ ${vitalCount} คน`,
+        title: `รายการ vital signs ต้องติดตาม ${vitalCount} คน`,
         icon: "vital",
         timeAgo: "เมื่อสักครู่",
         sortAt: now.getTime(),

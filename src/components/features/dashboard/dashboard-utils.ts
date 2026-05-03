@@ -21,8 +21,7 @@ export const MONTHS_TH = [
 
 export const DEFAULT_VITAL_STATS = [
   { label: "ปกติ", value: 0, variant: "normal" as const },
-  { label: "เสี่ยงสูง", value: 0, variant: "warning" as const },
-  { label: "ผิดปกติ", value: 0, variant: "danger" as const },
+  { label: "ต้องติดตาม", value: 0, variant: "danger" as const },
 ];
 
 export type ResidentSnapshot = Pick<

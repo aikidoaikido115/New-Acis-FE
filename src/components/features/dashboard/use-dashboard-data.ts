@@ -319,8 +319,7 @@ export function useDashboardData() {
 
       setVitalStats([
         { label: "ปกติ", value: normalByDate.length, variant: "normal" },
-        { label: "เสี่ยงสูง", value: warningCount, variant: "warning" },
-        { label: "ผิดปกติ", value: abnormalByDate.length, variant: "danger" },
+        { label: "ต้องติดตาม", value: abnormalByDate.length, variant: "danger" },
       ]);
     } catch (error) {
       logApiError("Failed to fetch vital sign stats:", error);
