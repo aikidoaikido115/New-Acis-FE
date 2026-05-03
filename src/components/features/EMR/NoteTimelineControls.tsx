@@ -11,6 +11,7 @@ interface NoteTimelineControlsProps {
   sortOrder: TimelineSortOrder;
   onSortOrderChange: (value: TimelineSortOrder) => void;
   className?: string;
+  showClearButton?: boolean;
 }
 
 export function NoteTimelineControls({
@@ -19,6 +20,7 @@ export function NoteTimelineControls({
   sortOrder,
   onSortOrderChange,
   className,
+  showClearButton = true,
 }: NoteTimelineControlsProps) {
   const datePickerClassName = useMemo(
     () => "w-[200px] [&>button]:w-full [&>button]:justify-between [&>button]:border-2 [&>button]:border-blue-500 [&>button]:hover:bg-blue-50",
@@ -35,7 +37,7 @@ export function NoteTimelineControls({
           placeholder="ทั้งหมด"
           className={datePickerClassName}
         />
-        {selectedDate ? (
+        {selectedDate && showClearButton ? (
           <button
             type="button"
             onClick={() => onDateChange(null)}
