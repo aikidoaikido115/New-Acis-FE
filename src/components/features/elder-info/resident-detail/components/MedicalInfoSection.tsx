@@ -1,8 +1,10 @@
+"use client";
 import { Activity, AlertTriangle, Heart, Pill, Scissors, ShieldCheck } from "lucide-react";
 import type { Resident as ApiResident } from "@/types/resident";
 import type { PersonalDrug } from "@/services/personal-drug.service";
 import { MedicationTable } from "./MedicationTable";
-import { splitTags, resolveADLLabel, resolveCareLabel } from "../utils/resolvers";
+// 👉 เอา resolveADLLabel, resolveCareLabel ออกไปเลย เพราะเราจะไม่ล็อกค่าตายตัวแล้ว
+import { splitTags } from "../utils/resolvers"; 
 
 interface MedicalInfoSectionProps {
   resident: ApiResident | null;
@@ -19,8 +21,13 @@ export function MedicalInfoSection({
 }: MedicalInfoSectionProps) {
   const chronicTags = splitTags(resident?.pre_existing_conditions);
   const surgicalTags = splitTags(resident?.surgical_history);
-  const careLevel = resolveCareLabel(resident);
-  const adlLabel = resolveADLLabel(resident, careLevel);
+  
+  const getAdlLabel = () => {
+    const labelName = resident?.resident_labels?.[0]?.intake_label?.label_name;
+    if (labelName) return labelName;
+  };
+
+  const adlLabel = getAdlLabel();
 
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-5">

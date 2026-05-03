@@ -108,7 +108,7 @@ export function OverviewView() {
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
             </div>
 
-            <span className="text-body-small text-gray-600">การช่วยเหลือตัวเอง</span>
+            <span className="text-body-small text-gray-600">ประเภท</span>
 
             {/* Help Level Dropdown */}
             <div className="relative">

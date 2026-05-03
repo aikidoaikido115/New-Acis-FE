@@ -20,13 +20,7 @@ import { intakeService } from "@/services/intake.service";
 import type { CreateResidentRequest, ResidentFormState } from "@/types/resident";
 import type { Room } from "@/types/room";
 
-const FLOOR_OPTIONS = [
-  { value: "all", label: "ทุกชั้น" },
-  { value: "1", label: "ชั้นที่ 1" },
-  { value: "2", label: "ชั้นที่ 2" },
-  { value: "3", label: "ชั้นที่ 3" },
-  { value: "4", label: "ชั้นที่ 4" },
-];
+// 👉 ลบ FLOOR_OPTIONS แบบตายตัวออกไปเลยครับ
 
 const frequencyTokensByValue: Record<string, string[]> = {
   morning: ["morning"],
@@ -277,6 +271,17 @@ export default function Page() {
     return Array.from(map.values());
   }, [rooms, extraRooms]);
 
+  const dynamicFloorOptions = useMemo(() => {
+    const uniqueFloors = Array.from(
+      new Set(mergedRooms.map((room) => String((room as any).floor ?? "")).filter(Boolean))
+    ).sort((a, b) => Number(a) - Number(b));
+
+    return [
+      { value: "all", label: "ทุกชั้น" },
+      ...uniqueFloors.map((floor) => ({ value: floor, label: `ชั้นที่ ${floor}` })),
+    ];
+  }, [mergedRooms]);
+
   const handleCreateRoomOption = useCallback(
     async (roomNumber: string, floor: string) => {
       const trimmed = roomNumber.trim();
@@ -309,6 +314,32 @@ export default function Page() {
       }
     },
     [mergedRooms]
+  );
+
+  const handleCreateFloorOption = useCallback(
+    async (floorName: string) => {
+      const trimmed = floorName.trim();
+      const numericFloor = Number(trimmed);
+      if (!trimmed || !Number.isFinite(numericFloor)) return null;
+
+      try {
+        const created = await roomService.create({
+          room_number: `auto-floor-${Date.now()}`,
+          floor: numericFloor,
+        });
+        const id = (created as any).room_id || (created as any).id || "";
+        if (!id) return null;
+        setExtraRooms((prev) => {
+          if (prev.some((item) => ((item as any).room_id || item.id) === id)) return prev;
+          return [...prev, created];
+        });
+        return { value: String(numericFloor), label: `ชั้น ${numericFloor}` };
+      } catch (err) {
+        alert("ไม่สามารถบันทึกชั้นได้");
+        return null;
+      }
+    },
+    []
   );
 
   const handleResidentSubmit = async (formData: ResidentFormState) => {
@@ -345,7 +376,7 @@ export default function Page() {
             userName={user?.first_name || "ผู้ใช้งาน"}
             selectedDate={selectedDate}
             selectedFloor={selectedFloor}
-            floorOptions={FLOOR_OPTIONS}
+            floorOptions={dynamicFloorOptions} 
             onDateChange={setSelectedDate}
             onFloorChange={setSelectedFloor}
             onAddResident={() => setIsAddModalOpen(true)}
@@ -381,6 +412,7 @@ export default function Page() {
         medicationOptions={drugMasterOptions}
         onCreateMedicationOption={handleCreateMedicationOption}
         onCreateRoomOption={handleCreateRoomOption}
+        onCreateFloorOption={handleCreateFloorOption}
       />
     </>
   );

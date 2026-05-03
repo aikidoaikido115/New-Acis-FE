@@ -140,7 +140,7 @@ export function IndividualView() {
           <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
         </div>
 
-        <span className="text-body-small text-gray-600">การช่วยเหลือตัวเอง</span>
+        <span className="text-body-small text-gray-600">ประเภท</span>
 
         {/* Help Level Dropdown */}
         <div className="relative">
@@ -183,7 +183,7 @@ export function IndividualView() {
                 <th className="text-left py-3 px-4 text-xs font-semibold" style={{ color: '#000' }}>ชื่อ-นามสกุล</th>
                 <th className="text-left py-3 px-4 text-xs font-semibold" style={{ color: '#000' }}>ชื่อเล่น</th>
                 <th className="text-left py-3 px-4 text-xs font-semibold" style={{ color: '#000' }}>ห้อง</th>
-                <th className="text-left py-3 px-4 text-xs font-semibold" style={{ color: '#000' }}>การช่วยเหลือตัวเอง</th>
+                <th className="text-left py-3 px-4 text-xs font-semibold" style={{ color: '#000' }}>ประเภท</th>
               </tr>
             </thead>
             <tbody>

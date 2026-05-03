@@ -7,6 +7,8 @@ import { BackButton } from "@/components/features/relative/back-button";
 import { useToast } from "@/components/ui/toast";
 import { activityParticipationService } from "@/services/activity-participation.service";
 import { residentService } from "@/services/resident.service";
+import { roomService } from "@/services/room.service";
+import { intakeService } from "@/services/intake.service";
 import type { ResidentByScheduleResponse } from "@/types/activity-participation";
 import {
   saveCheckInRecord,
@@ -36,12 +38,10 @@ const formatTime = (value?: string | null) => {
   return `${hours}:${minutes}`;
 };
 
+// ดึงชื่อประเภท (Label) ตัวแรกสุดจาก DB มาแสดงเลย
 const resolveCareType = (labels: string[] = []) => {
-  const normalized = labels.map((label) => label.trim());
-  const match = normalized.find((label) => label.includes("ช่วยเหลือตัวเอง") || label.includes("ติดเตียง"));
-  if (match === "ช่วยเหลือตัวเองได้บางส่วน") return "ผู้สูงอายุช่วยเหลือตัวเองได้บางส่วน";
-  if (match === "ติดเตียง") return "ผู้สูงอายุติดเตียง";
-  return "ผู้สูงอายุทั่วไป";
+  if (!labels || labels.length === 0) return "-";
+  return labels[0].trim(); 
 };
 
 export default function ActivityCheckInPage() {
@@ -64,10 +64,82 @@ export default function ActivityCheckInPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [cameraSupported, setCameraSupported] = useState(false);
   const [showDeviceWarning, setShowDeviceWarning] = useState(false);
-  const [hasPhotos, setHasPhotos] = useState(false); // Track if schedule has any photos
+  const [hasPhotos, setHasPhotos] = useState(false);
+
+  // State สำหรับเก็บ Options ที่ดึงจาก DB
+  const [floorOptions, setFloorOptions] = useState<Array<{ value: string; label: string }>>([
+    { value: "all", label: "ทุกชั้น" }
+  ]);
+  const [careTypeOptions, setCareTypeOptions] = useState<Array<{ value: string; label: string }>>([
+    { value: "all", label: "ทุกประเภท" }
+  ]);
 
   useEffect(() => {
     setCameraSupported(Boolean(navigator?.mediaDevices?.getUserMedia));
+  }, []);
+
+  // ดึงข้อมูล Filter "ชั้น" และ "ประเภท" จาก DB
+  useEffect(() => {
+    let mounted = true;
+
+    const loadFilters = async () => {
+      // 1. โหลดข้อมูลประเภท (Intake Labels)
+      try {
+        const labels = await intakeService.getAllLabels();
+        if (mounted && labels) {
+          const opts = [
+            { value: "all", label: "ทุกประเภท" },
+            ...labels.map((l) => ({ value: l.label_name, label: l.label_name }))
+          ];
+          setCareTypeOptions(opts);
+        }
+      } catch (err) {
+        // Fallback กรณี API มีปัญหา
+        if (mounted) {
+          setCareTypeOptions([
+            { value: "all", label: "ทุกประเภท" },
+            { value: "ช่วยเหลือตัวเองได้ทั้งหมด", label: "ช่วยเหลือตัวเองได้ทั้งหมด" },
+            { value: "ช่วยเหลือตัวเองได้บางส่วน", label: "ช่วยเหลือตัวเองได้บางส่วน" },
+            { value: "ติดเตียง", label: "ติดเตียง" },
+          ]);
+        }
+      }
+
+      // 2. โหลดข้อมูลชั้น (Rooms)
+      try {
+        const rooms = await roomService.getAll();
+        if (mounted && rooms) {
+          const uniqueFloors = Array.from(
+            new Set(
+              rooms
+                .map((room) => String(room.floor))
+                .filter((floor) => floor && floor !== "0" && floor !== "undefined")
+            )
+          ).sort((a, b) => Number(a) - Number(b));
+
+          const opts = [
+            { value: "all", label: "ทุกชั้น" },
+            ...uniqueFloors.map((f) => ({ value: f, label: `ชั้น ${f}` }))
+          ];
+          setFloorOptions(opts);
+        }
+      } catch (err) {
+        // Fallback กรณี API มีปัญหา
+        if (mounted) {
+          setFloorOptions([
+            { value: "all", label: "ทุกชั้น" },
+            { value: "1", label: "ชั้น 1" },
+            { value: "2", label: "ชั้น 2" },
+            { value: "3", label: "ชั้น 3" },
+            { value: "4", label: "ชั้น 4" }
+          ]);
+        }
+      }
+    };
+
+    void loadFilters();
+
+    return () => { mounted = false; };
   }, []);
 
   // Load photos for this schedule
@@ -147,32 +219,6 @@ export default function ActivityCheckInPage() {
         careType: resolveCareType(item.intake_labels || []),
       }));
   }, [residents]);
-
-  const floors = useMemo(() => {
-    const values = new Set(
-      residents
-        .map((item) => item.floor)
-        .filter((value): value is number => typeof value === "number")
-    );
-    return Array.from(values).sort((a, b) => a - b);
-  }, [residents]);
-
-  // Options สำหรับ Dropdown ชั้น
-  const floorOptions = useMemo(() => {
-    const opts = [{ value: "all", label: "ทุกชั้น" }];
-    floors.forEach((floor) => {
-      opts.push({ value: String(floor), label: String(floor) });
-    });
-    return opts;
-  }, [floors]);
-
-  // Options สำหรับ Dropdown ประเภท
-  const careTypeOptions = [
-    { value: "all", label: "ทุกประเภท" },
-    { value: "ผู้สูงอายุทั่วไป", label: "ผู้สูงอายุทั่วไป" },
-    { value: "ผู้สูงอายุช่วยเหลือตัวเองได้บางส่วน", label: "ผู้สูงอายุช่วยเหลือตัวเองได้บางส่วน" },
-    { value: "ผู้สูงอายุติดเตียง", label: "ผู้สูงอายุติดเตียง" },
-  ];
 
   const filteredResidents = useMemo(() => {
     const query = search.trim().toLowerCase();

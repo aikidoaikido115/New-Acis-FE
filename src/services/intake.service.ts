@@ -35,6 +35,15 @@ class IntakeService {
     return response.data.result;
   }
 
+  /**
+   * Create intake label master
+   * POST /api/emr/intake-labels/master
+   */
+  async createMaster(labelName: string): Promise<IntakeLabel> {
+    const response = await apiClient.post<ApiResponse<IntakeLabel>>('/api/emr/intake-labels/master', { label_name: labelName });
+    return response.data.result;
+  }
+
   // Backward-compatible alias
   async createLabel(data: CreateResidentIntakeLabelsRequest): Promise<ResidentLabel[]> {
     return this.createResidentLabels(data);

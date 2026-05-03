@@ -25,44 +25,18 @@ import { ElderTablePagination } from "@/components/features/elder-info/paginatio
 
 const ITEMS_PER_PAGE = 10;
 
+// ปรับค่า Default เผื่อกรณีคนที่ไม่ได้กรอก Label แต่มีคะแนน ADL แทน
 export const determineCareLevel = (adlScore?: number) => {
-  if (adlScore === undefined) return "general";
-  if (adlScore <= 5) return "bedridden";
-  if (adlScore <= 11) return "partial";
-  return "general";
+  if (adlScore === undefined || adlScore === null) return "";
+  if (adlScore <= 5) return "ผู้สูงอายุติดเตียง";
+  if (adlScore <= 11) return "ช่วยเหลือตัวเองได้บางส่วน";
+  return "ผู้สูงอายุทั่วไป";
 };
 
-export const normalizeCareLevel = (value?: string) => {
-  const normalized = (value || "").trim().toLowerCase();
-  if (normalized === "partial_assist" || normalized === "partial") return "partial";
-  if (normalized === "bedridden") return "bedridden";
-  if (normalized === "general") return "general";
-  return "";
-};
-
-export const mapCareLevelLabel = (labelName?: string) => {
-  const trimmed = (labelName || "").trim();
-  if (trimmed === "ช่วยเหลือตัวเองได้ทั้งหมด") return "general";
-  if (trimmed === "ช่วยเหลือตัวเองได้บางส่วน") return "partial_assist";
-  if (trimmed === "ติดเตียง") return "bedridden";
-  return "";
-};
-
-export const careLevelToLabelName = (value?: string) => {
-  const normalized = normalizeCareLevel(value);
-  if (normalized === "general") return "ช่วยเหลือตัวเองได้ทั้งหมด";
-  if (normalized === "partial") return "ช่วยเหลือตัวเองได้บางส่วน";
-  if (normalized === "bedridden") return "ติดเตียง";
-  return "";
-};
-
+// ดึงชื่อ Label จาก DB มาแสดงผลตรงๆ เลย
 export const resolveCareLevelFromLabels = (labels?: ApiResident["resident_labels"]) => {
   if (!labels || labels.length === 0) return "";
-  for (const label of labels) {
-    const mapped = mapCareLevelLabel(label.intake_label?.label_name);
-    if (mapped) return mapped;
-  }
-  return "";
+  return labels[0].intake_label?.label_name || "";
 };
 
 export const formatDate = (dateString?: string) => {
@@ -156,10 +130,11 @@ export const parseDose = (dose: string) => {
 
 const transformResidentData = (apiResident: ApiResident): Resident => {
   const fullName = `${apiResident.first_name} ${apiResident.last_name}`;
+  
+  // ใช้ชื่อ Label ดิปๆ ไปเลย ถ้าไม่มีให้ไปดูคะแนน ADL แทน
   const labelBasedCareLevel = resolveCareLevelFromLabels(apiResident.resident_labels);
-  const careLevel =
-    normalizeCareLevel(labelBasedCareLevel) ||
-    determineCareLevel(apiResident.adl_score);
+  const careLevel = labelBasedCareLevel || determineCareLevel(apiResident.adl_score);
+  
   const statusValue = (apiResident.status || "").toLowerCase();
   const isActive = statusValue
     ? statusValue === "active"
@@ -168,7 +143,6 @@ const transformResidentData = (apiResident: ApiResident): Resident => {
   const backendId = apiResident.id || (apiResident as any).resident_id || "";
 
   return {
-    // keep backend id as-is to support non-numeric ids and resident_id alias
     id: backendId,
     name: fullName,
     nickname: apiResident.nickname || "-",
@@ -214,6 +188,16 @@ export default function Page() {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
 
+  const availableFloors = useMemo(() => {
+    return Array.from(
+      new Set(
+        rooms
+          .map((room) => String(room.floor))
+          .filter((floor) => floor && floor !== "0" && floor !== "undefined")
+      )
+    ).sort((a, b) => Number(a) - Number(b));
+  }, [rooms]);
+
   const roomFloorMap = useMemo(() => {
     const map = new Map<string, number>();
     rooms.forEach((room) => {
@@ -252,7 +236,7 @@ export default function Page() {
       drugAllergies: "",
       foodAllergies: "",
       adlScore: resident.adl_score !== undefined && resident.adl_score !== null ? String(resident.adl_score) : "",
-      careLevel: fallbackCareLevel || "general",
+      careLevel: fallbackCareLevel || "", // ปล่อยว่างถ้าไม่เจอ จะได้ไม่บังคับเป็นค่าเก่า
       cprStatus: resident.resuscitation_status || "",
       emergencyHospital: resident.preferred_emergency_hospital || "",
       emergencyHospitalPhone: resident.emergency_hospital_phone || "",
@@ -265,7 +249,6 @@ export default function Page() {
     };
   };
 
-  // Fetch residents from API
   const fetchResidents = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -273,16 +256,7 @@ export default function Page() {
       const data = await residentService.getAll();
       const transformedData = data.map(transformResidentData);
       setAllResidents(transformedData);
-
     } catch (err: any) {
-      // Enhanced error logging
-      console.error({
-        message: err?.message,
-        status_code: err?.status_code,
-        response: err?.response,
-        fullError: err,
-      });
-
       const statusCode = err?.status_code || err?.response?.status || 0;
       let message = "ไม่สามารถโหลดข้อมูลผู้สูงอายุได้";
 
@@ -306,12 +280,10 @@ export default function Page() {
     }
   }, [router, showToast]);
 
-  // Fetch data on component mount
   useEffect(() => {
     fetchResidents();
   }, [fetchResidents]);
 
-  // Fetch rooms for dropdown (room must exist in BE)
   useEffect(() => {
     const fetchRooms = async () => {
       try {
@@ -343,20 +315,6 @@ export default function Page() {
     };
     fetchDrugMasters();
   }, [showToast]);
-
-  // Convert care type to display text
-  const getCareTypeDisplay = (careType: string) => {
-    switch (careType) {
-      case "general":
-        return "ผู้สูงอายุทั่วไป";
-      case "partial":
-        return "ช่วยเหลือตัวเองได้บางส่วน";
-      case "bedridden":
-        return "ผู้สูงอายุติดเตียง";
-      default:
-        return careType;
-    }
-  };
 
   const roomNumberMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -392,25 +350,22 @@ export default function Page() {
       });
   }, [allResidents, roomFloorMap, searchTerm, selectedFloor, selectedCareType, showActive]);
 
-  // Paginate filtered results
   const paginatedResidents = useMemo(() => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     const endIndex = startIndex + ITEMS_PER_PAGE;
 
     return filteredResidents.slice(startIndex, endIndex).map(resident => ({
       ...resident,
-      care: getCareTypeDisplay(resident.care),
+      care: resident.care || "-", // ใช้ชื่อดิบๆ ที่ดึงมาจาก DB ได้เลย
       room: roomNumberMap.get(resident.room) || resident.room || "-",
     }));
   }, [filteredResidents, currentPage, ITEMS_PER_PAGE, roomNumberMap]);
 
-  // Pagination info
   const totalPages = Math.ceil(filteredResidents.length / ITEMS_PER_PAGE);
   const totalItems = filteredResidents.length;
   const startItem = filteredResidents.length === 0 ? 0 : (currentPage - 1) * ITEMS_PER_PAGE + 1;
   const endItem = Math.min(currentPage * ITEMS_PER_PAGE, totalItems);
 
-  // Reset to first page when filters change
   const handleFilterChange = (filterFn: () => void) => {
     filterFn();
     setCurrentPage(1);
@@ -700,13 +655,44 @@ export default function Page() {
     [rooms, showToast]
   );
 
+  // ฟังก์ชันสร้างห้องหลอก (auto-floor-) เพื่อบันทึกชั้นลงฐานข้อมูล
+  const handleCreateFloorOption = useCallback(
+    async (floorName: string) => {
+      const trimmed = floorName.trim();
+      const numericFloor = Number(trimmed);
+      if (!trimmed || !Number.isFinite(numericFloor)) return null;
+
+      try {
+        const created = await roomService.create({
+          room_number: `auto-floor-${Date.now()}`,
+          floor: numericFloor,
+        });
+        const id = (created as any).room_id || (created as any).id || "";
+        if (!id) return null;
+        
+        setRooms((prev) => {
+          if (prev.some((item) => ((item as any).room_id || item.id) === id)) return prev;
+          return [...prev, created];
+        });
+        showToast({ type: "success", title: "บันทึกชั้นเรียบร้อย", message: `ชั้น ${numericFloor}` });
+        
+        return { value: String(numericFloor), label: `ชั้น ${numericFloor}` };
+      } catch (err: any) {
+        const message = err?.response?.data?.message || "ไม่สามารถบันทึกชั้นได้";
+        showToast({ type: "error", title: "บันทึกชั้นไม่สำเร็จ", message });
+        return null;
+      }
+    },
+    [showToast]
+  );
+
   const handleResidentSubmit = async (formData: ResidentFormState) => {
     try {
       setIsSubmitting(true);
 
       validateMedications(formData.medications);
 
-      const careLevelLabel = careLevelToLabelName(formData.careLevel);
+      const careLevelLabel = formData.careLevel?.trim(); // รับชื่อดิบที่พยาบาลเลือกมาตรงๆ 
       const labels = modalMode === "edit" && careLevelLabel ? [{ label_name: careLevelLabel }] : undefined;
       const payload = formData.profileImage
         ? buildResidentFormData(formData, labels)
@@ -820,7 +806,6 @@ export default function Page() {
         })
       );
     } catch (error) {
-      // ถ้าโหลดไม่ได้ เปิดเป็นฟอร์มว่างแต่ยังคงโหมดแก้ไขและ id
       setEditingInitialValues(undefined);
       alert("ไม่สามารถโหลดข้อมูลผู้สูงอายุได้ ขึ้นฟอร์มว่างให้กรอกใหม่");
     }
@@ -896,6 +881,7 @@ export default function Page() {
             onCareTypeChange={(value) => handleFilterChange(() => setSelectedCareType(value))}
             showActive={showActive}
             onShowActiveToggle={() => handleFilterChange(() => setShowActive(!showActive))}
+            availableFloors={availableFloors}
           />
 
           {isLoading ? (
@@ -956,6 +942,7 @@ export default function Page() {
         medicationOptions={drugMasterOptions}
         onCreateMedicationOption={handleCreateMedicationOption}
         onCreateRoomOption={handleCreateRoomOption}
+        onCreateFloorOption={handleCreateFloorOption} // เปิดใช้งาน Prop นี้แล้ว
       />
 
       {/* Relative View Modal */}

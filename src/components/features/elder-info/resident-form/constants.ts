@@ -30,6 +30,7 @@ export const INITIAL_FORM_STATE: ResidentFormState = {
   adlScore: "",
   careLevel: "",
   cprStatus: "",
+  intakeLabel: "",
   emergencyHospital: "",
   emergencyHospitalPhone: "",
   emergencyContacts: [{ ...INITIAL_EMERGENCY_CONTACT }],
@@ -46,18 +47,7 @@ export const GENDER_OPTIONS = [
   { value: "other",  label: "อื่นๆ" },
 ];
 
-export const FLOOR_OPTIONS = [
-  { value: "1", label: "ชั้น 1" },
-  { value: "2", label: "ชั้น 2" },
-  { value: "3", label: "ชั้น 3" },
-  { value: "4", label: "ชั้น 4" },
-];
-
-export const CARE_LEVEL_OPTIONS = [
-  { value: "general",        label: "ผู้สูงอายุทั่วไป" },
-  { value: "partial_assist", label: "ช่วยเหลือตัวเองได้บางส่วน" },
-  { value: "bedridden",      label: "ผู้สูงอายุติดเตียง" },
-];
+export const FLOOR_OPTIONS: Array<{ value: string; label: string }> = [];
 
 export const DEFAULT_MEDICATION_NAME_OPTIONS = [
   { value: "metformin",        label: "Metformin" },

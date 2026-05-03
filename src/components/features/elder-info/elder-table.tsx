@@ -32,14 +32,6 @@ export function ElderTable({ residents, onEdit, onViewDetail, onViewRelative, on
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [openDropdown]);
-  
-  const careBadgeClass = (care: string) => {
-    const variant = care.trim();
-    if (variant === "ผู้สูงอายุทั่วไป") return "bg-green-100 text-green-800";
-    if (variant === "ช่วยเหลือตัวเองได้บางส่วน") return "bg-orange-100 text-orange-800";
-    if (variant === "ผู้สูงอายุติดเตียง") return "bg-red-100 text-red-800";
-    return "bg-gray-100 text-gray-800";
-  };
 
   return (
     <div className="w-full">
@@ -84,22 +76,11 @@ export function ElderTable({ residents, onEdit, onViewDetail, onViewRelative, on
                     {resident.room}
                   </span>
                 </td>
-                <td className="px-1 py-2.5">
-                  <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-xs font-medium ${careBadgeClass(resident.care)}`}>
-                    {resident.care.trim() === "ช่วยเหลือตัวเองได้บางส่วน" ? (
-                      <>
-                        <span className="sm:inline hidden truncate max-w-full">ช่วยเหลือตัวเองได้บางส่วน</span>
-                        <span className="sm:hidden inline truncate max-w-full">ช่วยบางส่วน</span>
-                      </>
-                    ) : resident.care.trim() === "ผู้สูงอายุติดเตียง" ? (
-                      <>
-                        <span className="sm:inline hidden truncate max-w-full">ผู้สูงอายุติดเตียง</span>
-                        <span className="sm:hidden inline truncate max-w-full">ติดเตียง</span>
-                      </>
-                    ) : (
-                      <span className="truncate max-w-full">{resident.care.trim()}</span>
-                    )}
-                  </span>
+                <td className="px-1 py-2.5 text-xs sm:text-sm text-slate-700">
+                  {/* แสดงข้อมูลประเภทตรงๆ ไม่ต้องมี Badge และใช้ truncate เพื่อซ่อนคำยาวเกิน */}
+                  <div className="truncate" title={resident.care || "-"}>
+                    {resident.care || "-"}
+                  </div>
                 </td>
                 <td className="px-1 py-2.5 text-xs sm:text-sm text-slate-700 hidden md:table-cell">
                   <div className="truncate">{resident.admitted}</div>
@@ -160,8 +141,8 @@ export function ElderTable({ residents, onEdit, onViewDetail, onViewRelative, on
                 </td>
               </tr>
             ))}
-            </tbody>
-          </table>
+          </tbody>
+        </table>
       </div>
     </div>
   );

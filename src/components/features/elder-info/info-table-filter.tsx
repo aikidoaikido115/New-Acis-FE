@@ -1,6 +1,8 @@
 "use client";
 import { Search, RotateCcw } from "lucide-react";
 import { Dropdown } from "@/components/ui/dropdown";
+import { useState, useEffect, useMemo } from "react";
+import { intakeService } from '@/services/intake.service';
 
 interface ElderTableFilterProps {
   searchTerm: string;
@@ -11,22 +13,8 @@ interface ElderTableFilterProps {
   onCareTypeChange: (value: string) => void;
   showActive: boolean;
   onShowActiveToggle: () => void;
+  availableFloors?: string[]; // 1. เพิ่ม Prop รับข้อมูลชั้นจากหน้าหลัก
 }
-
-const floorOptions = [
-  { value: "all", label: "ทุกชั้น" },
-  { value: "1", label: "1" },
-  { value: "2", label: "2" },
-  { value: "3", label: "3" },
-  { value: "4", label: "4" },
-];
-
-const careTypeOptions = [
-  { value: "all", label: "ทุกกลุ่ม" },
-  { value: "general", label: "ผู้สูงอายุทั่วไป" },
-  { value: "partial", label: "ช่วยเหลือตัวเองได้บางส่วน" },
-  { value: "bedridden", label: "ผู้สูงอายุติดเตียง" },
-];
 
 export function ElderTableFilter({
   searchTerm,
@@ -37,7 +25,48 @@ export function ElderTableFilter({
   onCareTypeChange,
   showActive,
   onShowActiveToggle,
+  availableFloors = [], // รับค่าชั้นเข้ามา (ค่าตั้งต้นคืออาเรย์ว่าง)
 }: ElderTableFilterProps) {
+  
+  // 2. สร้างตัวเลือก "ชั้น" แบบ Dynamic ตามข้อมูลที่ส่งเข้ามา
+  const floorOptions = useMemo(() => {
+    // เรียงลำดับชั้นจากน้อยไปมาก
+    const sortedFloors = [...availableFloors].sort((a, b) => Number(a) - Number(b));
+    
+    return [
+      { value: "all", label: "ทุกชั้น" },
+      ...sortedFloors.map(floor => ({ value: floor, label: `ชั้น ${floor}` }))
+    ];
+  }, [availableFloors]);
+
+  const [intakeOptions, setIntakeOptions] = useState<Array<{ value: string; label: string }>>([
+    { value: "all", label: "ทุกประเภท" }
+  ]);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const labels = await intakeService.getAllLabels();
+        if (!mounted) return;
+        const opts = [
+          { value: "all", label: "ทุกประเภท" },
+          ...labels.map((l) => ({ value: l.label_name, label: l.label_name }))
+        ];
+        setIntakeOptions(opts);
+      } catch (err) {
+        // ถ้า API พัง ให้ใช้ค่า Default เบื้องต้น
+        setIntakeOptions([
+          { value: "all", label: "ทุกประเภท" },
+          { value: "ผู้สูงอายุทั่วไป", label: "ผู้สูงอายุทั่วไป" },
+          { value: "ช่วยเหลือตัวเองได้บางส่วน", label: "ช่วยเหลือตัวเองได้บางส่วน" },
+          { value: "ผู้สูงอายุติดเตียง", label: "ผู้สูงอายุติดเตียง" },
+        ]);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
   return (
     <div className="border-b border-slate-200 px-3 py-3">
       {/* Mobile: Compact layout */}
@@ -84,7 +113,7 @@ export function ElderTableFilter({
           <div className="flex items-center gap-1.5 text-slate-600 flex-1 min-w-0">
             <span className="whitespace-nowrap">ประเภท</span>
             <Dropdown
-              options={careTypeOptions}
+              options={intakeOptions}
               value={selectedCareType}
               onChange={onCareTypeChange}
               className="flex-1 min-w-0 max-w-40"
@@ -120,7 +149,7 @@ export function ElderTableFilter({
           <div className="flex items-center gap-2 text-sm text-slate-600">
             <span className="whitespace-nowrap">ประเภท</span>
             <Dropdown
-              options={careTypeOptions}
+              options={intakeOptions}
               value={selectedCareType}
               onChange={onCareTypeChange}
               className="w-42"
@@ -169,7 +198,7 @@ export function ElderTableFilter({
           <div className="flex items-center gap-2 text-sm text-slate-600">
             <span className="whitespace-nowrap">ประเภท</span>
             <Dropdown
-              options={careTypeOptions}
+              options={intakeOptions}
               value={selectedCareType}
               onChange={onCareTypeChange}
               className="w-56"
