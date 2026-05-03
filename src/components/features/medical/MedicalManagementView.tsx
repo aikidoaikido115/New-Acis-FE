@@ -7,7 +7,6 @@ import {
   ChevronDown,
   Download,
   Plus,
-  ArrowUpDown,
   Sunrise,
   Sun,
   Sunset,
@@ -156,6 +155,44 @@ const formatHistoryTime = (dateText?: string | null): string => {
     minute: "2-digit",
     hour12: false,
   });
+};
+
+const TIME_SLOT_QUERY_ALIASES: Record<TimeSlot, string[]> = {
+  "เช้า": ["เช้า", "morning"],
+  "กลางวัน": ["กลางวัน", "noon"],
+  "เย็น": ["เย็น", "evening"],
+  "ก่อนนอน": ["ก่อนนอน", "bedtime"],
+};
+
+const toThaiTimeOfDayLabel = (rawTimeOfDay?: string): string => {
+  const normalized = (rawTimeOfDay || "").trim().toLowerCase();
+  if (!normalized) {
+    return "";
+  }
+
+  if (normalized.includes("morning") || normalized.includes("เช้า")) {
+    return "เช้า";
+  }
+  if (normalized.includes("noon") || normalized.includes("กลางวัน")) {
+    return "กลางวัน";
+  }
+  if (normalized.includes("evening") || normalized.includes("เย็น")) {
+    return "เย็น";
+  }
+  if (normalized.includes("bedtime") || normalized.includes("ก่อนนอน")) {
+    return "ก่อนนอน";
+  }
+
+  return rawTimeOfDay || "";
+};
+
+const includesTimeSlot = (rawTimeOfDay: string | undefined, selectedSlot: TimeSlot): boolean => {
+  const normalized = (rawTimeOfDay || "").toLowerCase();
+  if (!normalized.trim()) {
+    return false;
+  }
+
+  return TIME_SLOT_QUERY_ALIASES[selectedSlot].some((alias) => normalized.includes(alias));
 };
 
 const normalizeDose = (doseInput: string): string => {
@@ -354,10 +391,26 @@ export function MedicalManagementView() {
   const loadOverview = useCallback(async () => {
     setIsLoadingMain(true);
     try {
-      const overview = await drugPlanService.getOverviewPaginated({
-        time_of_day: selectedTimeSlot,
+      const firstPage = await drugPlanService.getOverviewPaginated({
+        page: 1,
+        page_size: 100,
       });
-      setOverviewPlans(overview.items || []);
+
+      const allItems = [...(firstPage.items || [])];
+      const totalPages = Math.max(1, firstPage.pagination.total_pages || 1);
+
+      if (totalPages > 1) {
+        // Fetch remaining pages sequentially to avoid stale data race conditions
+        for (let p = 2; p <= totalPages; p++) {
+          const page = await drugPlanService.getOverviewPaginated({
+            page: p,
+            page_size: 100,
+          });
+          allItems.push(...(page.items || []));
+        }
+      }
+
+      setOverviewPlans(allItems);
     } catch (error) {
       showToast({
         type: "error",
@@ -367,7 +420,7 @@ export function MedicalManagementView() {
     } finally {
       setIsLoadingMain(false);
     }
-  }, [selectedTimeSlot, showToast]);
+  }, [showToast]);
 
   const loadPatientMedicationList = useCallback(
     async (residentId: string) => {
@@ -462,17 +515,32 @@ export function MedicalManagementView() {
         throw new Error("ไม่พบรายการแผนให้ยาที่ต้องการอัปเดต");
       }
 
-      const staff = ensureStaffIdentity();
-      await drugPlanService.takeById(medication.drugPlanId, staff);
-      await refreshAfterMutation();
+      // Optimistic update: mark as given immediately
+      setOverviewPlans((prev) =>
+        prev.map((p) =>
+          (p.dpln_id || p.id) === medication.drugPlanId
+            ? { ...p, is_taken: true, is_omitted: false }
+            : p
+        )
+      );
 
-      showToast({
-        type: "success",
-        title: "บันทึกสำเร็จ",
-        message: `บันทึกการให้ยา ${medication.name} เรียบร้อยแล้ว`,
-      });
+      try {
+        const staff = ensureStaffIdentity();
+        await drugPlanService.takeById(medication.drugPlanId, staff);
+        await refreshAfterMutation();
+
+        showToast({
+          type: "success",
+          title: "บันทึกสำเร็จ",
+          message: `บันทึกการให้ยา ${medication.name} เรียบร้อยแล้ว`,
+        });
+      } catch (error) {
+        // Revert optimistic update on failure
+        await loadOverview();
+        throw error;
+      }
     },
-    [ensureStaffIdentity, refreshAfterMutation, showToast]
+    [ensureStaffIdentity, refreshAfterMutation, loadOverview, showToast]
   );
 
   const handleWithholdMedication = useCallback(
@@ -481,21 +549,36 @@ export function MedicalManagementView() {
         throw new Error("ไม่พบรายการแผนให้ยาที่ต้องการอัปเดต");
       }
 
-      const staff = ensureStaffIdentity();
-      await drugPlanService.omitById(medication.drugPlanId, {
-        ...staff,
-        omitted_reason: payload.reason,
-        note: payload.note || undefined,
-      });
-      await refreshAfterMutation();
+      // Optimistic update: mark as omitted immediately
+      setOverviewPlans((prev) =>
+        prev.map((p) =>
+          (p.dpln_id || p.id) === medication.drugPlanId
+            ? { ...p, is_taken: false, is_omitted: true }
+            : p
+        )
+      );
 
-      showToast({
-        type: "success",
-        title: "บันทึกสำเร็จ",
-        message: `บันทึกการงดยา ${medication.name} เรียบร้อยแล้ว`,
-      });
+      try {
+        const staff = ensureStaffIdentity();
+        await drugPlanService.omitById(medication.drugPlanId, {
+          ...staff,
+          omitted_reason: payload.reason,
+          note: payload.note || undefined,
+        });
+        await refreshAfterMutation();
+
+        showToast({
+          type: "success",
+          title: "บันทึกสำเร็จ",
+          message: `บันทึกการงดยา ${medication.name} เรียบร้อยแล้ว`,
+        });
+      } catch (error) {
+        // Revert optimistic update on failure
+        await loadOverview();
+        throw error;
+      }
     },
-    [ensureStaffIdentity, refreshAfterMutation, showToast]
+    [ensureStaffIdentity, refreshAfterMutation, loadOverview, showToast]
   );
 
   const handleGiveAllMeds = useCallback(
@@ -554,7 +637,7 @@ export function MedicalManagementView() {
           amount,
           amount_unit: amountUnit,
           frequency: frequencyPerDay,
-          time_of_day: data.route,
+          time_of_day: Array.isArray(data.route) ? data.route.join(",") : data.route,
           timing: data.administrationTiming,
           description: data.note || undefined,
           take_type: takeType,
@@ -615,7 +698,7 @@ export function MedicalManagementView() {
           amount,
           amount_unit: amountUnit,
           frequency: frequencyPerDay,
-          time_of_day: data.route,
+          time_of_day: Array.isArray(data.route) ? data.route.join(",") : data.route,
           timing: data.administrationTiming,
           description: data.note || undefined,
           take_type: takeType,
@@ -701,9 +784,18 @@ export function MedicalManagementView() {
     overviewPlans.forEach((plan) => {
       const personalDrug = plan.PersonalDrug;
       const residentId = personalDrug?.resident_id;
+      // Backend entity DrugPlan uses `dpln_id` as the JSON key for its primary key
       const planId = plan.dpln_id || plan.id;
 
-      if (!residentId || !planId) {
+      if (!planId) {
+        return;
+      }
+
+      if (!includesTimeSlot(personalDrug?.time_of_day, selectedTimeSlot)) {
+        return;
+      }
+
+      if (!residentId) {
         return;
       }
 
@@ -743,7 +835,7 @@ export function MedicalManagementView() {
           ? `${personalDrug.amount} ${personalDrug.amount_unit}`
           : undefined,
         personalDrug?.timing,
-        personalDrug?.time_of_day,
+        toThaiTimeOfDayLabel(personalDrug?.time_of_day),
       ]
         .filter(Boolean)
         .join(" | ");
@@ -767,7 +859,7 @@ export function MedicalManagementView() {
     }));
 
     return allPatients.sort((a, b) => a.name.localeCompare(b.name));
-  }, [overviewPlans, residentById, roomById]);
+  }, [overviewPlans, residentById, roomById, selectedTimeSlot]);
 
   const filteredPatients = useMemo(() => {
     return allPatientMedications.filter((patient) => {
