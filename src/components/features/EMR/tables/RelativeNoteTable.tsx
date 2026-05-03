@@ -312,7 +312,6 @@ export function RelativeNoteTable() {
           editingNote
             ? {
                 residentId: editingNote.resident_id,
-                relation: editingNote.relation || "",
                 content: editingNote.content || "",
                 sendNote: editingNote.send_note,
               }
