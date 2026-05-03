@@ -15,6 +15,8 @@ const NURSE_ROUTES = [
   '/profile',
   '/notification',
   '/change-password',
+  '/terms',
+  '/privacy',
 ];
 
 const KITCHEN_ROUTES = [
@@ -25,6 +27,8 @@ const KITCHEN_ROUTES = [
   '/profile',
   '/notification',
   '/change-password',
+  '/terms',
+  '/privacy',
 ];
 
 const SUPERUSER_ROUTES = Array.from(new Set([
