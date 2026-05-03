@@ -70,7 +70,7 @@ export function EditItemModal({ item, onClose, onConfirm }: EditItemModalProps) 
   return (
     <>
       <WarehouseModalFrame onClose={handleRequestClose} closeOnEscape={!showDiscardModal}>
-        <WarehouseModalHeader title="แก้ไขรายการสินค้า" onClose={handleRequestClose} />
+        <WarehouseModalHeader title="แก้ไขรายการเวชภัณฑ์" onClose={handleRequestClose} />
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 px-7 py-5">
             <div>
@@ -91,14 +91,14 @@ export function EditItemModal({ item, onClose, onConfirm }: EditItemModalProps) 
 
             <div>
               <label htmlFor="edit-code" className={warehouseLabelClassName}>
-                รหัสสินค้า <span className="text-[#FF495B]">*</span>
+                รหัสเวชภัณฑ์ <span className="text-[#FF495B]">*</span>
               </label>
               <input id="edit-code" type="text" value={formData.code} readOnly className={warehouseReadOnlyInputClassName} />
             </div>
 
             <div>
               <label htmlFor="edit-name" className={warehouseLabelClassName}>
-                ชื่อสินค้า <span className="text-[#FF495B]">*</span>
+                ชื่อเวชภัณฑ์ <span className="text-[#FF495B]">*</span>
               </label>
               <input
                 id="edit-name"

@@ -24,6 +24,10 @@ function getApprovalBadgeClass(status: Transaction["approvalStatus"]) {
   return "bg-[#E6E6E6] text-[#444444]";
 }
 
+function formatWarehouseTransactionType(type: string) {
+  return type.replace(/สินค้า/g, "เวชภัณฑ์");
+}
+
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="grid grid-cols-[130px_1fr] items-start gap-2">
@@ -61,9 +65,9 @@ export function TransactionDetailLogModal({
 
       <div className="space-y-3 px-6 py-4">
         <DetailRow label="รหัสการแก้ไข" value={transaction.code} />
-        <DetailRow label="ประเภทรายการ" value={transaction.type} />
-        <DetailRow label="รหัสสินค้า" value={transaction.itemCode} />
-        <DetailRow label="ชื่อสินค้า" value={transaction.itemName} />
+        <DetailRow label="ประเภทรายการ" value={formatWarehouseTransactionType(transaction.type)} />
+        <DetailRow label="รหัสเวชภัณฑ์" value={transaction.itemCode} />
+        <DetailRow label="ชื่อเวชภัณฑ์" value={transaction.itemName} />
         <DetailRow label="จำนวน" value={String(transaction.quantity)} />
         <DetailRow label="ผู้ทำรายการ" value={renderPerson(transaction.operator)} />
         <DetailRow label="วันที่แก้ไข" value={transaction.date} />
