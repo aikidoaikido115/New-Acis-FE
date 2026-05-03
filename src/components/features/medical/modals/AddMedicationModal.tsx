@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { X, Clock } from "lucide-react";
+import { X, Sunrise, Sun, Sunset, MoonStar } from "lucide-react";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DatePicker } from "@/components/ui/date-picker";
 
@@ -21,7 +21,7 @@ export interface AddMedicationFormData {
   frequencyPerDay: number;
   route: TimeOfDaySlot[];
   medicationType: "ประจำ" | "ชั่วคราว";
-  administrationTiming: "ก่อนอาหาร" | "หลังอาหาร" | "พร้อมอาหาร" | "ก่อนนอน";
+  administrationTiming: "ก่อนอาหาร" | "หลังอาหาร";
   note: string;
   startDate: string;
   endDate: string;
@@ -31,6 +31,7 @@ type AddMedicationFormErrors = Partial<Record<keyof AddMedicationFormData | "cus
 
 const OTHER_UNIT_VALUE = "__other__";
 const STANDARD_AMOUNT_UNITS = ["เม็ด", "แคปซูล", "มล.", "หยด", "พัฟ", "ซอง", "ขวด", "IU"] as const;
+const MAX_FREQUENCY_PER_DAY = 4;
 
 const TIME_OF_DAY_SLOTS: TimeOfDaySlot[] = ["เช้า", "กลางวัน", "เย็น", "ก่อนนอน"];
 
@@ -99,6 +100,21 @@ const baseSelectClassName =
   "w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500";
 
 const fullWidthDatePickerClassName = "w-full [&>button]:w-full [&>button]:justify-between";
+
+const getTimeOfDayIcon = (slot: TimeOfDaySlot) => {
+  switch (slot) {
+    case "เช้า":
+      return <Sunrise className="w-5 h-5 mb-1" />;
+    case "กลางวัน":
+      return <Sun className="w-5 h-5 mb-1" />;
+    case "เย็น":
+      return <Sunset className="w-5 h-5 mb-1" />;
+    case "ก่อนนอน":
+      return <MoonStar className="w-5 h-5 mb-1" />;
+    default:
+      return null;
+  }
+};
 
 export function AddMedicationModal({ isOpen, onClose, onSubmit }: AddMedicationModalProps) {
   const { confirm, confirmDialog } = useConfirmDialog();
@@ -183,6 +199,8 @@ export function AddMedicationModal({ isOpen, onClose, onSubmit }: AddMedicationM
 
     if (!Number.isFinite(formData.frequencyPerDay) || formData.frequencyPerDay < 1) {
       nextErrors.frequencyPerDay = "ความถี่ต้องมากกว่าหรือเท่ากับ 1";
+    } else if (formData.frequencyPerDay > MAX_FREQUENCY_PER_DAY) {
+      nextErrors.frequencyPerDay = "ความถี่ต่อวันต้องไม่เกิน 4 ครั้ง";
     }
 
     if (formData.medicationType === "ชั่วคราว") {
@@ -290,7 +308,7 @@ export function AddMedicationModal({ isOpen, onClose, onSubmit }: AddMedicationM
       amount: formData.amount.trim(),
       amountUnit: formData.amountUnit.trim(),
       note: formData.note.trim(),
-      frequencyPerDay: Math.max(1, Math.floor(formData.frequencyPerDay)),
+      frequencyPerDay: Math.min(MAX_FREQUENCY_PER_DAY, Math.max(1, Math.floor(formData.frequencyPerDay))),
     });
     onClose();
     resetForm();
@@ -310,7 +328,7 @@ export function AddMedicationModal({ isOpen, onClose, onSubmit }: AddMedicationM
   };
 
   const adjustFrequency = (delta: number) => {
-    updateField("frequencyPerDay", Math.max(1, formData.frequencyPerDay + delta));
+    updateField("frequencyPerDay", Math.min(MAX_FREQUENCY_PER_DAY, Math.max(1, formData.frequencyPerDay + delta)));
   };
 
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -450,15 +468,22 @@ export function AddMedicationModal({ isOpen, onClose, onSubmit }: AddMedicationM
                 id="med-frequency"
                 type="number"
                 min={1}
+                max={MAX_FREQUENCY_PER_DAY}
                 step={1}
                 value={formData.frequencyPerDay}
-                onChange={(e) => updateField("frequencyPerDay", Math.max(1, Number(e.target.value) || 1))}
+                onChange={(e) =>
+                  updateField(
+                    "frequencyPerDay",
+                    Math.min(MAX_FREQUENCY_PER_DAY, Math.max(1, Number(e.target.value) || 1))
+                  )
+                }
                 className={baseInputClassName}
                 required
               />
               <button
                 type="button"
                 onClick={() => adjustFrequency(1)}
+                disabled={formData.frequencyPerDay >= MAX_FREQUENCY_PER_DAY}
                 className="h-10 w-10 rounded-lg border border-gray-300 text-lg font-semibold text-gray-700 hover:bg-gray-50"
                 aria-label="เพิ่มความถี่"
               >
@@ -509,7 +534,7 @@ export function AddMedicationModal({ isOpen, onClose, onSubmit }: AddMedicationM
                         : "bg-white text-black border-gray-300 hover:bg-gray-50"
                     }`}
                   >
-                    <Clock className="w-5 h-5 mb-1" />
+                      {getTimeOfDayIcon(slot)}
                     <span>{slot}</span>
                   </button>
                 );
@@ -566,8 +591,6 @@ export function AddMedicationModal({ isOpen, onClose, onSubmit }: AddMedicationM
             >
               <option value="ก่อนอาหาร">ก่อนอาหาร</option>
               <option value="หลังอาหาร">หลังอาหาร</option>
-              <option value="พร้อมอาหาร">พร้อมอาหาร</option>
-              <option value="ก่อนนอน">ก่อนนอน</option>
             </select>
           </div>
 
