@@ -7,6 +7,10 @@ const bangkokDateFormatter = new Intl.DateTimeFormat("en-CA", {
   day: "2-digit",
 });
 
+export function formatBangkokDateKey(date: Date): string {
+  return bangkokDateFormatter.format(date);
+}
+
 const bangkokDateTimeFormatter = new Intl.DateTimeFormat("th-TH", {
   timeZone: "Asia/Bangkok",
   dateStyle: "medium",
