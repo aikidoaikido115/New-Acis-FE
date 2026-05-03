@@ -53,10 +53,10 @@ export function ElderTable({ residents, onEdit, onViewDetail, onViewRelative, on
               <th className="px-1 py-2 pr-4 text-xs font-semibold text-slate-600 w-[50%] md:w-[15%] hidden sm:table-cell">
                 ชื่อเล่น
               </th>
-              <th className="pl-1 pr-1 py-2 text-xs font-semibold text-slate-600 text-left w-[20%] sm:w-[11%] md:w-[15%]">
+              <th className="pl-1 pr-1 py-2 text-xs font-semibold text-slate-600 text-left w-[15%] sm:w-[6%] md:w-[15%]">
                 ห้อง
               </th>
-              <th className="px-1 py-2 text-xs font-semibold text-slate-600 w-[25%] sm:w-[18%] md:w-[22%]">
+              <th className="px-1 py-2 text-xs font-semibold text-slate-600 w-[20%] sm:w-[18%] md:w-[22%]">
                 ประเภท
               </th>
               <th className="px-1 py-2 text-xs font-semibold text-slate-600 w-[14%] hidden md:table-cell">
@@ -65,7 +65,7 @@ export function ElderTable({ residents, onEdit, onViewDetail, onViewRelative, on
               <th className="px-1 py-2 text-xs font-semibold text-slate-600 w-[14%] hidden lg:table-cell">
                 คาดว่าจะออก
               </th>
-              <th className="pl-2 pr-2 py-2 text-xs font-semibold text-slate-600 text-left w-[18%] sm:w-[16%] md:w-[12%] lg:w-[10%]">
+              <th className="pl-2 pr-2 py-2 text-xs font-semibold text-slate-600 text-left w-[28%] sm:w-[16%] md:w-[17%] lg:w-[10%]">
                 จัดการ
               </th>
             </tr>
@@ -86,11 +86,15 @@ export function ElderTable({ residents, onEdit, onViewDetail, onViewRelative, on
                 </td>
                 <td className="px-1 py-2.5">
                   <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-xs font-medium ${careBadgeClass(resident.care)}`}>
-                    {/* Mobile: short label for 'ช่วยเหลือตัวเองได้บางส่วน' */}
                     {resident.care.trim() === "ช่วยเหลือตัวเองได้บางส่วน" ? (
                       <>
                         <span className="sm:inline hidden truncate max-w-full">ช่วยเหลือตัวเองได้บางส่วน</span>
                         <span className="sm:hidden inline truncate max-w-full">ช่วยบางส่วน</span>
+                      </>
+                    ) : resident.care.trim() === "ผู้สูงอายุติดเตียง" ? (
+                      <>
+                        <span className="sm:inline hidden truncate max-w-full">ผู้สูงอายุติดเตียง</span>
+                        <span className="sm:hidden inline truncate max-w-full">ติดเตียง</span>
                       </>
                     ) : (
                       <span className="truncate max-w-full">{resident.care.trim()}</span>
