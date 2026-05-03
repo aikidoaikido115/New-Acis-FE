@@ -59,6 +59,8 @@ const parseDateValue = (value: string): Date | null => {
   return null;
 };
 
+const formatWarehouseTransactionType = (type: string) => type.replace(/สินค้า/g, "เวชภัณฑ์");
+
 function ApprovalBadge({ status }: { status: ApprovalStatus }) {
   return (
     <span
@@ -323,7 +325,7 @@ export function TransactionHistoryTable() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
-              placeholder="ค้นหาชื่อสินค้า..."
+              placeholder="ค้นหาชื่อเวชภัณฑ์..."
               value={searchItem}
               onChange={(e) => { setSearchItem(e.target.value); resetPage(); }}
               className="pl-10 pr-4 py-2 border border-gray-400 bg-white shadow-sm rounded-lg placeholder:text-[#CCCCCC] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-body-small text-black w-44"
@@ -367,9 +369,9 @@ export function TransactionHistoryTable() {
               style={{ borderColor: "rgba(204, 204, 204, 1)" }}
             >
               <option value="">ประเภทรายการ</option>
-              <option value="เพิ่มสินค้าใหม่">เพิ่มสินค้าใหม่</option>
-              <option value="เติมสินค้า">เติมสินค้า</option>
-              <option value="เบิกสินค้า">เบิกสินค้า</option>
+              <option value="เพิ่มสินค้าใหม่">เพิ่มเวชภัณฑ์ใหม่</option>
+              <option value="เติมสินค้า">เติมเวชภัณฑ์</option>
+              <option value="เบิกสินค้า">เบิกเวชภัณฑ์</option>
               <option value="นำออก">นำออก</option>
             </select>
             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
@@ -429,10 +431,10 @@ export function TransactionHistoryTable() {
                   ประเภท
                 </th>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700 w-28">
-                  รหัสสินค้า
+                  รหัสเวชภัณฑ์
                 </th>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700">
-                  ชื่อสินค้า
+                  ชื่อเวชภัณฑ์
                 </th>
                 <th className="text-center py-3 px-4 text-xs font-semibold text-gray-700 w-24">
                   จำนวน
@@ -493,7 +495,7 @@ export function TransactionHistoryTable() {
                       </td>
                     ) : null}
                     <td className="py-3 px-4 text-xs sm:text-sm text-gray-700 font-medium">{tx.code}</td>
-                    <td className="py-3 px-4 text-xs sm:text-sm text-gray-700">{tx.type}</td>
+                    <td className="py-3 px-4 text-xs sm:text-sm text-gray-700">{formatWarehouseTransactionType(tx.type)}</td>
                     <td className="py-3 px-4 text-xs sm:text-sm text-gray-700">{tx.itemCode}</td>
                     <td className="py-3 px-4 text-xs sm:text-sm text-gray-800 font-medium">{tx.itemName}</td>
                     <td className="py-3 px-4 text-xs sm:text-sm text-gray-700 text-center">{tx.quantity}</td>

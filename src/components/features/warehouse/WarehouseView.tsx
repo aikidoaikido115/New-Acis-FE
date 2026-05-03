@@ -29,7 +29,7 @@ export function WarehouseView() {
                   : "bg-transparent text-gray-600 hover:text-gray-900"
               }`}
             >
-              รายการสินค้า
+              รายการเวชภัณฑ์
             </button>
             <button
               onClick={() => setActiveTab("history")}

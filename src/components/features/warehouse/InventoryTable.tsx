@@ -86,7 +86,7 @@ export function InventoryTable() {
         setPendingRequestCountByItemCode({});
       }
     } catch {
-      setError("ไม่สามารถโหลดรายการสินค้าได้");
+      setError("ไม่สามารถโหลดรายการเวชภัณฑ์ได้");
       setPendingRequestCountByItemCode({});
     } finally {
       setIsLoading(false);
@@ -132,10 +132,10 @@ export function InventoryTable() {
       showToast({
         type: "success",
         title: "ส่งคำขอสำเร็จ",
-        message: "ส่งคำขอเพิ่มสินค้าใหม่แล้ว รอการอนุมัติ",
+        message: "ส่งคำขอเพิ่มเวชภัณฑ์ใหม่แล้ว รอการอนุมัติ",
       });
     } catch {
-      alert("ไม่สามารถเพิ่มรายการสินค้าได้");
+      alert("ไม่สามารถเพิ่มรายการเวชภัณฑ์ได้");
     }
   };
 
@@ -153,10 +153,10 @@ export function InventoryTable() {
       showToast({
         type: "success",
         title: "บันทึกสำเร็จ",
-        message: "แก้ไขข้อมูลสินค้าเรียบร้อยแล้ว",
+        message: "แก้ไขข้อมูลเวชภัณฑ์เรียบร้อยแล้ว",
       });
     } catch {
-      alert("ไม่สามารถแก้ไขรายการสินค้าได้");
+      alert("ไม่สามารถแก้ไขรายการเวชภัณฑ์ได้");
     }
   };
 
@@ -168,10 +168,10 @@ export function InventoryTable() {
       showToast({
         type: "success",
         title: "ส่งคำขอสำเร็จ",
-        message: "ส่งคำขอนำรายการสินค้าออกแล้ว รอการอนุมัติ",
+        message: "ส่งคำขอนำรายการเวชภัณฑ์ออกแล้ว รอการอนุมัติ",
       });
     } catch {
-      alert("ไม่สามารถลบรายการสินค้าได้");
+      alert("ไม่สามารถลบรายการเวชภัณฑ์ได้");
     }
   };
 
@@ -219,14 +219,14 @@ export function InventoryTable() {
         title: "ส่งคำขอสำเร็จ",
         message:
           adjustMode === "restock"
-            ? "ส่งคำขอเติมสินค้าแล้ว รอการอนุมัติ"
-            : "ส่งคำขอเบิกสินค้าแล้ว รอการอนุมัติ",
+            ? "ส่งคำขอเติมเวชภัณฑ์แล้ว รอการอนุมัติ"
+            : "ส่งคำขอเบิกเวชภัณฑ์แล้ว รอการอนุมัติ",
       });
     } catch {
       alert(
         adjustMode === "restock"
-          ? "ไม่สามารถเติมสินค้าได้"
-          : "ไม่สามารถเบิกสินค้าได้"
+          ? "ไม่สามารถเติมเวชภัณฑ์ได้"
+          : "ไม่สามารถเบิกเวชภัณฑ์ได้"
       );
     }
   };
@@ -277,14 +277,14 @@ export function InventoryTable() {
         title: "ส่งคำขอสำเร็จ",
         message:
           adjustMode === "restock"
-            ? `ส่งคำขอเติมสินค้า ${validEntries.length} รายการแล้ว รอการอนุมัติ`
-            : `ส่งคำขอเบิกสินค้า ${validEntries.length} รายการแล้ว รอการอนุมัติ`,
+            ? `ส่งคำขอเติมเวชภัณฑ์ ${validEntries.length} รายการแล้ว รอการอนุมัติ`
+            : `ส่งคำขอเบิกเวชภัณฑ์ ${validEntries.length} รายการแล้ว รอการอนุมัติ`,
       });
     } catch {
       alert(
         adjustMode === "restock"
-          ? "ไม่สามารถบันทึกการเติมสินค้าได้"
-          : "ไม่สามารถบันทึกการเบิกสินค้าได้"
+          ? "ไม่สามารถบันทึกการเติมเวชภัณฑ์ได้"
+          : "ไม่สามารถบันทึกการเบิกเวชภัณฑ์ได้"
       );
     }
   };
@@ -307,6 +307,22 @@ export function InventoryTable() {
   };
 
   const getPendingRequestCount = (item: WarehouseItem) => pendingRequestCountByItemCode[item.code] ?? 0;
+  const getQuantityState = (item: WarehouseItem) => {
+    const minimum = item.minimumQuantity ?? 0;
+    const nearThreshold = minimum > 0 ? minimum + Math.max(1, Math.floor(minimum * 0.2)) : 0;
+    const isBelow = minimum > 0 && item.quantity <= minimum;
+    const isNear = minimum > 0 && !isBelow && item.quantity <= nearThreshold;
+
+    if (isBelow) {
+      return { className: "text-red-600", label: "ต่ำกว่าจำนวนขั้นต่ำ" };
+    }
+
+    if (isNear) {
+      return { className: "text-amber-500", label: "ใกล้จำนวนขั้นต่ำ" };
+    }
+
+    return null;
+  };
 
   return (
     <div className="space-y-4">
@@ -318,7 +334,7 @@ export function InventoryTable() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
-              placeholder="ค้นหาสินค้า..."
+              placeholder="ค้นหาเวชภัณฑ์..."
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
@@ -351,7 +367,7 @@ export function InventoryTable() {
               className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg text-body-small font-medium hover:bg-blue-600 transition-colors"
             >
               <Plus className="w-4 h-4" />
-              เพิ่มรายการสินค้า
+              เพิ่มรายการเวชภัณฑ์
             </button>
           ) : null}
           <button
@@ -381,7 +397,7 @@ export function InventoryTable() {
         {/* Filter Panel */}
         {showFilter && (
           <div className="mt-4 rounded-lg bg-[rgba(204,204,204,0.14)] p-3 flex flex-wrap items-center gap-3">
-            <span className="text-body-small text-gray-600 font-medium">ประเภทสินค้า:</span>
+            <span className="text-body-small text-gray-600 font-medium">ประเภทเวชภัณฑ์:</span>
             {(["all", "MED", "EQU", "CON"] as const).map((cat) => (
               <button
                 key={cat}
@@ -409,10 +425,10 @@ export function InventoryTable() {
             <thead>
               <tr style={{ backgroundColor: 'rgba(239, 242, 247, 1)', borderBottom: '1px solid rgba(103, 103, 103, 0.48)' }}>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700 w-32">
-                  รหัสสินค้า
+                  รหัสเวชภัณฑ์
                 </th>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700 w-48">
-                  ชื่อสินค้า
+                  ชื่อเวชภัณฑ์
                 </th>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700">
                   รายละเอียด
@@ -454,8 +470,8 @@ export function InventoryTable() {
               ) : paginated.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-12 px-4 text-center">
-                    <div className="text-sm text-gray-600">ไม่พบรายการสินค้า</div>
-                    <div className="text-xs text-gray-400 mt-1">ลองเปลี่ยนคำค้นหา หรือเพิ่มรายการสินค้าใหม่</div>
+                    <div className="text-sm text-gray-600">ไม่พบรายการเวชภัณฑ์</div>
+                    <div className="text-xs text-gray-400 mt-1">ลองเปลี่ยนคำค้นหา หรือเพิ่มรายการเวชภัณฑ์ใหม่</div>
                   </td>
                 </tr>
               ) : (
@@ -479,7 +495,17 @@ export function InventoryTable() {
                     <td className="py-3 px-4 text-xs sm:text-sm text-gray-500 max-w-xs truncate">
                       {item.description}
                     </td>
-                    <td className="py-3 px-4 text-xs sm:text-sm text-gray-700 text-center">{item.quantity}</td>
+                    <td className="py-3 px-4 text-xs sm:text-sm text-gray-700 text-center">
+                      {(() => {
+                        const quantityState = getQuantityState(item);
+
+                        return (
+                          <span className={`font-semibold ${quantityState?.className ?? "text-gray-700"}`} title={quantityState?.label}>
+                            {item.quantity}
+                          </span>
+                        );
+                      })()}
+                    </td>
                     <td className="py-3 px-4 text-xs sm:text-sm text-gray-700 text-center">{item.unit}</td>
                     <td className="py-3 px-4">
                       {adjustMode ? (
