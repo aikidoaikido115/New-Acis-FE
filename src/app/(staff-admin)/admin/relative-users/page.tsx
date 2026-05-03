@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowUpDown, Search, Trash2 } from "lucide-react";
 import { Pagination } from "@/components/ui/pagination";
 import { useToast } from "@/components/ui/toast";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { AdminSectionTabs } from "@/components/features/admin/admin-section-tabs";
 import { formatDateTime } from "@/components/features/admin/admin-data";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
@@ -21,6 +22,7 @@ function getSortLabel(field: SortField): string {
 
 export default function AdminRelativeUsersPage() {
   const { showToast } = useToast();
+  const { confirm, confirmDialog } = useConfirmDialog();
   const [users, setUsers] = useState<AdminRelativeManagedUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeletingUserId, setIsDeletingUserId] = useState<string | null>(null);
@@ -131,7 +133,21 @@ export default function AdminRelativeUsersPage() {
     const target = users.find((user) => user.id === userId);
     if (!target) return;
 
-    const isConfirmed = window.confirm(`ยืนยันการลบบัญชีญาติของ ${target.residentName} ใช่หรือไม่?`);
+    const isActive = target.residentStatus === "active";
+    const warningText = isActive 
+      ? `⚠️ ผู้สูงอายุ ${target.residentName} กำลังอยู่ในศูนย์รักษา (สถานะ: ใช้งาน)\n\n` 
+      : "";
+    
+    const confirmMessage = `${warningText}ยืนยันการลบบัญชีญาติของ ${target.residentName} ใช่หรือไม่?\n\nการลบบัญชีนี้จะลบข้อมูลที่เกี่ยวข้องออกจากระบบ`;
+
+    const isConfirmed = await confirm({
+      title: "ลบบัญชีญาติ",
+      message: confirmMessage,
+      confirmText: "ลบ",
+      cancelText: "ยกเลิก",
+      tone: "danger",
+    });
+    
     if (!isConfirmed) return;
 
     setIsDeletingUserId(userId);
@@ -286,6 +302,8 @@ export default function AdminRelativeUsersPage() {
       {filteredAndSortedUsers.length > 0 && (
         <Pagination currentPage={safeCurrentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
       )}
+
+      {confirmDialog}
     </div>
   );
 }
