@@ -1,8 +1,9 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, AlertTriangle, Stethoscope, ChevronDown } from "lucide-react";
+import { ArrowLeft, AlertTriangle, Stethoscope } from "lucide-react";
 import { VitalSignsDetailTable } from "../../../../components/features/EMR/detail/VitalSignsDetailTable";
 import { GraphView } from "@/components/features/EMR/detail/GraphView";
 import { DoctorOrderDetailTable } from "@/components/features/EMR/detail/DoctorOrderDetailTable";
@@ -19,7 +20,9 @@ import type { Room } from "@/types/room";
 interface AllergyItem {
   allergy_id?: string;
   drug_allergy_id?: string;
-  allergy_name: string;
+  allergy_name?: string;
+  drug_allergy?: { allergy_name?: string };
+  allergy?: { allergy_name?: string };
   note_text?: string | null;
 }
 
@@ -68,19 +71,15 @@ export default function PatientDetailPage() {
           setRoom(roomData);
         }
 
-        const [foodAllergyRes, drugAllergyRes] = await Promise.all([
-          apiClient.get<ApiResponse<AllergyItem[]>>(`/api/emr/allergies?resident_id=${encodeURIComponent(residentId)}`).catch(() => null),
-          apiClient.get<ApiResponse<AllergyItem[]>>(`/api/emr/drug-allergies?resident_id=${encodeURIComponent(residentId)}`).catch(() => null),
-        ]);
+        const drugAllergyRes = await apiClient
+          .get<ApiResponse<AllergyItem[]>>(`/api/emr/drug-allergies?resident_id=${encodeURIComponent(residentId)}`)
+          .catch(() => null);
 
-        const combined = [
-          ...(foodAllergyRes?.data.result || []),
-          ...(drugAllergyRes?.data.result || []),
-        ]
-          .map((item: any) => item?.allergy?.allergy_name || item?.drug_allergy?.allergy_name || item?.allergy_name)
-          .filter(Boolean);
+        const drugOnly = ((drugAllergyRes?.data.result || []) as AllergyItem[])
+          .map((item) => item?.drug_allergy?.allergy_name || item?.allergy_name || item?.allergy?.allergy_name)
+          .filter((v): v is string => Boolean(v));
 
-        setAllergies(Array.from(new Set(combined)));
+        setAllergies(Array.from(new Set(drugOnly)));
       } catch {
         setError("ไม่สามารถโหลดข้อมูลผู้พักได้");
       } finally {
@@ -163,13 +162,15 @@ export default function PatientDetailPage() {
               {/* Avatar */}
               <div className="shrink-0">
                 {resident?.profile_image ? (
-                  <img
+                  <Image
                     src={resident.profile_image}
                     alt={residentName}
+                    width={96}
+                    height={96}
                     className="w-24 h-24 rounded-full border-4 border-blue-400 object-cover"
                   />
                 ) : (
-                  <div className="w-24 h-24 rounded-full border-4 border-blue-400 bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-headline-4 font-bold">
+                  <div className="w-24 h-24 rounded-full border-4 border-blue-400 bg-linear-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-headline-4 font-bold">
                     {residentName.charAt(0)}
                   </div>
                 )}
@@ -185,7 +186,7 @@ export default function PatientDetailPage() {
                   <div>
                     <div className="flex items-center gap-1 mb-2">
                       <AlertTriangle className="w-4 h-4 text-red-600" />
-                      <span className="text-body-small font-medium text-red-600">แพ้ยา/อาหาร</span>
+                      <span className="text-body-small font-medium text-red-600">แพ้ยา</span>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {allergies.map((allergy, index) => (
@@ -229,10 +230,9 @@ export default function PatientDetailPage() {
               </div>
 
               <div className="absolute top-4 right-4">
-                <button className="flex items-center gap-2 bg-orange-100 text-orange-600 rounded-full px-3 py-1 text-body-small font-medium hover:bg-orange-200 transition-colors">
+                <div className="inline-flex items-center gap-2 bg-orange-100 text-orange-600 rounded-full px-3 py-1 text-body-small font-medium">
                   <span>{statusText}</span>
-                  <ChevronDown className="w-4 h-4" />
-                </button>
+                </div>
               </div>
             </div>
           )}

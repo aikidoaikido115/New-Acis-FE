@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, useSyncExternalStore } from "react";
 import { X } from "lucide-react";
 import type { Medication } from "../medical.types";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
+import { authService } from "@/services/auth.service";
 
 interface GiveAllMedicationsModalProps {
   isOpen: boolean;
@@ -20,6 +21,20 @@ export interface GiveAllFormData {
   note: string;
 }
 
+const DEFAULT_GIVEN_BY = "เจ้าหน้าที่";
+
+const buildInitialFormData = (givenBy = DEFAULT_GIVEN_BY): GiveAllFormData => ({
+  time: new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }),
+  givenBy,
+  note: "",
+});
+
+const resolveCurrentStaffName = (): string => {
+  const currentUser = authService.getCurrentUser();
+  const fullName = [currentUser?.first_name, currentUser?.last_name].filter(Boolean).join(" ").trim();
+  return fullName || DEFAULT_GIVEN_BY;
+};
+
 export function GiveAllMedicationsModal({ 
   isOpen, 
   onClose, 
@@ -29,17 +44,29 @@ export function GiveAllMedicationsModal({
   medications
 }: GiveAllMedicationsModalProps) {
   const { confirm, confirmDialog } = useConfirmDialog();
-  const [formData, setFormData] = useState<GiveAllFormData>({
-    time: new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }),
-    givenBy: "",
-    note: "" });
+  const currentStaffName = useSyncExternalStore(
+    (onStoreChange) => {
+      if (typeof window === "undefined") {
+        return () => undefined;
+      }
+
+      window.addEventListener("auth:user-updated", onStoreChange);
+      return () => window.removeEventListener("auth:user-updated", onStoreChange);
+    },
+    resolveCurrentStaffName,
+    () => DEFAULT_GIVEN_BY
+  );
+
+  const initialFormData = buildInitialFormData(currentStaffName);
+  const [initialTime, setInitialTime] = useState(initialFormData.time);
+  const [formData, setFormData] = useState<GiveAllFormData>(initialFormData);
 
   const firstInputRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
   const hasUnsavedChanges = useMemo(
-    () => !!(formData.time || formData.givenBy || formData.note),
-    [formData]
+    () => formData.time !== initialTime || !!formData.note.trim(),
+    [formData, initialTime]
   );
 
   useEffect(() => {
@@ -59,11 +86,10 @@ export function GiveAllMedicationsModal({
       if (!confirmClose) return;
     }
     onClose();
-    setFormData({
-      time: new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }),
-      givenBy: "",
-      note: "" });
-  }, [hasUnsavedChanges, onClose, confirm]);
+    const nextFormData = buildInitialFormData(currentStaffName);
+    setInitialTime(nextFormData.time);
+    setFormData(nextFormData);
+  }, [hasUnsavedChanges, onClose, confirm, currentStaffName]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -113,7 +139,10 @@ export function GiveAllMedicationsModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    onSubmit({
+      ...formData,
+      givenBy: currentStaffName,
+    });
     onClose();
   };
 
@@ -197,7 +226,7 @@ export function GiveAllMedicationsModal({
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">ผู้ให้ยา</label>
             <div className="bg-gray-50 rounded-lg p-3">
-              <p className="text-sm text-gray-700">สมหญิง พญ.อมุงพันธุ์</p>
+              <p className="text-sm text-gray-700">{currentStaffName}</p>
             </div>
           </div>
 

@@ -107,14 +107,13 @@ export function RelativeNoteTable() {
 
       if (editingId) {
         await relativeNoteService.updateById(editingId, {
-          relation: data.relation,
           content: data.content,
           send_note: data.sendNote,
         });
       } else {
         await relativeNoteService.create({
           resident_id: data.residentId,
-          relation: data.relation,
+          relation: "",
           content: data.content,
           send_note: data.sendNote,
         });
@@ -313,7 +312,6 @@ export function RelativeNoteTable() {
           editingNote
             ? {
                 residentId: editingNote.resident_id,
-                relation: editingNote.relation || "",
                 content: editingNote.content || "",
                 sendNote: editingNote.send_note,
               }

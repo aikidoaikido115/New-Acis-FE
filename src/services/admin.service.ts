@@ -27,6 +27,7 @@ interface BackendAdminRelativeUser {
   relative_id: string;
   username: string;
   resident_name: string;
+  resident_status: string;
   created_at: string;
 }
 
@@ -73,6 +74,7 @@ export interface AdminRelativeManagedUser {
   relativeId: string;
   username: string;
   residentName: string;
+  residentStatus: string;
   createdAt: string;
 }
 
@@ -133,6 +135,7 @@ function toRelativeManagedUser(user: BackendAdminRelativeUser): AdminRelativeMan
     relativeId: user.relative_id,
     username: user.username,
     residentName: user.resident_name,
+    residentStatus: user.resident_status,
     createdAt: user.created_at,
   };
 }

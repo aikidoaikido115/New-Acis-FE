@@ -106,29 +106,55 @@ export function WoundCareTable() {
 
     try {
       const editingId = editingNote?.wound_care_note_id || editingNote?.id;
-
       if (editingId) {
-        await woundCareNoteService.updateById(editingId, {
-          location: data.location,
-          wound_type: data.woundType,
-          size: data.size || undefined,
-          treatment: data.treatment || undefined,
-          supplies: data.supplies || undefined,
-          status: data.status || undefined,
-          note: data.note || undefined,
-          image_url: editingNote?.image_url || undefined,
-        });
+        if (data.image) {
+          const form = new FormData();
+          form.append('location', data.location);
+          form.append('wound_type', data.woundType);
+          if (data.size) form.append('size', data.size);
+          if (data.treatment) form.append('treatment', data.treatment);
+          if (data.supplies) form.append('supplies', data.supplies);
+          if (data.status) form.append('status', data.status);
+          if (data.note) form.append('note', data.note);
+          form.append('image', data.image);
+          await woundCareNoteService.updateById(editingId, form as any);
+        } else {
+          await woundCareNoteService.updateById(editingId, {
+            location: data.location,
+            wound_type: data.woundType,
+            size: data.size || undefined,
+            treatment: data.treatment || undefined,
+            supplies: data.supplies || undefined,
+            status: data.status || undefined,
+            note: data.note || undefined,
+            image_url: editingNote?.image_url || undefined,
+          });
+        }
       } else {
-        await woundCareNoteService.create({
-          resident_id: data.residentId,
-          location: data.location,
-          wound_type: data.woundType,
-          size: data.size || undefined,
-          treatment: data.treatment || undefined,
-          supplies: data.supplies || undefined,
-          status: data.status || undefined,
-          note: data.note || undefined,
-        });
+        if (data.image) {
+          const form = new FormData();
+          form.append('resident_id', data.residentId);
+          form.append('location', data.location);
+          form.append('wound_type', data.woundType);
+          if (data.size) form.append('size', data.size);
+          if (data.treatment) form.append('treatment', data.treatment);
+          if (data.supplies) form.append('supplies', data.supplies);
+          if (data.status) form.append('status', data.status);
+          if (data.note) form.append('note', data.note);
+          form.append('file', data.image);
+          await woundCareNoteService.create(form as any);
+        } else {
+          await woundCareNoteService.create({
+            resident_id: data.residentId,
+            location: data.location,
+            wound_type: data.woundType,
+            size: data.size || undefined,
+            treatment: data.treatment || undefined,
+            supplies: data.supplies || undefined,
+            status: data.status || undefined,
+            note: data.note || undefined,
+          });
+        }
       }
 
       await loadData();
