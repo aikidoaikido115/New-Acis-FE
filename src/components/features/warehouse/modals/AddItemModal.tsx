@@ -112,7 +112,7 @@ export function AddItemModal({ existingItems, onClose, onConfirm }: AddItemModal
   return (
     <>
       <WarehouseModalFrame onClose={handleRequestClose} closeOnEscape={!showDiscardModal}>
-        <WarehouseModalHeader title="เพิ่มรายการสินค้า" onClose={handleRequestClose} />
+        <WarehouseModalHeader title="เพิ่มรายการเวชภัณฑ์" onClose={handleRequestClose} />
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 px-7 py-5">
             <div>
@@ -133,25 +133,25 @@ export function AddItemModal({ existingItems, onClose, onConfirm }: AddItemModal
 
             <div>
               <label htmlFor="add-code" className={warehouseLabelClassName}>
-                รหัสสินค้า <span className="text-[#FF495B]">*</span>
+                รหัสเวชภัณฑ์ <span className="text-[#FF495B]">*</span>
               </label>
               <input id="add-code" type="text" value={code} readOnly className={warehouseReadOnlyInputClassName} />
             </div>
 
             <div>
               <label htmlFor="add-name" className={warehouseLabelClassName}>
-                ชื่อสินค้า <span className="text-[#FF495B]">*</span>
+                ชื่อเวชภัณฑ์ <span className="text-[#FF495B]">*</span>
               </label>
               <input
                 id="add-name"
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
-                placeholder="กรอกชื่อสินค้า"
+                placeholder="กรอกชื่อเวชภัณฑ์"
                 className={`${warehouseInputClassName} ${nameHasError ? "border-[#FF7A7A]" : ""}`}
               />
               {nameHasError ? (
-                <p className="mt-1 text-xs text-[#FF6C6C]">จำเป็นต้องกรอกชื่อสินค้า</p>
+                <p className="mt-1 text-xs text-[#FF6C6C]">จำเป็นต้องกรอกชื่อเวชภัณฑ์</p>
               ) : null}
             </div>
 
@@ -164,7 +164,7 @@ export function AddItemModal({ existingItems, onClose, onConfirm }: AddItemModal
                 rows={3}
                 value={formData.description}
                 onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
-                placeholder="เพิ่มรายละเอียดสินค้า"
+                placeholder="เพิ่มรายละเอียดเวชภัณฑ์"
                 className={warehouseTextareaClassName}
               />
             </div>
@@ -228,7 +228,7 @@ export function AddItemModal({ existingItems, onClose, onConfirm }: AddItemModal
               className={canSubmit ? warehouseSuccessButtonClassName : warehouseDisabledButtonClassName}
               disabled={!canSubmit && showValidation}
             >
-              สร้างสินค้า
+              สร้างเวชภัณฑ์
             </button>
           </WarehouseModalFooter>
         </form>

@@ -5,6 +5,7 @@ import { ArrowUpDown, Search, ShieldCheck, ShieldOff, Trash2 } from "lucide-reac
 import { cn } from "@/lib/utils";
 import { Pagination } from "@/components/ui/pagination";
 import { useToast } from "@/components/ui/toast";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { AdminSectionTabs } from "@/components/features/admin/admin-section-tabs";
 import { formatDateTime, toRoleLabel, type SystemRole } from "@/components/features/admin/admin-data";
 import adminService, { type AdminManagedUser } from "@/services/admin.service";
@@ -31,6 +32,7 @@ function getSortLabel(field: SortField): string {
 
 export default function AdminUsersPage() {
   const { showToast } = useToast();
+  const { confirm, confirmDialog } = useConfirmDialog();
   const [users, setUsers] = useState<AdminManagedUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
@@ -175,7 +177,21 @@ export default function AdminUsersPage() {
       return;
     }
 
-    const isConfirmed = window.confirm(`ยืนยันการลบผู้ใช้ @${target.username} ออกจากระบบใช่หรือไม่?`);
+    const isActive = target.status === "active";
+    const warningText = isActive 
+      ? `⚠️ ผู้ใช้ @${target.username} กำลังใช้งานอยู่ในศูนย์รักษา\n\n` 
+      : "";
+    
+    const confirmMessage = `${warningText}ยืนยันการลบผู้ใช้ @${target.username} ออกจากระบบใช่หรือไม่?\n\nการลบบัญชีนี้จะลบข้อมูลที่เกี่ยวข้องออกจากระบบ`;
+
+    const isConfirmed = await confirm({
+      title: "ลบผู้ใช้",
+      message: confirmMessage,
+      confirmText: "ลบ",
+      cancelText: "ยกเลิก",
+      tone: "danger",
+    });
+    
     if (!isConfirmed) return;
 
     setIsDeletingUserId(userId);
@@ -376,6 +392,8 @@ export default function AdminUsersPage() {
       {filteredAndSortedUsers.length > 0 && (
         <Pagination currentPage={safeCurrentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
       )}
+
+      {confirmDialog}
     </div>
   );
 }

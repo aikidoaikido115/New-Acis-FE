@@ -17,6 +17,7 @@ export interface PatientMedication {
   floor: number;
   profileImage?: string;
   allergies: string[];
+  drugAllergies: string[];
   helpLevel: string;
   medications: Medication[];
   pendingCount: number;

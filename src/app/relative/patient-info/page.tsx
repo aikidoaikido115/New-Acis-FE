@@ -316,9 +316,9 @@ export default function RelativePatientInfoPage() {
                     โรคประจำตัว
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {displayPatientInfo.chronicDiseases.map((item) => (
+                    {displayPatientInfo.chronicDiseases.map((item, index) => (
                       <span
-                        key={item}
+                        key={`${item}-${index}`}
                         className="px-3 py-1 text-xs rounded-full bg-blue-100 text-blue-600"
                       >
                         {item}
@@ -346,8 +346,8 @@ export default function RelativePatientInfoPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {displayPatientInfo.medications.map((med) => (
-                          <tr key={med.name} className="border-t border-gray-100">
+                        {displayPatientInfo.medications.map((med, index) => (
+                          <tr key={`${med.name}-${med.dose}-${med.frequency}-${index}`} className="border-t border-gray-100">
                             <td className="px-3 py-2 text-gray-700">{med.name}</td>
                             <td className="px-3 py-2 text-gray-700">{med.dose}</td>
                             <td className="px-3 py-2 text-gray-700">{med.frequency}</td>
@@ -370,9 +370,9 @@ export default function RelativePatientInfoPage() {
                     ประวัติการผ่าตัด
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {displayPatientInfo.surgeries.map((item) => (
+                    {displayPatientInfo.surgeries.map((item, index) => (
                       <span
-                        key={item}
+                        key={`${item}-${index}`}
                         className="px-3 py-1 text-xs rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200"
                       >
                         {item}
@@ -391,9 +391,9 @@ export default function RelativePatientInfoPage() {
                       แพ้ยา
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      {displayPatientInfo.allergies.map((item) => (
+                      {displayPatientInfo.allergies.map((item, index) => (
                         <span
-                          key={item}
+                          key={`${item}-${index}`}
                           className="px-3 py-1 text-xs rounded-full bg-red-100 text-red-600"
                         >
                           {item}
@@ -410,9 +410,9 @@ export default function RelativePatientInfoPage() {
                       แพ้อาหาร
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      {displayPatientInfo.foodAllergies.map((item) => (
+                      {displayPatientInfo.foodAllergies.map((item, index) => (
                         <span
-                          key={item}
+                          key={`${item}-${index}`}
                           className="px-3 py-1 text-xs rounded-full bg-amber-100 text-amber-700"
                         >
                           {item}

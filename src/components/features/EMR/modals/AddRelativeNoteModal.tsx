@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { X, Send } from "lucide-react";
+import { X } from "lucide-react";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -24,7 +24,6 @@ export interface RelativeNoteFormData {
   residentId?: string;
   date: string;
   time: string;
-  relation: string;
   content: string;
   sendNote: boolean;
 }
@@ -82,7 +81,6 @@ const buildFormData = (initialData?: Partial<RelativeNoteFormData>): RelativeNot
   residentId: initialData?.residentId || "",
   date: initialData?.date || formatIsoDate(new Date()),
   time: initialData?.time || getDefaultTime(),
-  relation: initialData?.relation || "",
   content: initialData?.content || "",
   sendNote: initialData?.sendNote ?? true,
 });
@@ -273,24 +271,7 @@ export function AddRelativeNoteModal({
             </div>
           </div>
 
-          <div>
-            <label htmlFor="relative-note-relation" className="block text-sm font-medium text-gray-700 mb-1">ความสัมพันธ์</label>
-            <select
-              id="relative-note-relation"
-              value={formData.relation}
-              onChange={(e) => setFormData({ ...formData, relation: e.target.value })}
-              className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white ${
-                formData.relation ? "text-black" : "text-slate-400"
-              }`}
-            >
-              <option value="" disabled>เลือกความสัมพันธ์</option>
-              <option value="บุตร">บุตร</option>
-              <option value="บุตรสาว">บุตรสาว</option>
-              <option value="หลาน">หลาน</option>
-              <option value="คู่สมรส">คู่สมรส</option>
-              <option value="อื่นๆ">อื่นๆ</option>
-            </select>
-          </div>
+          {/* relation field removed per request */}
 
           <div>
             <label htmlFor="relative-note-content" className="block text-sm font-medium text-gray-700 mb-1">บันทึก</label>
@@ -305,18 +286,7 @@ export function AddRelativeNoteModal({
             />
           </div>
 
-          <div className="bg-blue-50 rounded-lg p-3">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.sendNote}
-                onChange={(e) => setFormData({ ...formData, sendNote: e.target.checked })}
-                className="w-4 h-4 text-blue-500 rounded focus:ring-blue-500"
-              />
-              <Send className="w-4 h-4 text-blue-500" />
-              <span className="text-sm text-blue-700 font-medium">ส่งบันทึกนี้ให้ญาติ</span>
-            </label>
-          </div>
+          {/* sendNote UI removed per request */}
 
           <div className="flex items-center justify-end gap-3 pt-2">
             <button

@@ -42,12 +42,34 @@ class WoundCareNoteService {
   }
 
   async create(payload: CreateWoundCareNoteRequest): Promise<WoundCareNote> {
-    const response = await apiClient.post<ApiResponse<WoundCareNote>>('/api/emr/wound-care-notes', payload);
+    const isFormData = payload instanceof FormData;
+    const response = await apiClient.post<ApiResponse<WoundCareNote>>(
+      '/api/emr/wound-care-notes',
+      payload as any,
+      isFormData
+        ? {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+          }
+        : undefined
+    );
     return response.data.result;
   }
 
   async updateById(id: string, payload: UpdateWoundCareNoteRequest): Promise<WoundCareNote> {
-    const response = await apiClient.patch<ApiResponse<WoundCareNote>>(`/api/emr/wound-care-notes/${id}`, payload);
+    const isFormData = payload instanceof FormData;
+    const response = await apiClient.patch<ApiResponse<WoundCareNote>>(
+      `/api/emr/wound-care-notes/${id}`,
+      payload as any,
+      isFormData
+        ? {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+          }
+        : undefined
+    );
     return response.data.result;
   }
 

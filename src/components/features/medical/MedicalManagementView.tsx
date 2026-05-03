@@ -19,7 +19,6 @@ import { RoutineMedsTable } from "./tables/RoutineMedsTable";
 import { CombinedMedsTable } from "./tables/CombinedMedsTable";
 import { HistoryTable } from "./tables/HistoryTable";
 import { Pagination } from "@/components/ui/pagination";
-import { DatePicker } from "@/components/ui/date-picker";
 import { AddMedicationModal } from "./modals";
 import type { AddMedicationFormData, EditMedicationFormData } from "./modals";
 import type { GiveAllFormData } from "./modals/GiveAllMedicationsModal";
@@ -39,6 +38,7 @@ import { drugPlanService } from "@/services/drug-plan.service";
 import { personalDrugService, type PersonalDrug } from "@/services/personal-drug.service";
 import { residentService } from "@/services/resident.service";
 import { roomService } from "@/services/room.service";
+import { drugAllergyService } from "@/services/drug-allergy.service";
 import type { DrugAdministrationStatus, DrugPlan } from "@/types/drug-plan";
 import type { Resident } from "@/types/resident";
 import type { Room } from "@/types/room";
@@ -48,6 +48,7 @@ type ViewType = "main" | "details" | "history";
 
 const TIME_SLOTS: TimeSlot[] = ["เช้า", "กลางวัน", "เย็น", "ก่อนนอน"];
 const HISTORY_PAGE_SIZE = 10;
+const MAX_FREQUENCY_PER_DAY = 4;
 
 const getResidentPrimaryId = (resident: Resident): string => resident.resident_id || resident.id;
 const getRoomPrimaryId = (room: Room): string => room.room_id || room.id;
@@ -72,6 +73,30 @@ const toThaiStatus = (isTaken: boolean, isOmitted?: boolean | null): Medication[
     return "งด";
   }
   return "รอให้";
+};
+
+const parseListFromTextMulti = (value?: string | null): string[] => {
+  if (!value) {
+    return [];
+  }
+
+  return value
+    .replace(/\r\n/g, "\n")
+    .split(/[\n,;]+/)
+    .map((text) => text.trim())
+    .filter(Boolean);
+};
+
+const toStatusBadge = (labels?: Resident["resident_labels"]): string => {
+  const labelName = labels
+    ?.map((label) => label.intake_label?.label_name || "")
+    .find((name) => name.includes("ช่วยเหลือตัวเอง") || name === "ติดเตียง")
+    ?.trim();
+
+  if (labelName === "ช่วยเหลือตัวเองได้ทั้งหมด") return "ช่วยเหลือตัวเองได้";
+  if (labelName === "ช่วยเหลือตัวเองได้บางส่วน") return "ต้องการความช่วยเหลือ";
+  if (labelName === "ติดเตียง") return "ติดเตียง";
+  return "-";
 };
 
 const toHistoryStatus = (status: DrugAdministrationStatus): MedicationHistory["status"] => {
@@ -115,29 +140,6 @@ const formatIsoDate = (date: Date): string => {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
-};
-
-const parseDateValue = (value: string): Date | null => {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return null;
-  }
-
-  const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!isoMatch) {
-    return null;
-  }
-
-  const year = Number(isoMatch[1]);
-  const month = Number(isoMatch[2]);
-  const day = Number(isoMatch[3]);
-  const date = new Date(year, month - 1, day);
-
-  if (date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day) {
-    return date;
-  }
-
-  return null;
 };
 
 const formatHistoryTime = (dateText?: string | null): string => {
@@ -184,6 +186,24 @@ const toThaiTimeOfDayLabel = (rawTimeOfDay?: string): string => {
   }
 
   return rawTimeOfDay || "";
+};
+
+const toThaiTimeOfDayListLabel = (rawTimeOfDay?: string): string => {
+  if (!rawTimeOfDay) {
+    return "-";
+  }
+
+  const labels = rawTimeOfDay
+    .split(",")
+    .map((slot) => toThaiTimeOfDayLabel(slot))
+    .filter(Boolean);
+
+  if (labels.length === 0) {
+    const fallback = toThaiTimeOfDayLabel(rawTimeOfDay);
+    return fallback || rawTimeOfDay || "-";
+  }
+
+  return Array.from(new Set(labels)).join(", ");
 };
 
 const includesTimeSlot = (rawTimeOfDay: string | undefined, selectedSlot: TimeSlot): boolean => {
@@ -281,13 +301,14 @@ const toRoutineMedication = (drug: PersonalDrug): RoutineMedication | null => {
   const timeOfDay = (drug.time_of_day || "-").trim();
   const timing = (drug.timing || "หลังอาหาร").trim();
   const description = (drug.description || "").trim();
+  const timeOfDayLabel = toThaiTimeOfDayListLabel(timeOfDay);
 
   return {
     id: pdId,
     pdId,
     name: drugName,
     dose,
-    frequency: `${frequencyPerDay} ครั้ง/วัน (${timeOfDay})`,
+    frequency: `${Math.min(MAX_FREQUENCY_PER_DAY, frequencyPerDay)} ครั้ง/วัน (${timeOfDayLabel})`,
     note: [timing, description].filter(Boolean).join(" | ") || "-",
     takeType: (drug.take_type || "regular") === "as_needed" ? "as_needed" : "regular",
     timeOfDay,
@@ -328,15 +349,12 @@ export function MedicalManagementView() {
   const [residentMedications, setResidentMedications] = useState<RoutineMedication[]>([]);
   const [historyItems, setHistoryItems] = useState<MedicationHistory[]>([]);
   const [historyTotalPages, setHistoryTotalPages] = useState(1);
+  const [selectedPatientDrugAllergies, setSelectedPatientDrugAllergies] = useState<string[]>([]);
 
   const [isLoadingMain, setIsLoadingMain] = useState(false);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [isMutating, setIsMutating] = useState(false);
-
-  const [selectedDate, setSelectedDate] = useState(formatIsoDate(new Date()));
-  const datePickerClassName =
-    "w-[200px] [&>button]:w-full [&>button]:justify-between [&>button]:border-2 [&>button]:border-blue-500 [&>button]:hover:bg-blue-50";
 
   const roomById = useMemo(() => {
     return new Map(rooms.map((room) => [getRoomPrimaryId(room), room] as const));
@@ -447,7 +465,7 @@ export function MedicalManagementView() {
       setIsLoadingHistory(true);
       try {
         const response = await drugPlanService.getAdministrationHistory({
-          date: selectedDate || undefined,
+          date: historySelectedDate ? formatIsoDate(historySelectedDate) : undefined,
           search: debouncedHistorySearchTerm || undefined,
           status: toHistoryQueryStatus(selectedStatus),
           page,
@@ -477,7 +495,7 @@ export function MedicalManagementView() {
         setIsLoadingHistory(false);
       }
     },
-    [debouncedHistorySearchTerm, selectedDate, selectedStatus, showToast]
+    [debouncedHistorySearchTerm, historySelectedDate, selectedStatus, showToast]
   );
 
   const ensureDrugMasterId = useCallback(async (name: string, dose: string): Promise<string> => {
@@ -628,6 +646,10 @@ export function MedicalManagementView() {
           throw new Error("กรุณาระบุความถี่ต่อวันให้ถูกต้อง");
         }
 
+        if (frequencyPerDay > MAX_FREQUENCY_PER_DAY) {
+          throw new Error("ความถี่ต่อวันต้องไม่เกิน 4 ครั้ง");
+        }
+
         const startDate = takeType === "as_needed" ? normalizeDateInput(data.startDate) : undefined;
         const endDate = takeType === "as_needed" ? normalizeDateInput(data.endDate) : undefined;
 
@@ -688,6 +710,10 @@ export function MedicalManagementView() {
 
         if (!Number.isFinite(frequencyPerDay) || frequencyPerDay <= 0) {
           throw new Error("กรุณาระบุความถี่ต่อวันให้ถูกต้อง");
+        }
+
+        if (frequencyPerDay > MAX_FREQUENCY_PER_DAY) {
+          throw new Error("ความถี่ต่อวันต้องไม่เกิน 4 ครั้ง");
         }
 
         const startDate = takeType === "as_needed" ? normalizeDateInput(data.startDate) : undefined;
@@ -778,6 +804,38 @@ export function MedicalManagementView() {
     void loadHistory(currentPage);
   }, [currentView, detailsTab, currentPage, loadHistory]);
 
+  useEffect(() => {
+    if (!selectedPatientId) {
+      setSelectedPatientDrugAllergies([]);
+      return;
+    }
+
+    let isActive = true;
+
+    const loadDrugAllergies = async () => {
+      try {
+        const items = await drugAllergyService.getByResident(selectedPatientId);
+        const names = (items || [])
+          .map((item) => item.drug_allergy?.allergy_name || item.allergy_name)
+          .filter(Boolean) as string[];
+
+        if (isActive) {
+          setSelectedPatientDrugAllergies(Array.from(new Set(names)));
+        }
+      } catch {
+        if (isActive) {
+          setSelectedPatientDrugAllergies([]);
+        }
+      }
+    };
+
+    void loadDrugAllergies();
+
+    return () => {
+      isActive = false;
+    };
+  }, [selectedPatientId]);
+
   const allPatientMedications = useMemo<PatientMedication[]>(() => {
     const patientsMap = new Map<string, PatientMedication>();
 
@@ -815,7 +873,9 @@ export function MedicalManagementView() {
           name: residentName,
           room: roomText,
           floor,
-          allergies: parseListFromText(resident?.drug_allergies || resident?.allergies),
+          profileImage: resident?.profile_image,
+          allergies: parseListFromText(resident?.allergies),
+          drugAllergies: parseListFromText(resident?.drug_allergies),
           helpLevel: toHelpLevel(resident?.resident_labels),
           medications: [],
           pendingCount: 0,
@@ -870,10 +930,37 @@ export function MedicalManagementView() {
     });
   }, [allPatientMedications, mainSearchTerm, selectedFloor, selectedHelpLevel]);
 
-  const selectedPatient = useMemo(
-    () => allPatientMedications.find((patient) => patient.id === selectedPatientId),
-    [allPatientMedications, selectedPatientId]
-  );
+  const visiblePatients = useMemo(() => {
+    return filteredPatients.filter((patient) => patient.pendingCount > 0);
+  }, [filteredPatients]);
+
+  const selectedPatient = useMemo(() => {
+    const patient = allPatientMedications.find((patient) => patient.id === selectedPatientId);
+    if (!patient || !selectedPatientId) {
+      return undefined;
+    }
+
+    // Enhance with additional resident data
+    const resident = residentById.get(selectedPatientId);
+    if (!resident) {
+      return patient as PatientMedication & {
+        chronicDiseases?: string[];
+        surgicalHistory?: string[];
+        drugAllergies?: string[];
+        profileImage?: string;
+        status?: string;
+      };
+    }
+
+    return {
+      ...patient,
+      profileImage: resident.profile_image,
+      chronicDiseases: parseListFromTextMulti(resident.pre_existing_conditions),
+      surgicalHistory: parseListFromTextMulti(resident.surgical_history),
+      drugAllergies: patient.drugAllergies || [],
+      status: toStatusBadge(resident.resident_labels),
+    };
+  }, [allPatientMedications, selectedPatientId, residentById]);
 
   const routineMedications = useMemo(() => {
     return residentMedications.filter((item) => {
@@ -1078,13 +1165,13 @@ export function MedicalManagementView() {
           <div className="md:col-span-2 rounded-lg border border-gray-200 bg-white py-12 px-4 text-center text-sm text-gray-600">
             กำลังโหลดรายการยา...
           </div>
-        ) : filteredPatients.length === 0 ? (
+        ) : visiblePatients.length === 0 ? (
           <div className="md:col-span-2 rounded-lg border border-gray-200 bg-white py-12 px-4 text-center">
-            <div className="text-sm text-gray-600">ไม่พบรายชื่อผู้พัก</div>
-            <div className="text-xs text-gray-400 mt-1">ลองเปลี่ยนคำค้นหา หรือปรับตัวกรองชั้นและการช่วยเหลือตัวเอง</div>
+            <div className="text-sm text-gray-600">ไม่พบรายการยาที่ต้องดำเนินการ</div>
+            <div className="text-xs text-gray-400 mt-1">รายการที่ให้ยาแล้วหรืองดแล้วจะถูกซ่อน และแยกตามช่วงเวลาที่เลือก</div>
           </div>
         ) : (
-          filteredPatients.map((patient) => (
+          visiblePatients.map((patient) => (
             <MedicationCard
               key={patient.id}
               patient={patient}
@@ -1111,13 +1198,12 @@ export function MedicalManagementView() {
         <span className="text-body-small font-medium">ย้อนกลับ</span>
       </button>
 
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-headline-5 font-bold text-gray-800">ข้อมูลและประวัติการให้ยา</h1>
-          <p className="text-body-small text-gray-500 mt-3">{selectedPatient?.name || "-"}</p>
         </div>
 
-        <div className="flex flex-col items-end gap-3">
+        <div className="flex items-center gap-3">
           <div className="flex bg-gray-100 rounded-lg p-1">
             <button
               onClick={() => setDetailsTab("meds")}
@@ -1143,16 +1229,6 @@ export function MedicalManagementView() {
               ประวัติการให้ยา
             </button>
           </div>
-
-          <DatePicker
-            value={parseDateValue(selectedDate)}
-            onChange={(date) => {
-              setSelectedDate(date ? formatIsoDate(date) : "");
-              setCurrentPage(1);
-            }}
-            placeholder="เลือกวันที่"
-            className={datePickerClassName}
-          />
         </div>
       </div>
 
@@ -1161,7 +1237,15 @@ export function MedicalManagementView() {
           name={selectedPatient.name}
           room={selectedPatient.room}
           allergies={selectedPatient.allergies}
-          chronicDiseases={[]}
+          drugAllergies={
+            selectedPatientDrugAllergies.length > 0
+              ? selectedPatientDrugAllergies
+              : selectedPatient.drugAllergies || []
+          }
+          chronicDiseases={selectedPatient.chronicDiseases || []}
+          surgicalHistory={selectedPatient.surgicalHistory || []}
+          profileImage={selectedPatient.profileImage}
+          status={selectedPatient.status}
         />
       ) : null}
 
