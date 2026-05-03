@@ -2,10 +2,48 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 // Define route permissions
+const NURSE_ROUTES = [
+  '/dashboard',
+  '/elder-info',
+  '/activity',
+  '/emr',
+  '/medicine',
+  '/warehouse',
+  '/user-manual',
+  '/support-service',
+  '/support-tickets',
+  '/profile',
+  '/notification',
+  '/change-password',
+];
+
+const KITCHEN_ROUTES = [
+  '/manage-meal',
+  '/user-manual-kitchen',
+  '/support-service-kitchen',
+  '/support-tickets',
+  '/profile',
+  '/notification',
+  '/change-password',
+];
+
+const SUPERUSER_ROUTES = Array.from(new Set([
+  ...NURSE_ROUTES,
+  ...KITCHEN_ROUTES,
+]));
+
+const ADMIN_ROUTES = Array.from(new Set([
+  '/admin',
+  ...NURSE_ROUTES,
+  ...KITCHEN_ROUTES,
+]));
+
 const ROLE_ROUTES: Record<string, string[]> = {
-  nurse: ['/dashboard', '/elder-info', '/activity', '/emr', '/medicine', '/warehouse', '/user-manual', '/support-service', '/support-tickets'],
-  kitchen: ['/manage-meal', '/user-manual-kitchen', '/support-service-kitchen'],
-  relative: ['/relative'],
+  nurse: NURSE_ROUTES,
+  superuser: SUPERUSER_ROUTES,
+  kitchen: KITCHEN_ROUTES,
+  admin: ADMIN_ROUTES,
+  relative: ['/relative', '/change-password' , '/relative/dashboard' ,'/relative/patient-info' , '/relative/privacy' , '/relative/terms'],
 };
 
 // Public routes that don't require authentication
@@ -16,10 +54,6 @@ const PUBLIC_ROUTES = [
   '/forgot-password',
   '/relative/login',
   '/relative/consent',
-  '/terms',
-  '/privacy',
-  '/relative/terms',
-  '/relative/privacy',
 ];
 
 // Check if route is public
@@ -33,8 +67,9 @@ function isPublicRoute(pathname: string): boolean {
 
 // Get allowed routes for a role
 function getAllowedRoutes(role: string): string[] {
-  const normalizedRole = role.toLowerCase();
-  return ROLE_ROUTES[normalizedRole] || [];
+  const normalizedRole = role.toLowerCase().trim();
+  const roleKey = normalizedRole === 'super user' || normalizedRole === 'super_user' ? 'superuser' : normalizedRole;
+  return ROLE_ROUTES[roleKey] || [];
 }
 
 // Check if user has access to route
@@ -45,13 +80,16 @@ function hasAccess(pathname: string, role: string): boolean {
 
 // Get default route for role
 function getDefaultRoute(role: string): string {
-  const normalizedRole = role.toLowerCase();
+  const normalizedRole = role.toLowerCase().trim();
+  const roleKey = normalizedRole === 'super user' || normalizedRole === 'super_user' ? 'superuser' : normalizedRole;
   const routes: Record<string, string> = {
     nurse: '/dashboard',
+    superuser: '/dashboard',
     kitchen: '/manage-meal',
+    admin: '/admin/users',
     relative: '/relative/dashboard',
   };
-  return routes[normalizedRole] || '/login';
+  return routes[roleKey] || '/login';
 }
 
 export function middleware(request: NextRequest) {

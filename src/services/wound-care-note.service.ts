@@ -1,6 +1,10 @@
 import apiClient, { ApiResponse } from '@/lib/axios.ts/api-client';
 import type { WoundCareNote } from '@/types/emr-notes';
 
+function buildDateQuery(dateInput?: string): string {
+  return dateInput ? `?date=${encodeURIComponent(dateInput)}` : '';
+}
+
 export interface CreateWoundCareNoteRequest {
   resident_id: string;
   location: string;
@@ -25,14 +29,14 @@ export interface UpdateWoundCareNoteRequest {
 }
 
 class WoundCareNoteService {
-  async getOverview(): Promise<WoundCareNote[]> {
-    const response = await apiClient.get<ApiResponse<WoundCareNote[]>>('/api/emr/wound-care-notes/overview');
+  async getOverview(dateInput?: string): Promise<WoundCareNote[]> {
+    const response = await apiClient.get<ApiResponse<WoundCareNote[]>>(`/api/emr/wound-care-notes/overview${buildDateQuery(dateInput)}`);
     return response.data.result;
   }
 
-  async getByResidentAll(residentId: string): Promise<WoundCareNote[]> {
+  async getByResidentAll(residentId: string, dateInput?: string): Promise<WoundCareNote[]> {
     const response = await apiClient.get<ApiResponse<WoundCareNote[]>>(
-      `/api/emr/wound-care-notes/resident/all?resident_id=${encodeURIComponent(residentId)}`
+      `/api/emr/wound-care-notes/resident/all?resident_id=${encodeURIComponent(residentId)}${dateInput ? `&date=${encodeURIComponent(dateInput)}` : ''}`
     );
     return response.data.result;
   }

@@ -1,7 +1,10 @@
 import apiClient, { ApiResponse } from '@/lib/axios.ts/api-client';
+import { resolveProfileImage } from '@/lib/profile-image';
 import type {
   LoginRequest,
   LoginResponse,
+  RelativePortalLoginRequest,
+  RelativePortalLoginResponse,
   RegisterRequest,
   ForgotPasswordRequest,
   VerifyOTPRequest,
@@ -11,6 +14,34 @@ import type {
 } from '@/types/auth';
 
 class AuthService {
+  private decodeJwtPayload(token: string): { exp?: number } | null {
+    try {
+      const parts = token.split('.');
+      if (parts.length < 2) return null;
+
+      const base64Url = parts[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const paddedBase64 = base64.padEnd(base64.length + (4 - (base64.length % 4 || 4)) % 4, '=');
+      const payload = atob(paddedBase64);
+
+      return JSON.parse(payload);
+    } catch {
+      return null;
+    }
+  }
+
+  private getAuthCookieMaxAge(token: string, remember?: boolean): number {
+    const payload = this.decodeJwtPayload(token);
+    const exp = payload?.exp;
+
+    if (typeof exp === 'number') {
+      const nowInSeconds = Math.floor(Date.now() / 1000);
+      return Math.max(exp - nowInSeconds, 1);
+    }
+
+    return remember ? 60 * 60 * 24 * 2 : 60 * 30;
+  }
+
   /**
    * Fetch user profile from /api/user/
    */
@@ -22,7 +53,13 @@ class AuthService {
       if (!token) return null;
       
       const response = await apiClient.get<ApiResponse<User>>('/api/user/');
-      return response.data.result;
+      const result = response.data.result;
+      if (!result) return null;
+
+      return {
+        ...result,
+        profile_image: resolveProfileImage(result.profile_image),
+      };
     } catch {
       return null;
     }
@@ -37,6 +74,7 @@ class AuthService {
       '1': 'nurse',
       '2': 'kitchen',
       '3': 'relative',
+      '4': 'admin',
     };
     
     return roleIdMap[roleId] || null;
@@ -49,6 +87,16 @@ class AuthService {
     if (!roleName) return null;
 
     const normalizedRole = roleName.trim().toLowerCase();
+
+    if (
+      normalizedRole === 'superuser' ||
+      normalizedRole === 'super user' ||
+      normalizedRole === 'super_user' ||
+      normalizedRole.includes('superuser') ||
+      normalizedRole.includes('super_user')
+    ) {
+      return 'superuser';
+    }
 
     if (
       normalizedRole === 'medical staff' ||
@@ -71,6 +119,14 @@ class AuthService {
       return 'relative';
     }
 
+    if (
+      normalizedRole === 'admin' ||
+      normalizedRole.includes('admin') ||
+      normalizedRole === 'administrator'
+    ) {
+      return 'admin';
+    }
+
     return null;
   }
 
@@ -79,9 +135,9 @@ class AuthService {
    */
   private resolveInternalRole(profile: User): string {
     return (
-      this.mapRoleIdToInternal(profile.role_id) ||
       this.mapRoleNameToInternal(profile.role_name) ||
       this.mapRoleNameToInternal(profile.role?.name) ||
+      this.mapRoleIdToInternal(profile.role_id) ||
       'nurse'
     );
   }
@@ -110,19 +166,65 @@ class AuthService {
     }
     
     const mappedRole = this.resolveInternalRole(profile);
-    
+
+    const profileImage =
+      resolveProfileImage(profile.profile_image) ||
+      resolveProfileImage(apiResult.profile_image) ||
+      '';
+
     const userData: LoginResponse = {
       ...apiResult,
       first_name: profile.first_name || '',
       last_name: profile.last_name || '',
       role_name: mappedRole,
+      profile_image: profileImage,
     };
+
+    this.setCurrentUser(userData);
+
+    const cookieMaxAge = this.getAuthCookieMaxAge(apiResult.token, credentials.remember);
     
-    localStorage.setItem('user', JSON.stringify(userData));
+    document.cookie = `auth_token=${apiResult.token}; path=/; max-age=${cookieMaxAge}; SameSite=Lax`;
+    document.cookie = `user_role=${mappedRole}; path=/; max-age=${cookieMaxAge}; SameSite=Lax`;
     
-    document.cookie = `auth_token=${apiResult.token}; path=/; max-age=2592000; SameSite=Lax`;
-    document.cookie = `user_role=${mappedRole}; path=/; max-age=2592000; SameSite=Lax`;
-    
+    return userData;
+  }
+
+  /**
+   * Login relative portal user with resident_id/token and birthday password (DDMMYYYY)
+   */
+  async relativePortalLogin(credentials: RelativePortalLoginRequest): Promise<LoginResponse> {
+    const response = await apiClient.post<ApiResponse<RelativePortalLoginResponse>>(
+      '/api/relative/auth/login',
+      credentials
+    );
+
+    const apiResult = response.data.result;
+
+    if (!apiResult.token) {
+      throw new Error('No token received from server');
+    }
+
+    localStorage.setItem('access_token', apiResult.token);
+
+    const userData: LoginResponse = {
+      token: apiResult.token,
+      user_id: apiResult.user_id,
+      username: apiResult.username,
+      email: apiResult.email,
+      first_name: 'ญาติ',
+      last_name: '',
+      profile_image: '',
+      role_name: 'relative',
+      resident_id: apiResult.resident_id,
+    };
+
+    this.setCurrentUser(userData);
+
+    const cookieMaxAge = this.getAuthCookieMaxAge(apiResult.token, credentials.remember);
+    document.cookie = `auth_token=${apiResult.token}; path=/; max-age=${cookieMaxAge}; SameSite=Lax`;
+    document.cookie = `user_role=relative; path=/; max-age=${cookieMaxAge}; SameSite=Lax`;
+
     return userData;
   }
 
@@ -165,6 +267,37 @@ class AuthService {
   }
 
   /**
+   * Update authenticated user profile (multipart)
+   */
+  async updateProfile(data: {
+    username?: string;
+    first_name?: string;
+    last_name?: string;
+    nickname?: string;
+    phone?: string;
+    gender?: string;
+    profile_image?: File;
+  }): Promise<User> {
+    const formData = new FormData();
+
+    if (data.username) formData.append('username', data.username);
+    if (data.first_name) formData.append('first_name', data.first_name);
+    if (data.last_name) formData.append('last_name', data.last_name);
+    if (data.nickname) formData.append('nickname', data.nickname);
+    if (data.phone) formData.append('phone', data.phone);
+    if (data.gender) formData.append('gender', data.gender);
+    if (data.profile_image) formData.append('profile_image', data.profile_image);
+
+    const response = await apiClient.patch<ApiResponse<User>>('/api/user', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    return response.data.result;
+  }
+
+  /**
    * Logout user
    */
   async logout(): Promise<void> {
@@ -182,6 +315,7 @@ class AuthService {
         // Clear cookies so middleware redirects to login
         document.cookie = 'auth_token=; path=/; max-age=0; SameSite=Lax';
         document.cookie = 'user_role=; path=/; max-age=0; SameSite=Lax';
+        window.dispatchEvent(new Event('auth:user-updated'));
       }
     }
   }
@@ -240,6 +374,35 @@ class AuthService {
     } catch {
       return null;
     }
+  }
+
+  /**
+   * Replace cached user in localStorage and notify listeners
+   */
+  setCurrentUser(user: LoginResponse | null): void {
+    if (typeof window === 'undefined') return;
+    if (!user) {
+      localStorage.removeItem('user');
+      window.dispatchEvent(new Event('auth:user-updated'));
+      return;
+    }
+
+    localStorage.setItem('user', JSON.stringify(user));
+    window.dispatchEvent(new Event('auth:user-updated'));
+  }
+
+  /**
+   * Update cached user fields and notify listeners
+   */
+  updateCachedUser(updates: Partial<LoginResponse>): LoginResponse | null {
+    if (typeof window === 'undefined') return null;
+
+    const current = this.getCurrentUser();
+    if (!current) return null;
+
+    const next = { ...current, ...updates };
+    this.setCurrentUser(next);
+    return next;
   }
 
   /**

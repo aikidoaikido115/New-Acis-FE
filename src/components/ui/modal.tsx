@@ -11,6 +11,7 @@ interface ModalProps {
   size?: "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "4xl" | "5xl" | "full";
   scrollable?: boolean;
   disableBackdropClose?: boolean;
+  printable?: boolean;
 }
 
 const sizeClasses = {
@@ -33,6 +34,7 @@ export function Modal({
   size = "md",
   scrollable = false,
   disableBackdropClose = false,
+  printable = false,
 }: ModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
 
@@ -64,7 +66,8 @@ export function Modal({
     <div
       className={cn(
         "fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4",
-        scrollable && "overflow-y-auto"
+        scrollable && "overflow-y-auto",
+        printable && "print-modal-root"
       )}
       onClick={handleBackdropClick}
     >
@@ -73,7 +76,8 @@ export function Modal({
         className={cn(
           "w-full rounded-2xl bg-white shadow-xl animate-in fade-in zoom-in-95 duration-200",
           sizeClasses[size],
-          scrollable && "my-8 max-h-[90vh] overflow-y-auto"
+          scrollable && "my-8 max-h-[90vh] overflow-y-auto",
+          printable && "print-modal-content"
         )}
       >
         {title && (

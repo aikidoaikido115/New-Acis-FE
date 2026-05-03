@@ -1,31 +1,71 @@
 "use client";
-
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import { residentService } from "@/services/resident.service";
 import { roomService } from "@/services/room.service";
-import { adaptResidentPayload, calculateAge } from "@/utils/resident-adapter";
+import { drugMasterService } from "@/services/drug-master.service";
+import { personalDrugService } from "@/services/personal-drug.service";
+import { allergyService } from "../../../services/allergy.service";
+import { drugAllergyService } from "../../../services/drug-allergy.service";
+import { intakeService } from "@/services/intake.service";
+import type { PersonalDrug } from "../../../services/personal-drug.service";
+import type { ResidentAllergyItem } from "../../../services/allergy.service";
+import type { ResidentDrugAllergyItem } from "../../../services/drug-allergy.service";
 import { useToast } from "@/components/ui/toast";
-import type { ResidentFormState, CreateResidentRequest, Resident as ApiResident } from "@/types/resident";
+import type { ResidentFormState, CreateResidentRequest, Resident as ApiResident, Medication } from "@/types/resident";
 import type { Resident } from "@/types/elder";
 import type { Room } from "@/types/room";
-import { ResidentFormModal } from "@/components/features/nurse/elder-info/ResidentFormModal";
-import { RelativeViewModal } from "@/components/features/nurse/elder-info/RelativeViewModal";
-import { ElderTableFilter } from "@/components/features/nurse/elder-info/info-table-filter";
-import { ElderTable } from "@/components/features/nurse/elder-info/elder-table";
-import { ElderTablePagination } from "@/components/features/nurse/pagination";
+import { ResidentFormModal } from "@/components/features/elder-info/ResidentFormModal";
+import { RelativeViewModal } from "@/components/features/elder-info/RelativeViewModal";
+import { ResidentDetailModal } from "@/components/features/elder-info/ResidentDetailModal";
+import { ElderTableFilter } from "@/components/features/elder-info/info-table-filter";
+import { ElderTable } from "@/components/features/elder-info/elder-table";
+import { ElderTablePagination } from "@/components/features/elder-info/pagination";
 
 const ITEMS_PER_PAGE = 10;
 
-const determineCareLevel = (adlScore?: number) => {
+export const determineCareLevel = (adlScore?: number) => {
   if (adlScore === undefined) return "general";
   if (adlScore <= 5) return "bedridden";
   if (adlScore <= 11) return "partial";
   return "general";
 };
 
-const formatDate = (dateString?: string) => {
+export const normalizeCareLevel = (value?: string) => {
+  const normalized = (value || "").trim().toLowerCase();
+  if (normalized === "partial_assist" || normalized === "partial") return "partial";
+  if (normalized === "bedridden") return "bedridden";
+  if (normalized === "general") return "general";
+  return "";
+};
+
+export const mapCareLevelLabel = (labelName?: string) => {
+  const trimmed = (labelName || "").trim();
+  if (trimmed === "ช่วยเหลือตัวเองได้ทั้งหมด") return "general";
+  if (trimmed === "ช่วยเหลือตัวเองได้บางส่วน") return "partial_assist";
+  if (trimmed === "ติดเตียง") return "bedridden";
+  return "";
+};
+
+export const careLevelToLabelName = (value?: string) => {
+  const normalized = normalizeCareLevel(value);
+  if (normalized === "general") return "ช่วยเหลือตัวเองได้ทั้งหมด";
+  if (normalized === "partial") return "ช่วยเหลือตัวเองได้บางส่วน";
+  if (normalized === "bedridden") return "ติดเตียง";
+  return "";
+};
+
+export const resolveCareLevelFromLabels = (labels?: ApiResident["resident_labels"]) => {
+  if (!labels || labels.length === 0) return "";
+  for (const label of labels) {
+    const mapped = mapCareLevelLabel(label.intake_label?.label_name);
+    if (mapped) return mapped;
+  }
+  return "";
+};
+
+export const formatDate = (dateString?: string) => {
   if (!dateString) return "-";
   const date = new Date(dateString);
   if (Number.isNaN(date.getTime())) return "-";
@@ -36,11 +76,94 @@ const formatDate = (dateString?: string) => {
   return `${day}/${month}/${year}`;
 };
 
+const frequencyTokensByValue: Record<string, string[]> = {
+  morning: ["morning"],
+  noon: ["noon"],
+  evening: ["evening"],
+  bedtime: ["bedtime"],
+  morning_noon: ["morning", "noon"],
+  morning_evening: ["morning", "evening"],
+  morning_bedtime: ["morning", "bedtime"],
+  noon_evening: ["noon", "evening"],
+  noon_bedtime: ["noon", "bedtime"],
+  evening_bedtime: ["evening", "bedtime"],
+  morning_noon_evening: ["morning", "noon", "evening"],
+  morning_noon_bedtime: ["morning", "noon", "bedtime"],
+  morning_evening_bedtime: ["morning", "evening", "bedtime"],
+  noon_evening_bedtime: ["noon", "evening", "bedtime"],
+  four_times: ["morning", "noon", "evening", "bedtime"],
+};
+
+const timeOfDayAliasMap: Record<string, string> = {
+  เช้า: "morning",
+  กลางวัน: "noon",
+  เย็น: "evening",
+  ก่อนนอน: "bedtime",
+  morning: "morning",
+  noon: "noon",
+  evening: "evening",
+  bedtime: "bedtime",
+};
+
+const orderedTimeTokens = ["morning", "noon", "evening", "bedtime"];
+
+export const frequencyToTimeOfDay = (value: string) => {
+  const tokens = frequencyTokensByValue[value];
+  if (!tokens) return null;
+  return {
+    frequency: tokens.length,
+    timeOfDay: tokens.join(","),
+  };
+};
+
+export const timeOfDayToFrequencyValue = (timeOfDay?: string | null) => {
+  if (!timeOfDay) return "";
+  const tokens = timeOfDay
+    .split(",")
+    .map((token) => timeOfDayAliasMap[token.trim().toLowerCase()] || "")
+    .filter(Boolean);
+
+  if (tokens.length === 0) return "";
+  const uniqueTokens = Array.from(new Set(tokens));
+  const orderedTokens = orderedTimeTokens.filter((token) => uniqueTokens.includes(token));
+  if (orderedTokens.length === 4) return "four_times";
+  return orderedTokens.join("_");
+};
+
+export const timingToMealType = (timing?: string | null) => {
+  if (!timing) return "";
+  const normalized = timing.toLowerCase();
+  if (normalized.includes("ก่อน") || normalized.includes("before")) return "before_meal";
+  if (normalized.includes("หลัง") || normalized.includes("after")) return "after_meal";
+  return "";
+};
+
+export const mealTypeToTiming = (mealType?: string) => {
+  if (mealType === "before_meal") return "ก่อนอาหาร";
+  if (mealType === "after_meal") return "หลังอาหาร";
+  return "";
+};
+
+export const parseDose = (dose: string) => {
+  const trimmed = dose.trim();
+  const match = trimmed.match(/^([0-9]+(?:\.[0-9]+)?)(.*)$/);
+  if (!match) return null;
+  const amount = match[1];
+  const unit = match[2].trim();
+  if (!unit) return null;
+  return { amount, unit };
+};
+
 const transformResidentData = (apiResident: ApiResident): Resident => {
   const fullName = `${apiResident.first_name} ${apiResident.last_name}`;
-  const careLevel = determineCareLevel(apiResident.adl_score);
-  const isActive =
-    !apiResident.expected_discharge_date || new Date(apiResident.expected_discharge_date) > new Date();
+  const labelBasedCareLevel = resolveCareLevelFromLabels(apiResident.resident_labels);
+  const careLevel =
+    normalizeCareLevel(labelBasedCareLevel) ||
+    determineCareLevel(apiResident.adl_score);
+  const statusValue = (apiResident.status || "").toLowerCase();
+  const isActive = statusValue
+    ? statusValue === "active"
+    : !apiResident.expected_check_out_date || new Date(apiResident.expected_check_out_date) > new Date();
 
   const backendId = apiResident.id || (apiResident as any).resident_id || "";
 
@@ -52,8 +175,8 @@ const transformResidentData = (apiResident: ApiResident): Resident => {
     room: apiResident.room_id || "",
     floor: apiResident.floor || 0,
     care: careLevel,
-    admitted: formatDate(apiResident.admit_date),
-    discharged: formatDate(apiResident.expected_discharge_date),
+    admitted: formatDate(apiResident.check_in_date),
+    discharged: formatDate(apiResident.expected_check_out_date),
     active: isActive,
   };
 };
@@ -71,6 +194,11 @@ export default function Page() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [isRelativeViewModalOpen, setIsRelativeViewModalOpen] = useState(false);
   const [relativeViewResidentName, setRelativeViewResidentName] = useState<string | null>(null);
+  const [relativeViewResidentId, setRelativeViewResidentId] = useState<string | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [detailResidentId, setDetailResidentId] = useState<string | null>(null);
+  const [drugMasterOptions, setDrugMasterOptions] = useState<Array<{ value: string; label: string; name: string; dose?: string }>>([]);
+  const originalMedicationIdsRef = useRef<string[]>([]);
 
   // Data state
   const [allResidents, setAllResidents] = useState<Resident[]>([]);
@@ -86,10 +214,23 @@ export default function Page() {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
 
-  const mapResidentToFormState = (resident: ApiResident): ResidentFormState => {
-    const toDateString = (value?: string) => (value ? value.split("T")[0] || value : "");
+  const roomFloorMap = useMemo(() => {
+    const map = new Map<string, number>();
+    rooms.forEach((room) => {
+      const id = (room as { room_id?: string | number; id?: string | number }).room_id ?? room.id;
+      if (id) map.set(String(id), Number(room.floor));
+    });
+    return map;
+  }, [rooms]);
 
-    return {
+  const mapResidentToFormState = (resident: ApiResident, overrides: Partial<ResidentFormState> = {}): ResidentFormState => {
+    const toDateString = (value?: string) => (value ? value.split("T")[0] || value : "");
+    const roomKey = resident.room_id || (resident as any).room_id || "";
+    const resolvedFloor = roomKey ? roomFloorMap.get(String(roomKey)) : undefined;
+    const labelBasedCareLevel = resolveCareLevelFromLabels(resident.resident_labels);
+    const fallbackCareLevel = labelBasedCareLevel || determineCareLevel(resident.adl_score);
+
+    const baseState: ResidentFormState = {
       status: resident.status || "",
       firstName: resident.first_name || "",
       lastName: resident.last_name || "",
@@ -97,25 +238,30 @@ export default function Page() {
       gender: resident.gender || "",
       dateOfBirth: toDateString(resident.date_of_birth),
       idCardNumber: resident.id_card_number || "",
-      purpose: resident.purpose || "",
-      admitDate: toDateString(resident.admit_date),
-      expectedDischargeDate: toDateString(resident.expected_discharge_date),
+      purpose: resident.purpose_of_stay || "",
+      admitDate: toDateString(resident.check_in_date),
+      expectedDischargeDate: toDateString(resident.expected_check_out_date),
       roomId: resident.room_id || "",
-      floor: resident.floor ? String(resident.floor) : "",
+      floor: resolvedFloor ? String(resolvedFloor) : resident.floor ? String(resident.floor) : "",
       profileImage: null,
       profileImagePreview: resident.profile_image || "",
-      chronicDiseases: resident.chronic_diseases || "",
-      chronicDiseasesNote: resident.chronic_diseases_note || "",
-      medications: resident.medications || [],
+      chronicDiseases: resident.pre_existing_conditions || "",
+      chronicDiseasesNote: resident.pre_existing_conditions_notes || "",
+      medications: [],
       surgicalHistory: resident.surgical_history || "",
-      drugAllergies: resident.drug_allergies || "",
-      foodAllergies: resident.food_allergies || "",
+      drugAllergies: "",
+      foodAllergies: "",
       adlScore: resident.adl_score !== undefined && resident.adl_score !== null ? String(resident.adl_score) : "",
-      careLevel: resident.care_level || "general",
-      cprStatus: resident.cpr_status || "",
-      emergencyHospital: resident.emergency_hospital || "",
+      careLevel: fallbackCareLevel || "general",
+      cprStatus: resident.resuscitation_status || "",
+      emergencyHospital: resident.preferred_emergency_hospital || "",
       emergencyHospitalPhone: resident.emergency_hospital_phone || "",
       emergencyContacts: resident.emergency_contacts || [],
+    };
+
+    return {
+      ...baseState,
+      ...overrides,
     };
   };
 
@@ -127,9 +273,10 @@ export default function Page() {
       const data = await residentService.getAll();
       const transformedData = data.map(transformResidentData);
       setAllResidents(transformedData);
+
     } catch (err: any) {
       // Enhanced error logging
-      console.error("Failed to fetch residents:", {
+      console.error({
         message: err?.message,
         status_code: err?.status_code,
         response: err?.response,
@@ -171,11 +318,31 @@ export default function Page() {
         const data = await roomService.getAll();
         setRooms(data || []);
       } catch (err) {
-        console.error("Failed to fetch rooms:", err);
       }
     };
     fetchRooms();
   }, []);
+
+  useEffect(() => {
+    const fetchDrugMasters = async () => {
+      try {
+        const data = await drugMasterService.getAll();
+        const options = data
+          .map((item) => {
+            const id = item.dm_id || item.id || "";
+            if (!id) return null;
+            const label = item.dose ? `${item.name} (${item.dose})` : item.name;
+            return { value: id, label, name: item.name, dose: item.dose };
+          })
+          .filter(Boolean) as Array<{ value: string; label: string; name: string; dose?: string }>;
+        setDrugMasterOptions(options);
+      } catch (err: any) {
+        showToast({ type: "error", title: "โหลดรายการยาไม่สำเร็จ", message: "ไม่สามารถโหลดรายการยาจากระบบได้" });
+        setDrugMasterOptions([]);
+      }
+    };
+    fetchDrugMasters();
+  }, [showToast]);
 
   // Convert care type to display text
   const getCareTypeDisplay = (careType: string) => {
@@ -203,19 +370,27 @@ export default function Page() {
   const filteredResidents = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
 
-    return allResidents.filter((resident) => {
-      const matchesSearch =
-        !normalizedSearch ||
-        resident.name.toLowerCase().includes(normalizedSearch) ||
-        resident.nickname.toLowerCase().includes(normalizedSearch);
+    return allResidents
+      .map((resident) => {
+        const mappedFloor = roomFloorMap.get(resident.room);
+        return {
+          ...resident,
+          floor: mappedFloor ?? resident.floor,
+        };
+      })
+      .filter((resident) => {
+        const matchesSearch =
+          !normalizedSearch ||
+          resident.name.toLowerCase().includes(normalizedSearch) ||
+          resident.nickname.toLowerCase().includes(normalizedSearch);
 
-      const matchesFloor = selectedFloor === "all" || resident.floor.toString() === selectedFloor;
-      const matchesCareType = selectedCareType === "all" || resident.care === selectedCareType;
-      const matchesActive = resident.active === showActive;
+        const matchesFloor = selectedFloor === "all" || resident.floor.toString() === selectedFloor;
+        const matchesCareType = selectedCareType === "all" || resident.care === selectedCareType;
+        const matchesActive = resident.active === showActive;
 
-      return matchesSearch && matchesFloor && matchesCareType && matchesActive;
-    });
-  }, [allResidents, searchTerm, selectedFloor, selectedCareType, showActive]);
+        return matchesSearch && matchesFloor && matchesCareType && matchesActive;
+      });
+  }, [allResidents, roomFloorMap, searchTerm, selectedFloor, selectedCareType, showActive]);
 
   // Paginate filtered results
   const paginatedResidents = useMemo(() => {
@@ -241,60 +416,354 @@ export default function Page() {
     setCurrentPage(1);
   };
 
-  const buildCreatePayload = (formData: ResidentFormState): CreateResidentRequest => ({
+  const normalizeLines = (value: string) =>
+    value
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+  const normalizePhone = (value?: string) => value?.replace(/\D/g, "") || "";
+
+  const toRFC3339 = (value?: string) => {
+    if (!value) return undefined;
+    if (value.includes("T")) return value;
+    return `${value}T00:00:00+07:00`;
+  };
+
+  const getApiErrorMessage = (error: any, fallback: string) =>
+    error?.response?.data?.message ||
+    error?.response?.data?.error ||
+    error?.message ||
+    fallback;
+
+  const appendFormValue = (form: FormData, key: string, value?: string | null) => {
+    if (value === undefined || value === null) return;
+    const trimmed = value.trim();
+    if (trimmed === "") return;
+    form.append(key, trimmed);
+  };
+
+  const buildResidentFormData = (formData: ResidentFormState, labels?: Array<{ label_name: string; note_text?: string }>) => {
+    const form = new FormData();
+    const emergencyPhone = normalizePhone(formData.emergencyHospitalPhone);
+    const cleanedContacts = formData.emergencyContacts
+      .map((contact) => ({
+        name: contact.name.trim(),
+        relation: contact.relation.trim(),
+        phone: normalizePhone(contact.phone),
+      }))
+      .filter((contact) => contact.name || contact.relation || contact.phone);
+
+    appendFormValue(form, "first_name", formData.firstName);
+    appendFormValue(form, "last_name", formData.lastName);
+    appendFormValue(form, "gender", formData.gender);
+    appendFormValue(form, "status", formData.status);
+    appendFormValue(form, "date_of_birth", toRFC3339(formData.dateOfBirth) || "");
+
+    appendFormValue(form, "nickname", formData.nickname || "");
+    appendFormValue(form, "id_card_number", formData.idCardNumber || "");
+    appendFormValue(form, "purpose_of_stay", formData.purpose || "");
+    appendFormValue(form, "check_in_date", toRFC3339(formData.admitDate) || "");
+    appendFormValue(form, "expected_check_out_date", toRFC3339(formData.expectedDischargeDate) || "");
+    appendFormValue(form, "room_id", formData.roomId || "");
+
+    appendFormValue(form, "pre_existing_conditions", formData.chronicDiseases || "");
+    appendFormValue(form, "pre_existing_conditions_notes", formData.chronicDiseasesNote || "");
+    appendFormValue(form, "surgical_history", formData.surgicalHistory || "");
+    appendFormValue(form, "resuscitation_status", formData.cprStatus || "");
+    appendFormValue(form, "preferred_emergency_hospital", formData.emergencyHospital || "");
+    appendFormValue(form, "emergency_hospital_phone", emergencyPhone || "");
+
+    if (cleanedContacts.length > 0) {
+      form.append("emergency_contacts", JSON.stringify(cleanedContacts));
+    }
+    if (labels && labels.length > 0) {
+      form.append("labels", JSON.stringify(labels));
+    }
+    if (formData.profileImage) {
+      form.append("profile_image", formData.profileImage);
+    }
+
+    return form;
+  };
+
+  const buildResidentPayload = (formData: ResidentFormState, labels?: Array<{ label_name: string; note_text?: string }>): CreateResidentRequest => {
+    const emergencyPhone = normalizePhone(formData.emergencyHospitalPhone);
+    const idCardNumber = formData.idCardNumber.trim();
+    const checkInDate = toRFC3339(formData.admitDate);
+    const expectedCheckOutDate = toRFC3339(formData.expectedDischargeDate);
+    const roomId = formData.roomId.trim();
+    const cleanedContacts = formData.emergencyContacts
+      .map((contact) => ({
+        name: contact.name.trim(),
+        relation: contact.relation.trim(),
+        phone: normalizePhone(contact.phone),
+      }))
+      .filter((contact) => contact.name || contact.relation || contact.phone);
+
+    const payload: CreateResidentRequest = {
     first_name: formData.firstName,
     last_name: formData.lastName,
     nickname: formData.nickname || undefined,
     gender: formData.gender,
-    date_of_birth: formData.dateOfBirth,
-    age: formData.dateOfBirth ? calculateAge(formData.dateOfBirth) : undefined,
-    id_card_number: formData.idCardNumber || undefined,
-    purpose: formData.purpose || undefined,
-    admit_date: formData.admitDate,
-    expected_discharge_date: formData.expectedDischargeDate || undefined,
-    room_id: formData.roomId || undefined,
-    floor: formData.floor ? parseInt(formData.floor) : undefined,
-    chronic_diseases: formData.chronicDiseases || undefined,
-    chronic_diseases_note: formData.chronicDiseasesNote || undefined,
-    medications: formData.medications.filter((m) => m.name.trim() !== ""),
+    date_of_birth: toRFC3339(formData.dateOfBirth) as string,
+    id_card_number: idCardNumber || undefined,
+    purpose_of_stay: formData.purpose || undefined,
+    check_in_date: checkInDate || undefined,
+    expected_check_out_date: expectedCheckOutDate || undefined,
+    room_id: roomId || undefined,
+    pre_existing_conditions: formData.chronicDiseases || undefined,
+    pre_existing_conditions_notes: formData.chronicDiseasesNote || undefined,
     surgical_history: formData.surgicalHistory || undefined,
-    drug_allergies: formData.drugAllergies || undefined,
-    food_allergies: formData.foodAllergies || undefined,
-    adl_score: formData.adlScore ? parseInt(formData.adlScore) : undefined,
-    cpr_status: formData.cprStatus || undefined,
-    emergency_hospital: formData.emergencyHospital || undefined,
-    emergency_hospital_phone: formData.emergencyHospitalPhone || undefined,
-    emergency_contacts: formData.emergencyContacts.filter((c) => c.name.trim() !== ""),
-    care_level: formData.careLevel as "general" | "partial_assist" | "bedridden",
-  });
+    resuscitation_status: formData.cprStatus || undefined,
+    preferred_emergency_hospital: formData.emergencyHospital || undefined,
+    emergency_hospital_phone: emergencyPhone || undefined,
+    emergency_contacts: cleanedContacts.length > 0 ? cleanedContacts : undefined,
+    profile_image: formData.profileImagePreview || undefined,
+    status: formData.status,
+  };
+
+    if (labels && labels.length > 0) {
+      payload.labels = labels;
+    }
+
+    return payload;
+  };
+
+  const syncAllergies = async (residentId: string, foodAllergies: string, drugAllergies: string) => {
+    const foodNames = normalizeLines(foodAllergies);
+    await allergyService.createByResident(
+      residentId, 
+      foodNames.map((name) => ({ allergy_name: name }))
+    );
+
+    const drugNames = normalizeLines(drugAllergies);
+    await drugAllergyService.createByResident(
+      residentId, 
+      drugNames.map((name) => ({ allergy_name: name }))
+    );
+  };
+
+  const ensureDrugMaster = async (name: string, dose: string) => {
+    const matched = drugMasterOptions.find(
+      (option) => option.name === name && (option.dose || "") === (dose || "")
+    );
+    if (matched) return matched;
+
+    const created = await drugMasterService.create({ name, dose });
+    const id = created.dm_id || created.id || "";
+    const label = created.dose ? `${created.name} (${created.dose})` : created.name;
+    const option = { value: id, label, name: created.name, dose: created.dose };
+    setDrugMasterOptions((prev) => {
+      if (!id || prev.some((item) => item.value === id)) return prev;
+      return [...prev, option];
+    });
+    return option;
+  };
+
+  const validateMedications = (medications: Medication[]) => {
+    const activeMeds = medications.filter((med) => med.name.trim() !== "");
+    for (const med of activeMeds) {
+      if (!med.dose.trim() || !med.frequency || !med.mealType) {
+        throw new Error("กรุณากรอกข้อมูลยาให้ครบ (ชื่อยา, ปริมาณ/ขนาด, ความถี่, ประเภท)");
+      }
+
+      const parsedDose = parseDose(med.dose);
+      if (!parsedDose) {
+        throw new Error("รูปแบบปริมาณ/ขนาดไม่ถูกต้อง (เช่น 500mg)");
+      }
+
+      const timing = mealTypeToTiming(med.mealType);
+      if (!timing) {
+        throw new Error("กรุณาเลือกประเภทการกินยา (ก่อนอาหาร/หลังอาหาร)");
+      }
+
+      const timeOfDayInfo = frequencyToTimeOfDay(med.frequency);
+      if (!timeOfDayInfo) {
+        throw new Error("กรุณาเลือกความถี่การกินยา");
+      }
+    }
+  };
+
+  const syncMedications = async (residentId: string, medications: Medication[]) => {
+    const activeMeds = medications.filter((med) => med.name.trim() !== "");
+    const currentIds = new Set(activeMeds.map((med) => med.pdId).filter(Boolean) as string[]);
+    const toDelete = originalMedicationIdsRef.current.filter((id) => !currentIds.has(id));
+
+    for (const id of toDelete) {
+      await personalDrugService.deleteById(id);
+    }
+
+    for (const med of activeMeds) {
+      const trimmedName = med.name.trim();
+      if (!trimmedName) continue;
+
+      if (!med.dose.trim() || !med.frequency || !med.mealType) {
+        throw new Error("กรุณากรอกข้อมูลยาให้ครบ (ชื่อยา, ปริมาณ/ขนาด, ความถี่, ประเภท)");
+      }
+
+      const parsedDose = parseDose(med.dose);
+      if (!parsedDose) {
+        throw new Error("รูปแบบปริมาณ/ขนาดไม่ถูกต้อง (เช่น 500mg)");
+      }
+
+      const timing = mealTypeToTiming(med.mealType);
+      if (!timing) {
+        throw new Error("กรุณาเลือกประเภทการกินยา (ก่อนอาหาร/หลังอาหาร)");
+      }
+
+      const timeOfDayInfo = frequencyToTimeOfDay(med.frequency);
+      if (!timeOfDayInfo) {
+        throw new Error("กรุณาเลือกความถี่การกินยา");
+      }
+
+      let dmId = med.dmId?.trim() || "";
+      if (!dmId) {
+        const created = await ensureDrugMaster(trimmedName, med.dose.trim());
+        dmId = created.value;
+      }
+
+      const payload = {
+        resident_id: residentId,
+        dm_id: dmId,
+        amount: parsedDose.amount,
+        amount_unit: parsedDose.unit,
+        frequency: timeOfDayInfo.frequency,
+        time_of_day: timeOfDayInfo.timeOfDay,
+        timing,
+        take_type: "regular" as const,
+      };
+
+      if (med.pdId) {
+        await personalDrugService.updateById(med.pdId, payload);
+      } else {
+        await personalDrugService.create(payload);
+      }
+    }
+  };
+
+  const handleCreateMedicationOption = useCallback(
+    async (name: string, dose: string) => {
+      try {
+        const created = await drugMasterService.create({ name, dose });
+        const id = created.dm_id || created.id || "";
+        if (!id) return null;
+        const label = created.dose ? `${created.name} (${created.dose})` : created.name;
+        const option = { value: id, label, name: created.name, dose: created.dose };
+        setDrugMasterOptions((prev) => {
+          if (prev.some((item) => item.value === id)) return prev;
+          return [...prev, option];
+        });
+        showToast({ type: "success", title: "เพิ่มยาใหม่สำเร็จ", message: created.name });
+        return option;
+      } catch (err: any) {
+        const message = err?.response?.data?.message || "ไม่สามารถเพิ่มยาใหม่ได้";
+        showToast({ type: "error", title: "เพิ่มยาไม่สำเร็จ", message });
+        return null;
+      }
+    },
+    [showToast]
+  );
+
+  const handleCreateRoomOption = useCallback(
+    async (roomNumber: string, floor: string) => {
+      const trimmed = roomNumber.trim();
+      const numericFloor = Number(floor);
+      if (!trimmed || !Number.isFinite(numericFloor)) return null;
+      const existing = rooms.find(
+        (room) => room.room_number === trimmed && Number(room.floor) === numericFloor
+      );
+      if (existing) {
+        const existingId = (existing as { room_id?: string; id?: string }).room_id || existing.id || "";
+        return existingId ? { value: existingId, label: existing.room_number } : null;
+      }
+
+      try {
+        const created = await roomService.create({
+          room_number: trimmed,
+          floor: numericFloor,
+        });
+        const id = (created as { room_id?: string; id?: string }).room_id || created.id || "";
+        if (!id) return null;
+        setRooms((prev) => {
+          if (prev.some((item) => ((item as any).room_id || item.id) === id)) return prev;
+          return [...prev, created];
+        });
+        showToast({ type: "success", title: "เพิ่มห้องใหม่สำเร็จ", message: `ห้อง ${created.room_number}` });
+        return { value: id, label: created.room_number };
+      } catch (err: any) {
+        const message = err?.response?.data?.message || "ไม่สามารถเพิ่มห้องใหม่ได้";
+        showToast({ type: "error", title: "เพิ่มห้องไม่สำเร็จ", message });
+        return null;
+      }
+    },
+    [rooms, showToast]
+  );
 
   const handleResidentSubmit = async (formData: ResidentFormState) => {
     try {
       setIsSubmitting(true);
 
-      const payload = adaptResidentPayload(buildCreatePayload(formData));
+      validateMedications(formData.medications);
+
+      const careLevelLabel = careLevelToLabelName(formData.careLevel);
+      const labels = modalMode === "edit" && careLevelLabel ? [{ label_name: careLevelLabel }] : undefined;
+      const payload = formData.profileImage
+        ? buildResidentFormData(formData, labels)
+        : buildResidentPayload(formData, labels);
+      let savedResident: ApiResident;
 
       if (modalMode === "edit" && editingResidentId) {
-        await residentService.update(editingResidentId, payload as any);
-        showToast({ type: "success", title: "บันทึกข้อมูลสำเร็จ", message: "แก้ไขแฟ้มผู้สูงอายุเรียบร้อย" });
+        savedResident = await residentService.update(editingResidentId, payload as any);
       } else {
-        await residentService.create(payload as any);
-        showToast({ type: "success", title: "บันทึกข้อมูลสำเร็จ", message: "เพิ่มแฟ้มผู้สูงอายุเรียบร้อย" });
+        savedResident = await residentService.create(payload as any);
+      }
+
+      const residentId = savedResident.id || (savedResident as any).resident_id || editingResidentId || "";
+      if (!residentId) {
+        throw new Error("ไม่พบรหัสผู้สูงอายุจากระบบ");
+      }
+
+      const postSaveTasks: Promise<unknown>[] = [];
+      if (modalMode !== "edit" && careLevelLabel) {
+        postSaveTasks.push(
+          intakeService.createResidentLabels({
+            resident_id: residentId,
+            labels: [{ label_name: careLevelLabel }],
+          })
+        );
+      }
+      postSaveTasks.push(syncAllergies(residentId, formData.foodAllergies, formData.drugAllergies));
+      postSaveTasks.push(syncMedications(residentId, formData.medications));
+
+      const postSaveResults = await Promise.allSettled(postSaveTasks);
+      const postSaveErrors = postSaveResults
+        .filter((result): result is PromiseRejectedResult => result.status === "rejected")
+        .map((result) => getApiErrorMessage(result.reason, "ไม่สามารถซิงค์ข้อมูลเสริมได้"));
+
+      showToast({
+        type: "success",
+        title: "บันทึกข้อมูลสำเร็จ",
+        message: modalMode === "edit" ? "แก้ไขแฟ้มผู้สูงอายุเรียบร้อย" : "เพิ่มแฟ้มผู้สูงอายุเรียบร้อย",
+      });
+
+      if (postSaveErrors.length > 0) {
+        showToast({
+          type: "info",
+          title: "ซิงค์ข้อมูลเสริมไม่ครบ",
+          message: postSaveErrors[0],
+        });
       }
 
       setIsAddModalOpen(false);
       setEditingResidentId(null);
       setEditingInitialValues(undefined);
       setModalMode("create");
+      originalMedicationIdsRef.current = [];
 
       await fetchResidents();
     } catch (error: any) {
-      console.error("Failed to save resident:", error);
-      const errorMessage =
-        error.response?.data?.message ||
-        error.response?.data?.error ||
-        error.message ||
-        "เกิดข้อผิดพลาดในการบันทึกข้อมูล";
+      const errorMessage = getApiErrorMessage(error, "เกิดข้อผิดพลาดในการบันทึกข้อมูล");
       showToast({ type: "error", title: "บันทึกข้อมูลล้มเหลว", message: errorMessage });
       throw error;
     } finally {
@@ -303,23 +772,57 @@ export default function Page() {
   };
 
   const handleEditClick = async (id: string) => {
+    setEditingResidentId(id);
+    setEditingInitialValues(undefined);
+    setModalMode("edit");
+    setIsAddModalOpen(true);
+
     try {
-      setIsLoading(true);
       const resident = await residentService.getById(id);
-      setEditingResidentId(id);
-      setEditingInitialValues(mapResidentToFormState(resident));
-      setModalMode("edit");
-      setIsAddModalOpen(true);
+
+      const [personalDrugs, residentAllergies, residentDrugAllergies] = await Promise.all([
+        personalDrugService.getByResidentAll(id).catch(() => [] as PersonalDrug[]),
+        allergyService.getByResident(id).catch(() => [] as ResidentAllergyItem[]),
+        drugAllergyService.getByResident(id).catch(() => [] as ResidentDrugAllergyItem[]),
+      ]);
+
+      const medications = personalDrugs.map((drug: PersonalDrug) => {
+        const dose = drug.amount && drug.amount_unit ? `${drug.amount}${drug.amount_unit}` : "";
+        return {
+          pdId: drug.pd_id || drug.id || "",
+          dmId: drug.DrugMaster?.dm_id || drug.dm_id || "",
+          name: drug.DrugMaster?.name || "",
+          dose,
+          frequency: timeOfDayToFrequencyValue(drug.time_of_day),
+          time: "",
+          mealType: timingToMealType(drug.timing) as Medication["mealType"],
+          note: drug.description || "",
+        };
+      });
+
+      const foodAllergyNames = residentAllergies
+        .map((item: any) => item.allergy?.allergy_name || item.allergy_name)
+        .filter(Boolean)
+        .join("\n");
+
+      const drugAllergyNames = residentDrugAllergies
+        .map((item: any) => item.drug_allergy?.allergy_name || item.allergy_name)
+        .filter(Boolean)
+        .join("\n");
+
+      originalMedicationIdsRef.current = medications.map((med: Medication) => med.pdId).filter(Boolean) as string[];
+
+      setEditingInitialValues(
+        mapResidentToFormState(resident, {
+          medications: medications.length > 0 ? medications : [{ pdId: "", dmId: "", name: "", dose: "", frequency: "", time: "", mealType: "", note: "" }],
+          foodAllergies: foodAllergyNames,
+          drugAllergies: drugAllergyNames,
+        })
+      );
     } catch (error) {
-      console.error("Failed to load resident for edit:", error);
       // ถ้าโหลดไม่ได้ เปิดเป็นฟอร์มว่างแต่ยังคงโหมดแก้ไขและ id
-      setEditingResidentId(id);
       setEditingInitialValues(undefined);
-      setModalMode("edit");
-      setIsAddModalOpen(true);
       alert("ไม่สามารถโหลดข้อมูลผู้สูงอายุได้ ขึ้นฟอร์มว่างให้กรอกใหม่");
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -327,20 +830,52 @@ export default function Page() {
     const resident = allResidents.find(r => r.id === id);
     const residentName = resident ? resident.name : "ไม่พบข้อมูล";
     setRelativeViewResidentName(residentName);
+    const resolvedId = (resident as { resident_id?: string; id?: string } | undefined)?.resident_id || resident?.id || id;
+    setRelativeViewResidentId(resolvedId);
     setIsRelativeViewModalOpen(true);
+  };
+
+  const handleCopyRelativeMagicLink = async (id: string) => {
+    try {
+      const resident = allResidents.find((r) => r.id === id);
+      const resolvedId = (resident as { resident_id?: string; id?: string } | undefined)?.resident_id || resident?.id || id;
+      const linkData = await residentService.getRelativeMagicLink(resolvedId);
+      const absoluteLink = new URL(linkData.magic_link, window.location.origin).toString();
+      await navigator.clipboard.writeText(absoluteLink);
+      showToast({
+        type: "success",
+        title: "คัดลอกลิงก์สำเร็จ",
+        message: "ลิงก์สำหรับญาติถูกคัดลอกไปยังคลิปบอร์ดแล้ว",
+      });
+    } catch (error) {
+      const message = getApiErrorMessage(error, "ไม่สามารถคัดลอกลิงก์ญาติได้");
+      showToast({
+        type: "error",
+        title: "คัดลอกไม่สำเร็จ",
+        message,
+      });
+    }
+  };
+
+  const handleViewDetail = (id: string) => {
+    const resident = allResidents.find(r => r.id === id);
+    const resolvedId = (resident as { resident_id?: string; id?: string } | undefined)?.resident_id || resident?.id || id;
+    setDetailResidentId(resolvedId);
+    setIsDetailModalOpen(true);
   };
 
   return (
     <>
       <div className="flex flex-col gap-6 p-4 sm:p-6 lg:p-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-xl font-semibold text-slate-800">แฟ้มข้อมูลผู้สูงอายุ</h1>
+          <h2 className="text-headline-5 font-bold text-gray-800">แฟ้มข้อมูลผู้สูงอายุ</h2>
           <button
             type="button"
             onClick={() => {
               setModalMode("create");
               setEditingResidentId(null);
               setEditingInitialValues(undefined);
+              originalMedicationIdsRef.current = [];
               setIsAddModalOpen(true);
             }}
             className="inline-flex items-center gap-2 rounded-lg bg-[#0093EF] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#0080D0] active:bg-[#0070C0] transition"
@@ -365,8 +900,7 @@ export default function Page() {
 
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-16 text-slate-500">
-              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#0093EF] mb-4"></div>
-              <div className="text-sm">กำลังโหลดข้อมูล...</div>
+              <div className="text-sm">กำลังโหลดข้อมูลผู้สูงอายุ...</div>
             </div>
           ) : error ? (
             <div className="flex flex-col items-center justify-center py-16 text-red-500">
@@ -380,7 +914,13 @@ export default function Page() {
             </div>
           ) : (
             <>
-              <ElderTable residents={paginatedResidents} onEdit={handleEditClick} onViewRelative={handleViewRelative} />
+              <ElderTable
+                residents={paginatedResidents}
+                onEdit={handleEditClick}
+                onViewDetail={handleViewDetail}
+                onViewRelative={handleViewRelative}
+                onCopyMagicLink={handleCopyRelativeMagicLink}
+              />
 
               {totalItems > 0 && (
                 <ElderTablePagination
@@ -413,6 +953,9 @@ export default function Page() {
         rooms={rooms}
         initialValues={editingInitialValues}
         mode={modalMode}
+        medicationOptions={drugMasterOptions}
+        onCreateMedicationOption={handleCreateMedicationOption}
+        onCreateRoomOption={handleCreateRoomOption}
       />
 
       {/* Relative View Modal */}
@@ -420,6 +963,14 @@ export default function Page() {
         isOpen={isRelativeViewModalOpen}
         onClose={() => setIsRelativeViewModalOpen(false)}
         residentName={relativeViewResidentName}
+        residentId={relativeViewResidentId}
+      />
+
+      {/* Resident Detail Modal */}
+      <ResidentDetailModal
+        isOpen={isDetailModalOpen}
+        onClose={() => setIsDetailModalOpen(false)}
+        residentId={detailResidentId}
       />
     </>
   );

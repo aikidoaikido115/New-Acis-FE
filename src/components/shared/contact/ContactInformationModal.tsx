@@ -52,7 +52,7 @@ export function ContactInformationModal({ contact, onClose }: ContactInformation
             )}
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <p className="text-headline-5 font-bold text-[#1F1F1F]">{contact.firstName}</p>
-              <p className="text-headline-5 font-bold text-[#1F1F1F]">{contact.lastName || "-"}</p>
+              <p className="text-headline-5 font-bold text-[#1F1F1F]">{contact.lastName}</p>
             </div>
           </div>
 

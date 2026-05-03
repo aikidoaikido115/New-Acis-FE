@@ -1,6 +1,10 @@
 import apiClient, { ApiResponse } from '@/lib/axios.ts/api-client';
 import type { RelativeNote } from '@/types/emr-notes';
 
+function buildDateQuery(dateInput?: string): string {
+  return dateInput ? `?date=${encodeURIComponent(dateInput)}` : '';
+}
+
 export interface CreateRelativeNoteRequest {
   resident_id: string;
   relation: string;
@@ -15,14 +19,14 @@ export interface UpdateRelativeNoteRequest {
 }
 
 class RelativeNoteService {
-  async getOverview(): Promise<RelativeNote[]> {
-    const response = await apiClient.get<ApiResponse<RelativeNote[]>>('/api/emr/relative-notes/overview');
+  async getOverview(dateInput?: string): Promise<RelativeNote[]> {
+    const response = await apiClient.get<ApiResponse<RelativeNote[]>>(`/api/emr/relative-notes/overview${buildDateQuery(dateInput)}`);
     return response.data.result;
   }
 
-  async getByResidentAll(residentId: string): Promise<RelativeNote[]> {
+  async getByResidentAll(residentId: string, dateInput?: string): Promise<RelativeNote[]> {
     const response = await apiClient.get<ApiResponse<RelativeNote[]>>(
-      `/api/emr/relative-notes/resident/all?resident_id=${encodeURIComponent(residentId)}`
+      `/api/emr/relative-notes/resident/all?resident_id=${encodeURIComponent(residentId)}${dateInput ? `&date=${encodeURIComponent(dateInput)}` : ''}`
     );
     return response.data.result;
   }

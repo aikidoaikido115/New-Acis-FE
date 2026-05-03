@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Edit, Trash2 } from "lucide-react";
-import { RoutineMedication } from "../medical.mock";
+import type { RoutineMedication } from "../medical.types";
 
 type MedTypeFilter = "all" | "routine" | "prn";
 
@@ -14,8 +14,8 @@ type CombinedMedication = RoutineMedication & {
 interface CombinedMedsTableProps {
   routineMedications: RoutineMedication[];
   prnMedications: RoutineMedication[];
-  onEditMed: (medId: number) => void;
-  onDeleteMed: (medId: number) => void;
+  onEditMed: (medId: string) => void;
+  onDeleteMed: (medId: string) => void;
 }
 
 export function CombinedMedsTable({
@@ -95,7 +95,7 @@ export function CombinedMedsTable({
             <tr className="border-b border-[#CFD5DC]">
               <th className="text-left py-3 px-4 text-xs font-medium text-gray-500">ประเภท</th>
               <th className="text-left py-3 px-4 text-xs font-medium text-gray-500">ชื่อยา</th>
-              <th className="text-left py-3 px-4 text-xs font-medium text-gray-500">โดส</th>
+              <th className="text-left py-3 px-4 text-xs font-medium text-gray-500">ปริมาณ/ขนาด</th>
               <th className="text-left py-3 px-4 text-xs font-medium text-gray-500">ความถี่/วัน</th>
               <th className="text-left py-3 px-4 text-xs font-medium text-gray-500">หมายเหตุ</th>
               <th className="text-left py-3 px-4 text-xs font-medium text-gray-500">จัดการ</th>

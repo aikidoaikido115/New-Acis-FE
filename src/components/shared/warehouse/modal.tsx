@@ -7,13 +7,13 @@ export const warehouseLabelClassName =
   "mb-2 block text-sm font-semibold text-[#262626]";
 
 export const warehouseInputClassName =
-  "h-8 w-full rounded-[4px] border border-[#B9B9B9] bg-white px-3 text-sm text-[#262626] outline-none transition placeholder:text-[#BBBBBB] focus:border-[#8C8C8C]";
+  "h-8 w-full rounded-[4px] border border-[#B9B9B9] bg-white px-3 text-sm text-black outline-none transition placeholder:text-slate-400 focus:border-[#8C8C8C]";
 
 export const warehouseReadOnlyInputClassName =
   "h-8 w-full rounded-[4px] border border-[#B9B9B9] bg-[#EEF1F5] px-3 text-sm text-[#4B4B4B] outline-none";
 
 export const warehouseTextareaClassName =
-  "min-h-[64px] w-full rounded-[4px] border border-[#B9B9B9] bg-white px-3 py-2 text-sm text-[#262626] outline-none transition placeholder:text-[#BBBBBB] focus:border-[#8C8C8C]";
+  "min-h-[64px] w-full rounded-[4px] border border-[#B9B9B9] bg-white px-3 py-2 text-sm text-black outline-none transition placeholder:text-slate-400 focus:border-[#8C8C8C]";
 
 export const warehouseHintClassName = "mt-1 text-xs leading-4 text-[#8E8E8E]";
 

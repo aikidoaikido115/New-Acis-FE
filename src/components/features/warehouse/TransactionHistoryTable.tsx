@@ -1,9 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Calendar, Search, ChevronDown } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Search, ChevronDown } from "lucide-react";
 import { Pagination } from "@/components/ui/pagination";
 import { useToast } from "@/components/ui/toast";
+import { DatePicker } from "@/components/ui/date-picker";
+import { useAuth } from "@/hooks/useAuth";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import {
   warehouseService,
@@ -24,6 +26,39 @@ const STATUS_STYLES: Record<ApprovalStatus, string> = {
   อนุมัติ: "bg-green-100 text-green-700",
   ไม่อนุมัติ: "bg-red-100 text-red-600" };
 
+const datePickerFieldClassName =
+  "w-[150px] [&>button]:w-full [&>button]:justify-between [&>button]:border-[#CCCCCC] [&>button]:bg-[rgba(204,204,204,0.16)] [&>button]:font-normal";
+
+const formatIsoDate = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const parseDateValue = (value: string): Date | null => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!isoMatch) {
+    return null;
+  }
+
+  const year = Number(isoMatch[1]);
+  const month = Number(isoMatch[2]);
+  const day = Number(isoMatch[3]);
+  const date = new Date(year, month - 1, day);
+
+  if (date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day) {
+    return date;
+  }
+
+  return null;
+};
+
 function ApprovalBadge({ status }: { status: ApprovalStatus }) {
   return (
     <span
@@ -37,8 +72,21 @@ function ApprovalBadge({ status }: { status: ApprovalStatus }) {
 // Checkbox state for bulk actions
 type CheckedMap = Record<string, boolean>;
 
+function isSuperuserOrHigher(role?: string): boolean {
+  if (!role) return false;
+  const normalizedRole = role.toLowerCase();
+  return (
+    normalizedRole.includes("superuser") ||
+    normalizedRole.includes("super user") ||
+    normalizedRole.includes("super_user") ||
+    normalizedRole.includes("admin")
+  );
+}
+
 export function TransactionHistoryTable() {
+  const { user } = useAuth();
   const { showToast } = useToast();
+  const canApproveWarehouseTransactions = isSuperuserOrHigher(user?.role_name);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -59,8 +107,6 @@ export function TransactionHistoryTable() {
   const [selectedType, setSelectedType] = useState<"" | TransactionType>("");
   const debouncedSearchItem = useDebouncedValue(searchItem, 400);
   const debouncedSearchUser = useDebouncedValue(searchUser, 400);
-  const startDateInputRef = useRef<HTMLInputElement>(null);
-  const endDateInputRef = useRef<HTMLInputElement>(null);
 
   const loadTransactions = useCallback(async () => {
     setIsLoading(true);
@@ -108,33 +154,6 @@ export function TransactionHistoryTable() {
     });
   }, [transactions]);
 
-  const openDatePicker = (inputRef: React.RefObject<HTMLInputElement | null>) => {
-    if (!inputRef.current) {
-      return;
-    }
-
-    // Use native picker when available, fallback to focus for broader compatibility.
-    if (typeof inputRef.current.showPicker === "function") {
-      inputRef.current.showPicker();
-      return;
-    }
-
-    inputRef.current.focus();
-  };
-
-  const formatDateLabel = (value: string) => {
-    if (!value) {
-      return "";
-    }
-
-    const [year, month, day] = value.split("-");
-    if (!year || !month || !day) {
-      return value;
-    }
-
-    return `${day}/${month}/${year}`;
-  };
-
   const filtered = useMemo(() => transactions, [transactions]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
@@ -153,6 +172,10 @@ export function TransactionHistoryTable() {
   const someChecked = pendingPageIds.some((id) => checkedMap[id]);
 
   const toggleAll = () => {
+    if (!canApproveWarehouseTransactions) {
+      return;
+    }
+
     if (allChecked) {
       setCheckedMap((prev) => {
         const next = { ...prev };
@@ -169,6 +192,10 @@ export function TransactionHistoryTable() {
   };
 
   const toggleOne = (id: string) => {
+    if (!canApproveWarehouseTransactions) {
+      return;
+    }
+
     const transaction = transactions.find((tx) => tx.id === id);
     if (!transaction || transaction.approvalStatus !== "รออนุมัติ") {
       return;
@@ -199,6 +226,10 @@ export function TransactionHistoryTable() {
   const checkedCount = selectedIds.length;
 
   const handleApprove = async () => {
+    if (!canApproveWarehouseTransactions) {
+      return;
+    }
+
     if (selectedIds.length === 0) {
       return;
     }
@@ -219,6 +250,10 @@ export function TransactionHistoryTable() {
   };
 
   const handleReject = async (reason: string) => {
+    if (!canApproveWarehouseTransactions) {
+      return;
+    }
+
     if (!reason.trim()) {
       return;
     }
@@ -250,67 +285,37 @@ export function TransactionHistoryTable() {
     }
   };
 
+  const columnCount = canApproveWarehouseTransactions ? 9 : 8;
+
   return (
     <div className="space-y-4">
       {/* Filter Bar */}
       <div>
         <div className="flex flex-wrap items-center gap-3 rounded-lg bg-[rgba(204,204,204,0.14)] p-3">
           {/* Start Date */}
-          <div className="relative cursor-pointer" onClick={() => openDatePicker(startDateInputRef)}>
-            <input
-              ref={startDateInputRef}
-              type="date"
-              value={startDate}
-              onChange={(e) => { setStartDate(e.target.value); resetPage(); }}
-              className="absolute inset-0 w-full h-full opacity-0 pointer-events-none"
-              aria-label="วันที่เริ่มต้น"
-            />
-            <div
-              className="pl-3 pr-9 py-2 border rounded-lg text-body-small bg-[rgba(204,204,204,0.16)]"
-              style={{ borderColor: "rgba(204, 204, 204, 1)", color: startDate ? "rgb(55 65 81)" : "rgb(107 114 128)" }}
-            >
-              {startDate ? formatDateLabel(startDate) : "วันที่เริ่มต้น"}
-            </div>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                openDatePicker(startDateInputRef);
+          <div className="w-[150px]">
+            <DatePicker
+              value={parseDateValue(startDate)}
+              onChange={(date) => {
+                setStartDate(date ? formatIsoDate(date) : "");
+                resetPage();
               }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              aria-label="เลือกวันที่เริ่มต้น"
-            >
-              <Calendar className="w-4 h-4" />
-            </button>
+              placeholder="วันที่เริ่มต้น"
+              className={datePickerFieldClassName}
+            />
           </div>
 
           {/* End Date */}
-          <div className="relative cursor-pointer" onClick={() => openDatePicker(endDateInputRef)}>
-            <input
-              ref={endDateInputRef}
-              type="date"
-              value={endDate}
-              onChange={(e) => { setEndDate(e.target.value); resetPage(); }}
-              className="absolute inset-0 w-full h-full opacity-0 pointer-events-none"
-              aria-label="วันที่สิ้นสุด"
-            />
-            <div
-              className="pl-3 pr-9 py-2 border rounded-lg text-body-small bg-[rgba(204,204,204,0.16)]"
-              style={{ borderColor: "rgba(204, 204, 204, 1)", color: endDate ? "rgb(55 65 81)" : "rgb(107 114 128)" }}
-            >
-              {endDate ? formatDateLabel(endDate) : "วันที่สิ้นสุด"}
-            </div>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                openDatePicker(endDateInputRef);
+          <div className="w-[150px]">
+            <DatePicker
+              value={parseDateValue(endDate)}
+              onChange={(date) => {
+                setEndDate(date ? formatIsoDate(date) : "");
+                resetPage();
               }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              aria-label="เลือกวันที่สิ้นสุด"
-            >
-              <Calendar className="w-4 h-4" />
-            </button>
+              placeholder="วันที่สิ้นสุด"
+              className={datePickerFieldClassName}
+            />
           </div>
 
           {/* Search Item */}
@@ -373,7 +378,7 @@ export function TransactionHistoryTable() {
       </div>
 
       {/* Bulk Action Bar */}
-      {checkedCount > 0 && (
+      {canApproveWarehouseTransactions && checkedCount > 0 && (
         <div className="rounded-lg px-4 py-2 flex items-center gap-3" style={{ backgroundColor: 'rgba(103, 103, 103, 0.24)' }}>
           <span className="text-body-small text-black font-medium">
             เลือก {checkedCount} รายการ
@@ -402,19 +407,21 @@ export function TransactionHistoryTable() {
           <table className="w-full">
             <thead>
               <tr style={{ backgroundColor: 'rgba(239, 242, 247, 1)', borderBottom: '1px solid rgba(103, 103, 103, 0.48)' }}>
-                <th className="py-3 px-4 w-10">
-                  <input
-                    type="checkbox"
-                    checked={allChecked}
-                    ref={(el) => {
-                      if (el) el.indeterminate = someChecked && !allChecked;
-                    }}
-                    onChange={toggleAll}
-                    disabled={pendingPageIds.length === 0}
-                    className="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500 cursor-pointer"
-                    aria-label="เลือกทั้งหมด"
-                  />
-                </th>
+                {canApproveWarehouseTransactions ? (
+                  <th className="py-3 px-4 w-10">
+                    <input
+                      type="checkbox"
+                      checked={allChecked}
+                      ref={(el) => {
+                        if (el) el.indeterminate = someChecked && !allChecked;
+                      }}
+                      onChange={toggleAll}
+                      disabled={pendingPageIds.length === 0}
+                      className="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500 cursor-pointer"
+                      aria-label="เลือกทั้งหมด"
+                    />
+                  </th>
+                ) : null}
                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700 w-36">
                   รหัสการแก้ไข
                 </th>
@@ -444,19 +451,19 @@ export function TransactionHistoryTable() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={9} className="py-12 px-4 text-center text-sm text-gray-500">
+                  <td colSpan={columnCount} className="py-12 px-4 text-center text-sm text-gray-500">
                     กำลังโหลดข้อมูล...
                   </td>
                 </tr>
               ) : error ? (
                 <tr>
-                  <td colSpan={9} className="py-12 px-4 text-center text-sm text-red-500">
+                  <td colSpan={columnCount} className="py-12 px-4 text-center text-sm text-red-500">
                     {error}
                   </td>
                 </tr>
               ) : paginated.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-12 px-4 text-center">
+                  <td colSpan={columnCount} className="py-12 px-4 text-center">
                     <div className="text-sm text-gray-600">ไม่พบประวัติการทำรายการ</div>
                     <div className="text-xs text-gray-400 mt-1">ยังไม่มีข้อมูลธุรกรรมตามเงื่อนไขที่เลือก</div>
                   </td>
@@ -470,19 +477,21 @@ export function TransactionHistoryTable() {
                     }`}
                     style={{ borderBottom: '1px solid rgba(103, 103, 103, 0.48)' }}
                   >
-                    <td className="py-3 px-4">
-                      {tx.approvalStatus === "รออนุมัติ" ? (
-                        <input
-                          type="checkbox"
-                          checked={!!checkedMap[tx.id]}
-                          onChange={() => toggleOne(tx.id)}
-                          className="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500 cursor-pointer"
-                          aria-label={`เลือกรายการ ${tx.code}`}
-                        />
-                      ) : (
-                        <span className="block h-4 w-4" aria-hidden="true" />
-                      )}
-                    </td>
+                    {canApproveWarehouseTransactions ? (
+                      <td className="py-3 px-4">
+                        {tx.approvalStatus === "รออนุมัติ" ? (
+                          <input
+                            type="checkbox"
+                            checked={!!checkedMap[tx.id]}
+                            onChange={() => toggleOne(tx.id)}
+                            className="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500 cursor-pointer"
+                            aria-label={`เลือกรายการ ${tx.code}`}
+                          />
+                        ) : (
+                          <span className="block h-4 w-4" aria-hidden="true" />
+                        )}
+                      </td>
+                    ) : null}
                     <td className="py-3 px-4 text-xs sm:text-sm text-gray-700 font-medium">{tx.code}</td>
                     <td className="py-3 px-4 text-xs sm:text-sm text-gray-700">{tx.type}</td>
                     <td className="py-3 px-4 text-xs sm:text-sm text-gray-700">{tx.itemCode}</td>

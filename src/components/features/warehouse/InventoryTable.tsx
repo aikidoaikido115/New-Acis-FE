@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Search, Filter, Plus, PackagePlus, PackageMinus, Edit, Trash2, Check } from "lucide-react";
 import { Pagination } from "@/components/ui/pagination";
 import { useToast } from "@/components/ui/toast";
+import { useAuth } from "@/hooks/useAuth";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import {
   warehouseService,
@@ -23,8 +24,21 @@ const CATEGORY_LABELS: Record<ItemCategory, string> = {
 
 type InventoryAdjustMode = "restock" | "withdraw";
 
+function isSuperuserOrHigher(role?: string): boolean {
+  if (!role) return false;
+  const normalizedRole = role.toLowerCase();
+  return (
+    normalizedRole.includes("superuser") ||
+    normalizedRole.includes("super user") ||
+    normalizedRole.includes("super_user") ||
+    normalizedRole.includes("admin")
+  );
+}
+
 export function InventoryTable() {
+  const { user } = useAuth();
   const { showToast } = useToast();
+  const canAddWarehouseItems = isSuperuserOrHigher(user?.role_name);
   const [items, setItems] = useState<WarehouseItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -95,6 +109,15 @@ export function InventoryTable() {
 
   // Handlers
   const handleAddItem = async (newItemData: Omit<WarehouseItem, "id">) => {
+    if (!canAddWarehouseItems) {
+      showToast({
+        type: "error",
+        title: "ไม่มีสิทธิ์ดำเนินการ",
+        message: "เฉพาะผู้ใช้ระดับ Superuser ขึ้นไปเท่านั้น",
+      });
+      return;
+    }
+
     try {
       await warehouseService.createItem({
         name: newItemData.name,
@@ -322,13 +345,15 @@ export function InventoryTable() {
           <div className="flex-1" />
 
           {/* Action Buttons */}
-          <button
-            onClick={() => setShowAdd(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg text-body-small font-medium hover:bg-blue-600 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            เพิ่มรายการสินค้า
-          </button>
+          {canAddWarehouseItems ? (
+            <button
+              onClick={() => setShowAdd(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg text-body-small font-medium hover:bg-blue-600 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              เพิ่มรายการสินค้า
+            </button>
+          ) : null}
           <button
             onClick={() => setMode("restock")}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-body-small font-medium transition-colors ${
@@ -545,7 +570,7 @@ export function InventoryTable() {
       </div>
 
       {/* Modals */}
-      {showAdd && (
+      {showAdd && canAddWarehouseItems && (
         <AddItemModal
           existingItems={items}
           onClose={() => setShowAdd(false)}

@@ -13,13 +13,28 @@ export default function StaffKitchenLayout({ children }: { children: React.React
   const { isSidebarOpen, setIsSidebarOpen, isSidebarCollapsed, setIsSidebarCollapsed, isReady } = useSidebarState();
 
   return (
-    <ProtectedRoute allowedRoles={["kitchen", "Kitchen", "KITCHEN"]}>
+    <ProtectedRoute allowedRoles={[
+      "kitchen",
+      "Kitchen",
+      "KITCHEN",
+      "ครัว",
+      "โภชนา",
+      "superuser",
+      "Superuser",
+      "SUPERUSER",
+      "admin",
+      "Admin",
+      "ADMIN",
+    ]}>
       <div className="min-h-screen bg-slate-50 flex flex-col">
         <AppNavbar
           user={{
             firstName: user?.first_name || "ผู้ใช้งาน",
             role: user?.role_name,
+            profile_image: user?.profile_image,
           }}
+
+          notificationsCount={0}
           onToggleSidebar={() => setIsSidebarOpen(true)}
         />
 
@@ -43,7 +58,6 @@ export default function StaffKitchenLayout({ children }: { children: React.React
             {children}
           </main>
         </div>
-
         <div className={cn("mt-auto transition-[margin-left] duration-300", isSidebarCollapsed ? "lg:ml-16" : "lg:ml-72")}>
           <AppFooter />
         </div>

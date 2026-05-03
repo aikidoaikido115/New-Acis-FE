@@ -1,0 +1,89 @@
+"use client";
+
+import { AppFooter } from "@/components/shared/app-footer";
+import { AppNavbar } from "@/components/shared/app-navbar";
+import { AppSidebar } from "@/components/shared/app-sidebar";
+import { ProtectedRoute } from "@/components/shared/auth/ProtectedRoute";
+import { useSidebarState } from "@/hooks/useSidebarState";
+import { useAuth } from "@/hooks/useAuth";
+import { cn } from "@/lib/utils";
+
+function isKitchenRole(role?: string): boolean {
+  if (!role) return false;
+  const lowerRole = role.toLowerCase();
+  return lowerRole.includes("kitchen") || lowerRole.includes("ครัว") || lowerRole.includes("โภชนา");
+}
+
+function isAdminRole(role?: string): boolean {
+  if (!role) return false;
+  const lowerRole = role.toLowerCase();
+  return lowerRole.includes("admin");
+}
+
+export default function ProfileLayout({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  const { isSidebarOpen, setIsSidebarOpen, isSidebarCollapsed, setIsSidebarCollapsed, isReady } = useSidebarState();
+
+  const roleName = user?.role_name;
+  const kitchenRole = isKitchenRole(roleName);
+  const adminRole = isAdminRole(roleName);
+
+  return (
+    <ProtectedRoute
+      allowedRoles={[
+        "nurse",
+        "medical_staff",
+        "Nurse",
+        "NURSE",
+        "kitchen",
+        "kitchen_staff",
+        "Kitchen",
+        "KITCHEN",
+        "ครัว",
+        "โภชนา",
+        "admin",
+        "superuser",
+        "Admin",
+        "ADMIN",
+        "Superuser",
+        "SUPERUSER",
+      ]}
+    >
+      <div className="min-h-screen bg-slate-50 flex flex-col">
+        <AppNavbar
+          user={{
+            firstName: user?.first_name || "ผู้ใช้งาน",
+            role: roleName,
+            profile_image: user?.profile_image,
+          }}
+          onToggleSidebar={() => setIsSidebarOpen(true)}
+        />
+
+        <div className="flex flex-1 pt-16">
+          <AppSidebar
+            role={kitchenRole ? "kitchen" : adminRole ? "admin" : "nurse"}
+            isOpen={isSidebarOpen}
+            isCollapsed={isSidebarCollapsed}
+            isReady={isReady}
+            onClose={() => setIsSidebarOpen(false)}
+            onCollapsedChange={setIsSidebarCollapsed}
+          />
+
+          <main
+            className={cn(
+              "flex-1",
+              isReady && "transition-[margin-left] duration-300",
+              isSidebarCollapsed ? "lg:ml-16" : "lg:ml-72"
+            )}
+          >
+            {children}
+          </main>
+        </div>
+
+        <div className={cn("mt-auto transition-[margin-left] duration-300", isSidebarCollapsed ? "lg:ml-16" : "lg:ml-72")}>
+          <AppFooter />
+        </div>
+      </div>
+    </ProtectedRoute>
+  );
+}

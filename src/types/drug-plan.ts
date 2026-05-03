@@ -15,6 +15,11 @@ export interface PersonalDrugRef {
   amount?: string;
   amount_unit?: string;
   description?: string;
+  Resident?: {
+    resident_id?: string;
+    first_name?: string;
+    last_name?: string;
+  };
   DrugMaster?: DrugMasterRef;
 }
 
@@ -37,4 +42,35 @@ export interface DrugPlanOverviewQuery {
   time_of_day?: string;
   take_type?: "regular" | "as_needed";
   search?: string;
+}
+
+export interface ApiPagination {
+  page: number;
+  page_size: number;
+  total_items: number;
+  total_pages: number;
+}
+
+export interface DrugPlanOverviewResult {
+  items: DrugPlan[];
+  pagination: ApiPagination;
+}
+
+export type DrugAdministrationStatus = "taken" | "omitted" | "pending";
+
+export interface DrugAdministrationHistoryItem {
+  drug_plan_id: string;
+  action_at?: string | null;
+  resident_name: string;
+  drug_name: string;
+  drug_dose: string;
+  status: DrugAdministrationStatus;
+  note?: string | null;
+  given_by_staff_name?: string | null;
+  time_of_day: string;
+}
+
+export interface DrugAdministrationHistoryResult {
+  items: DrugAdministrationHistoryItem[];
+  pagination: ApiPagination;
 }

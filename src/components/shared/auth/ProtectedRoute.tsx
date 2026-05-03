@@ -13,7 +13,9 @@ interface ProtectedRouteProps {
 
 const DEFAULT_ROLE_ROUTES: Record<string, string> = {
   nurse: '/dashboard',
+  superuser: '/dashboard',
   kitchen: '/manage-meal',
+  admin: '/admin/users',
   relative: '/relative/dashboard',
 };
 

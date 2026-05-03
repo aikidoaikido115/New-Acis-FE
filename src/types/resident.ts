@@ -1,10 +1,13 @@
 // Resident Types
 // Medication entry for the medications table
 export interface Medication {
+  pdId?: string;
+  dmId?: string;
   name: string;
   dose: string;
   frequency: string;
   time: string;
+  mealType?: 'before_meal' | 'after_meal' | '';
   note?: string;
 }
 
@@ -13,6 +16,43 @@ export interface EmergencyContact {
   name: string;
   relation: string;
   phone: string;
+}
+
+export interface IntakeLabel {
+  label_id: string;
+  label_name: string;
+}
+
+export interface ResidentLabel {
+  resident_id: string;
+  label_id: string;
+  intake_label?: IntakeLabel;
+}
+
+export interface ResidentOverviewItem {
+  resident_id: string;
+  first_name: string;
+  last_name: string;
+  nickname?: string | null;
+  room_number?: string;
+  intake_labels: string[];
+  gender?: string;
+  status?: string;
+  check_in_date?: string | null;
+  expected_check_out_date?: string | null;
+  floor?: number | null;
+}
+
+export interface OverviewPagination {
+  page: number;
+  page_size: number;
+  total_items: number;
+  total_pages: number;
+}
+
+export interface ResidentOverviewListResponse {
+  items: ResidentOverviewItem[];
+  pagination: OverviewPagination;
 }
 
 export interface Resident {
@@ -26,35 +66,34 @@ export interface Resident {
   gender: string;
   date_of_birth: string;
   id_card_number?: string;
-  purpose?: string; // จุดประสงค์การเข้าพัก
-  admit_date: string;
-  expected_discharge_date?: string; // วันที่คาดว่าจะออก
+  purpose_of_stay?: string; // จุดประสงค์การเข้าพัก
+  check_in_date?: string;
+  expected_check_out_date?: string; // วันที่คาดว่าจะออก
   room_id?: string;
   floor?: number;
   profile_image?: string;
 
   // Medical Info
-  chronic_diseases?: string; // โรคประจำตัว
-  chronic_diseases_note?: string; // หมายเหตุโรคประจำตัว
+  pre_existing_conditions?: string; // โรคประจำตัว
+  pre_existing_conditions_notes?: string; // หมายเหตุโรคประจำตัว
   medications?: Medication[]; // ยาที่ใช้ประจำ
   surgical_history?: string; // ประวัติการผ่าตัด
-  drug_allergies?: string; // แพ้ยา
-  food_allergies?: string; // แพ้อาหาร
   adl_score?: number; // ADL score
-  cpr_status?: "CPR" | "DNR"; // CPR/DNR
+  resuscitation_status?: "CPR" | "DNR"; // CPR/DNR
 
   // Emergency Info
-  emergency_hospital?: string; // โรงพยาบาลกรณีฉุกเฉิน
+  preferred_emergency_hospital?: string; // โรงพยาบาลกรณีฉุกเฉิน
   emergency_hospital_phone?: string;
   emergency_contacts?: EmergencyContact[];
+  resident_labels?: ResidentLabel[];
 
   // Legacy fields
   phone_number?: string;
   address?: string;
   blood_type?: string;
+  drug_allergies?: string; // combined drug allergies (legacy)
   allergies?: string; // combined allergies (legacy)
   medical_conditions?: string; // (legacy)
-  care_level: "general" | "partial_assist" | "bedridden";
   status: string;
   notes?: string;
   created_at: string;
@@ -70,30 +109,29 @@ export interface CreateResidentRequest {
   date_of_birth: string;
   age?: number;
   id_card_number?: string;
-  purpose?: string;
-  admit_date: string;
-  expected_discharge_date?: string;
+  purpose_of_stay?: string;
+  check_in_date?: string;
+  expected_check_out_date?: string;
+  status: string;
   room_id?: string;
   floor?: number;
   profile_image?: string;
 
   // Medical Info
-  chronic_diseases?: string;
-  chronic_diseases_note?: string;
+  pre_existing_conditions?: string;
+  pre_existing_conditions_notes?: string;
   medications?: Medication[];
   surgical_history?: string;
-  drug_allergies?: string;
-  food_allergies?: string;
   adl_score?: number;
-  cpr_status?: "CPR" | "DNR";
+  resuscitation_status?: "CPR" | "DNR";
 
   // Emergency Info
-  emergency_hospital?: string;
+  preferred_emergency_hospital?: string;
   emergency_hospital_phone?: string;
   emergency_contacts?: EmergencyContact[];
+  labels?: Array<{ label_name: string; note_text?: string }>;
 
   // Legacy
-  care_level: "general" | "partial_assist" | "bedridden";
   notes?: string;
 }
 

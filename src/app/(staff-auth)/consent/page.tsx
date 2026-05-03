@@ -64,7 +64,7 @@ export default function ConsentPage() {
       sessionStorage.removeItem('registrationData');
       sessionStorage.removeItem('profileImageData');
 
-      router.push('/login?registered=true');
+      router.push('/login?registered=pending_approval');
     } catch (err) {
       const error = err as { message?: string };
       setError(error.message || 'ลงทะเบียนไม่สำเร็จ กรุณาลองอีกครั้ง');

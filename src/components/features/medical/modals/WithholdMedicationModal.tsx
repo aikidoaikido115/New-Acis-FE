@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { X } from "lucide-react";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 
@@ -33,7 +33,6 @@ export function WithholdMedicationModal({
     reason: "",
     note: "" });
 
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const firstInputRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
@@ -50,10 +49,7 @@ export function WithholdMedicationModal({
     }
   }, [isOpen]);
 
-  useEffect(() => {
-    const hasData = !!(formData.reason || formData.note);
-    setHasUnsavedChanges(hasData);
-  }, [formData]);
+  const hasUnsavedChanges = useMemo(() => !!(formData.reason || formData.note), [formData]);
 
   const handleClose = useCallback(async () => {
     if (hasUnsavedChanges) {
@@ -67,7 +63,6 @@ export function WithholdMedicationModal({
     }
     onClose();
     setFormData({ reason: "", note: "" });
-    setHasUnsavedChanges(false);
   }, [hasUnsavedChanges, onClose, confirm]);
 
   useEffect(() => {
@@ -119,7 +114,6 @@ export function WithholdMedicationModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit(formData);
-    setHasUnsavedChanges(false);
     onClose();
   };
 

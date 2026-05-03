@@ -1,6 +1,10 @@
 import apiClient, { ApiResponse } from '@/lib/axios.ts/api-client';
 import type { NurseNote } from '@/types/emr-notes';
 
+function buildDateQuery(dateInput?: string): string {
+  return dateInput ? `?date=${encodeURIComponent(dateInput)}` : '';
+}
+
 export interface CreateNurseNoteRequest {
   resident_id: string;
   category: string;
@@ -17,14 +21,14 @@ export interface UpdateNurseNoteRequest {
 }
 
 class NurseNoteService {
-  async getOverview(): Promise<NurseNote[]> {
-    const response = await apiClient.get<ApiResponse<NurseNote[]>>('/api/emr/nurse-notes/overview');
+  async getOverview(dateInput?: string): Promise<NurseNote[]> {
+    const response = await apiClient.get<ApiResponse<NurseNote[]>>(`/api/emr/nurse-notes/overview${buildDateQuery(dateInput)}`);
     return response.data.result;
   }
 
-  async getByResidentAll(residentId: string): Promise<NurseNote[]> {
+  async getByResidentAll(residentId: string, dateInput?: string): Promise<NurseNote[]> {
     const response = await apiClient.get<ApiResponse<NurseNote[]>>(
-      `/api/emr/nurse-notes/resident/all?resident_id=${encodeURIComponent(residentId)}`
+      `/api/emr/nurse-notes/resident/all?resident_id=${encodeURIComponent(residentId)}${dateInput ? `&date=${encodeURIComponent(dateInput)}` : ''}`
     );
     return response.data.result;
   }

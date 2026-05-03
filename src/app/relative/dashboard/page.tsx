@@ -1,20 +1,40 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { RelativeSidebar } from '@/components/features/relative/sidebar';
 import { Menu } from 'lucide-react';
 import { AppFooterRelative } from '@/components/features/relative/footer-relative';
 import { RelativeDashboardContent } from '@/components/features/relative/dashboard-content';
+import { relativePortalService, type RelativeDashboardData } from '@/services/relative-portal.service';
 
 export default function RelativeDashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [dashboardData, setDashboardData] = useState<RelativeDashboardData | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // TODO: Replace with actual data from backend API
-  const mockLastUpdatedAt = '2025-02-12T20:00:00+07:00';
-  const handleDateChange = (date: string) => {
-    // TODO: Fetch data for the selected date from backend
-    console.log('Selected date:', date);
+  const fetchDashboard = async (date?: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const result = await relativePortalService.getDashboard(date);
+      setDashboardData(result);
+    } catch {
+      setError('ไม่สามารถโหลดข้อมูลภาพรวมประจำวันได้');
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  useEffect(() => {
+    void fetchDashboard();
+  }, []);
+
+  const handleDateChange = (date: string) => {
+    void fetchDashboard(date);
+  };
+
+  const isInitialLoading = isLoading && !dashboardData;
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -35,7 +55,13 @@ export default function RelativeDashboard() {
         {/* Content */}
         <div className="flex-1 p-8 pt-20 lg:pt-8">
           <RelativeDashboardContent
-            lastUpdatedAt={mockLastUpdatedAt}
+            residentId={dashboardData?.resident_id}
+            residentName={dashboardData?.resident_name}
+            lastUpdatedAt={dashboardData?.last_updated_at}
+            notes={dashboardData?.notes || []}
+            isLoading={isLoading}
+            isInitialLoading={isInitialLoading}
+            error={error}
             onDateChange={handleDateChange}
           />
         </div>

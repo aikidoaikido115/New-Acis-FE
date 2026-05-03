@@ -1,24 +1,60 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { authService } from "@/services/auth.service";
+import { getAuthErrorMessage } from "@/lib/error-messages";
+
+function getRelativeLoginErrorMessage(error: unknown): string {
+  const normalized = (error as { message?: string } | null)?.message?.toLowerCase() || "";
+
+  if (normalized.includes("invalid resident birthday password")) {
+    return "รหัสผ่าน (วันเกิด DDMMYYYY) ไม่ถูกต้อง กรุณาตรวจสอบและลองอีกครั้ง";
+  }
+  if (normalized.includes("ddmmyyyy") || normalized.includes("birthday")) {
+    return "รหัสผ่านต้องเป็นวันเดือนปีเกิดในรูปแบบ DDMMYYYY";
+  }
+  if (normalized.includes("magic link") || normalized.includes("resident_id") || normalized.includes("relative account")) {
+    return "ลิงก์เข้าสู่ระบบไม่ถูกต้องหรือหมดอายุ กรุณาขอลิงก์ใหม่";
+  }
+
+  return getAuthErrorMessage(error).message;
+}
 
 export function LoginFormRelative() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>("");
 
   const [formData, setFormData] = useState({
-    phoneNumber: "",
     password: "",
   });
+
+  const residentIdFromQuery = searchParams.get("resident_id")?.trim() || "";
+  const tokenFromQuery = searchParams.get("token")?.trim() || "";
+  const storedResidentId = typeof window !== "undefined"
+    ? localStorage.getItem("relative_portal_resident_id")?.trim() || ""
+    : "";
+  const storedToken = typeof window !== "undefined"
+    ? localStorage.getItem("relative_portal_token")?.trim() || ""
+    : "";
+
+  const effectiveResidentId = residentIdFromQuery || storedResidentId;
+  const effectiveToken = tokenFromQuery || storedToken;
+  const hasPortalParams = !!(effectiveResidentId || effectiveToken);
+
+  useEffect(() => {
+    if (!hasPortalParams) {
+      setError("ไม่พบข้อมูลลิงก์สำหรับเข้าสู่ระบบ กรุณากดลิงก์จากระบบเจ้าหน้าที่อีกครั้ง");
+    }
+  }, [hasPortalParams]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -34,70 +70,47 @@ export function LoginFormRelative() {
     setIsLoading(true);
 
     try {
-      // TODO: รอ Backend ทำ API สำหรับ relative
-      // ตอนนี้ bypass ด้วย mock data
-      
-      // สร้าง mock user data
-      const mockUser = {
-        user_id: `relative_${formData.phoneNumber}`,
-        username: formData.phoneNumber,
-        email: `${formData.phoneNumber}@relative.local`,
-        token: 'mock_token_relative',
-        profile_image: '',
-        role_name: 'relative',
-        first_name: 'ญาติ',
-        last_name: 'ทดสอบ',
-      };
+      if (!hasPortalParams) {
+        throw new Error("resident_id is required");
+      }
 
-      // เก็บข้อมูล mock ลง localStorage
-      localStorage.setItem('access_token', mockUser.token);
-      localStorage.setItem('user', JSON.stringify(mockUser));
-      
-      // เซ็ต cookies สำหรับ middleware
-      document.cookie = `auth_token=${mockUser.token}; path=/; max-age=2592000; SameSite=Lax`;
-      document.cookie = `user_role=relative; path=/; max-age=2592000; SameSite=Lax`;
-      
-      // ตรวจสอบว่าเคยยอมรับ consent หรือยัง (ตาม user_id)
-      const consentAccepted = localStorage.getItem(`consent_accepted_${mockUser.user_id}`);
+      const user = await authService.relativePortalLogin({
+        resident_id: effectiveResidentId || undefined,
+        token: effectiveToken || undefined,
+        password: formData.password.trim(),
+        remember: rememberMe,
+      });
+
+      if (effectiveResidentId) {
+        localStorage.setItem('relative_portal_resident_id', effectiveResidentId);
+      }
+      if (effectiveToken) {
+        localStorage.setItem('relative_portal_token', effectiveToken);
+      }
+
+      const consentAccepted = localStorage.getItem(`consent_accepted_${user.user_id}`);
       if (consentAccepted) {
         router.push("/relative/dashboard");
       } else {
         router.push("/relative/consent");
       }
     } catch (err) {
-      const error = err as { message?: string };
-      setError(error.message || "เข้าสู่ระบบไม่สำเร็จ กรุณาลองอีกครั้ง");
+      setError(getRelativeLoginErrorMessage(err));
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-lg p-10 w-full max-w-[440px] mx-auto">
-      <h2 className="text-2xl font-bold mb-8 text-gray-800">เข้าสู่ระบบสำหรับญาติ</h2>
+    <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-[440px] mx-auto">
+      <h2 className="text-2xl font-bold mb-6 text-gray-800">เข้าสู่ระบบสำหรับญาติ</h2>
 
-      <form onSubmit={onSubmit} className="space-y-5">
+      <form onSubmit={onSubmit} className="space-y-4">
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
             {error}
           </div>
         )}
-
-        <div className="space-y-2.5">
-          <label className="text-sm font-normal text-gray-700">
-            เบอร์โทรศัพท์<span className="text-red-500">*</span>
-          </label>
-          <Input
-            name="phoneNumber"
-            value={formData.phoneNumber}
-            onChange={handleChange}
-            placeholder="เบอร์โทรศัพท์"
-            type="text"
-            className="h-11 border-gray-300 bg-[rgba(245,245,245,1)] text-xs text-[rgba(103,103,103,1)] placeholder:text-[rgba(103,103,103,1)]"
-            required
-            disabled={isLoading}
-          />
-        </div>
 
         <div className="space-y-2.5">
           <label className="text-sm font-normal text-gray-700">
@@ -145,7 +158,7 @@ export function LoginFormRelative() {
           <Button
             type="submit"
             className="w-full bg-[#4A8B6A] hover:bg-[#3d7357] text-white h-12 text-base font-medium transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={isLoading}
+            disabled={isLoading || !hasPortalParams}
           >
             {isLoading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
           </Button>
