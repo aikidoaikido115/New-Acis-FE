@@ -76,6 +76,7 @@ export function RelativeNoteDetailTable({ patientId }: RelativeNoteDetailTablePr
       } else {
         await relativeNoteService.create({
           resident_id: patientId,
+          relation: "",
           content: data.content,
           send_note: data.sendNote,
         });

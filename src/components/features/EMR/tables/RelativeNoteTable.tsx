@@ -113,6 +113,7 @@ export function RelativeNoteTable() {
       } else {
         await relativeNoteService.create({
           resident_id: data.residentId,
+          relation: "",
           content: data.content,
           send_note: data.sendNote,
         });
