@@ -10,24 +10,16 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/services/auth.service", () => ({
   authService: {
+    getCurrentUser: vi.fn(),
+    isAuthenticated: vi.fn(),
+    fetchUserProfile: vi.fn(),
+    updateCachedUser: vi.fn(),
     logout: vi.fn(),
   },
 }));
 
-vi.mock("@/components/features/nurse/notifications", () => ({
-  NotificationBell: ({ notificationsCount }: { notificationsCount: number }) => (
-    <div data-testid="notification-bell" data-count={notificationsCount}>
-      <button data-testid="bell-button">🔔</button>
-      <div data-testid="notification-dropdown" style={{ display: "none" }}>
-        <a href="/notification" data-testid="view-all">ดูทั้งหมด</a>
-      </div>
-    </div>
-  ),
-}));
-
 describe("AppNavbar", () => {
   const mockPush = vi.fn();
-  const mockLogout = vi.fn();
 
   const defaultUser = {
     firstName: "สมหญิง",
@@ -37,6 +29,18 @@ describe("AppNavbar", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (useRouter as any).mockReturnValue({ push: mockPush });
+    (authService.getCurrentUser as any).mockReturnValue({
+      first_name: "สมหญิง",
+      last_name: "ใจดี",
+      nickname: "หญิง",
+      gender: "female",
+      username: "somsri123",
+      email: "somsri@example.com",
+      role_name: "nurse",
+      profile_image: "",
+    });
+    (authService.isAuthenticated as any).mockReturnValue(true);
+    (authService.fetchUserProfile as any).mockResolvedValue(null);
     (authService.logout as any).mockResolvedValue(undefined);
   });
 
@@ -58,27 +62,19 @@ describe("AppNavbar", () => {
 
   it("Click NotificationBell", () => {
     renderNavbar();
-    const bellButton = screen.getByTestId("bell-button");
-    // เนื่องจากเราจำลอง NotificationBell ให้มีปุ่มเปิด dropdown
-    // เราตรวจสอบว่ามีปุ่มนั้นอยู่ (แสดงว่า component ถูก render)
+    const bellButton = screen.getByRole("button", { name: "Notifications" });
     expect(bellButton).toBeInTheDocument();
-    // จำลองการคลิก (NotificationBell ภายในควรเปิด dropdown)
     fireEvent.click(bellButton);
-    // เราสามารถตรวจสอบว่า dropdown แสดง (ในของจริงต้องมี state)
-    // แต่ใน mock เราสามารถตรวจสอบว่า element ของ dropdown มีอยู่
-    const dropdown = screen.getByTestId("notification-dropdown");
-    expect(dropdown).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "ดูทั้งหมด" })).toBeInTheDocument();
   });
 
   it("View all to /notification", () => {
     renderNavbar();
-    // เปิด dropdown (จำลอง)
-    const bellButton = screen.getByTestId("bell-button");
+    const bellButton = screen.getByRole("button", { name: "Notifications" });
     fireEvent.click(bellButton);
-    const viewAllLink = screen.getByTestId("view-all");
-    expect(viewAllLink).toBeInTheDocument();
-      // ตรวจสอบ href ของลิงก์แทนการตรวจ mockPush
-      expect(viewAllLink.closest("a")).toHaveAttribute("href", "/notification");
+    const viewAllButton = screen.getByRole("button", { name: "ดูทั้งหมด" });
+    fireEvent.click(viewAllButton);
+    expect(mockPush).toHaveBeenCalledWith("/notification");
   });
 
   it("Click profile button", () => {
@@ -95,8 +91,6 @@ describe("AppNavbar", () => {
     fireEvent.click(profileButton);
     const editLink = screen.getByText("แก้ไขโปรไฟล์").closest("a");
     expect(editLink).toHaveAttribute("href", "/profile");
-      // ตรวจสอบ href ของลิงก์แทนการตรวจ mockPush
-      expect(editLink).toHaveAttribute("href", "/profile");
   });
 
   it("/logout", async () => {
