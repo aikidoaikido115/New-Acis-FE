@@ -15,13 +15,13 @@ import { roomService } from "@/services/room.service";
 import type { DoctorOrder } from "@/types/emr-notes";
 import type { Resident } from "@/types/resident";
 import type { Room } from "@/types/room";
-import { filterAndSortByTimeline, formatBangkokDateTime, type TimelineSortOrder } from "../note-timeline";
+import { filterAndSortByTimeline, formatBangkokDateKey, formatBangkokDateTime, type TimelineSortOrder } from "../note-timeline";
 
 export function DoctorOrderTable() {
   const { showToast } = useToast();
   const { confirm, confirmDialog } = useConfirmDialog();
   const [currentPage, setCurrentPage] = useState(1);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [sortOrder, setSortOrder] = useState<TimelineSortOrder>("newest");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState<DoctorOrder | null>(null);
@@ -32,6 +32,7 @@ export function DoctorOrderTable() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const pageSize = 10;
+  const selectedDateKey = useMemo(() => formatBangkokDateKey(selectedDate || new Date()), [selectedDate]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -39,7 +40,7 @@ export function DoctorOrderTable() {
       setError(null);
       try {
         const [orderData, residentData, roomData] = await Promise.all([
-          doctorOrderService.getOverview(),
+          doctorOrderService.getOverview(selectedDateKey),
           residentService.getAll(),
           roomService.getAll(),
         ]);
@@ -54,7 +55,7 @@ export function DoctorOrderTable() {
     };
 
     void loadData();
-  }, []);
+  }, [selectedDateKey]);
 
   const residentById = useMemo(() => {
     return new Map(
@@ -152,7 +153,7 @@ export function DoctorOrderTable() {
         });
       }
 
-      const refreshed = await doctorOrderService.getOverview();
+      const refreshed = await doctorOrderService.getOverview(selectedDateKey);
       setOrders(refreshed || []);
       setCurrentPage(1);
       handleModalClose();
@@ -217,6 +218,7 @@ export function DoctorOrderTable() {
           onDateChange={handleDateChange}
           sortOrder={sortOrder}
           onSortOrderChange={handleSortOrderChange}
+          showClearButton={false}
         />
 
         <button

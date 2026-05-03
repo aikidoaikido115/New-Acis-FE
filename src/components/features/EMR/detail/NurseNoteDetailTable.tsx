@@ -10,7 +10,7 @@ import { ContactInformationModal } from "@/components/shared/contact/ContactInfo
 import { resolveContactInfo } from "@/components/shared/contact/contactDirectory";
 import { nurseNoteService } from "@/services/nurse-note.service";
 import type { NurseNote } from "@/types/emr-notes";
-import { filterAndSortByTimeline, formatBangkokDateTime, type TimelineSortOrder } from "../note-timeline";
+import { filterAndSortByTimeline, formatBangkokDateKey, formatBangkokDateTime, type TimelineSortOrder } from "../note-timeline";
 
 interface NurseNoteDetailTableProps {
   patientId: string;
@@ -22,11 +22,12 @@ export function NurseNoteDetailTable({ patientId }: NurseNoteDetailTableProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<NurseNote | null>(null);
   const [notes, setNotes] = useState<NurseNote[]>([]);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [sortOrder, setSortOrder] = useState<TimelineSortOrder>("newest");
   const [activeContactName, setActiveContactName] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const selectedDateKey = useMemo(() => formatBangkokDateKey(selectedDate || new Date()), [selectedDate]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -39,7 +40,7 @@ export function NurseNoteDetailTable({ patientId }: NurseNoteDetailTableProps) {
       setIsLoading(true);
       setError(null);
       try {
-        const data = await nurseNoteService.getByResidentAll(patientId);
+        const data = await nurseNoteService.getByResidentAll(patientId, selectedDateKey);
         setNotes(data || []);
       } catch {
         setError("ไม่สามารถโหลดบันทึกพยาบาลได้");
@@ -49,7 +50,7 @@ export function NurseNoteDetailTable({ patientId }: NurseNoteDetailTableProps) {
     };
 
     void loadData();
-  }, [patientId]);
+  }, [patientId, selectedDateKey]);
 
   const filteredNotes = useMemo(() => {
     return filterAndSortByTimeline(notes, selectedDate, sortOrder);
@@ -84,7 +85,7 @@ export function NurseNoteDetailTable({ patientId }: NurseNoteDetailTableProps) {
         });
       }
 
-      const refreshed = await nurseNoteService.getByResidentAll(patientId);
+      const refreshed = await nurseNoteService.getByResidentAll(patientId, selectedDateKey);
       setNotes(refreshed || []);
       handleModalClose();
       showToast({
@@ -144,6 +145,7 @@ export function NurseNoteDetailTable({ patientId }: NurseNoteDetailTableProps) {
           onDateChange={handleDateChange}
           sortOrder={sortOrder}
           onSortOrderChange={handleSortOrderChange}
+          showClearButton={false}
         />
 
         <button 

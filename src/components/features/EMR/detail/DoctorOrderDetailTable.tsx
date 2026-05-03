@@ -10,7 +10,7 @@ import { ContactInformationModal } from "@/components/shared/contact/ContactInfo
 import { resolveContactInfo } from "@/components/shared/contact/contactDirectory";
 import { doctorOrderService } from "@/services/doctor-order.service";
 import type { DoctorOrder } from "@/types/emr-notes";
-import { filterAndSortByTimeline, formatBangkokDateTime, type TimelineSortOrder } from "../note-timeline";
+import { filterAndSortByTimeline, formatBangkokDateKey, formatBangkokDateTime, type TimelineSortOrder } from "../note-timeline";
 
 interface DoctorOrderDetailTableProps {
   patientId: string;
@@ -22,11 +22,12 @@ export function DoctorOrderDetailTable({ patientId }: DoctorOrderDetailTableProp
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState<DoctorOrder | null>(null);
   const [orders, setOrders] = useState<DoctorOrder[]>([]);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [sortOrder, setSortOrder] = useState<TimelineSortOrder>("newest");
   const [activeContactName, setActiveContactName] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const selectedDateKey = useMemo(() => formatBangkokDateKey(selectedDate || new Date()), [selectedDate]);
 
   useEffect(() => {
     const loadOrders = async () => {
@@ -39,7 +40,7 @@ export function DoctorOrderDetailTable({ patientId }: DoctorOrderDetailTableProp
       setIsLoading(true);
       setError(null);
       try {
-        const data = await doctorOrderService.getByResidentAll(patientId);
+        const data = await doctorOrderService.getByResidentAll(patientId, selectedDateKey);
         setOrders(data || []);
       } catch {
         setError("ไม่สามารถโหลดคำสั่งแพทย์ได้");
@@ -49,7 +50,7 @@ export function DoctorOrderDetailTable({ patientId }: DoctorOrderDetailTableProp
     };
 
     void loadOrders();
-  }, [patientId]);
+  }, [patientId, selectedDateKey]);
 
   const filteredOrders = useMemo(() => {
     return filterAndSortByTimeline(orders, selectedDate, sortOrder);
@@ -92,7 +93,7 @@ export function DoctorOrderDetailTable({ patientId }: DoctorOrderDetailTableProp
         });
       }
 
-      const refreshed = await doctorOrderService.getByResidentAll(patientId);
+      const refreshed = await doctorOrderService.getByResidentAll(patientId, selectedDateKey);
       setOrders(refreshed || []);
       handleModalClose();
       showToast({
@@ -155,6 +156,7 @@ export function DoctorOrderDetailTable({ patientId }: DoctorOrderDetailTableProp
           onDateChange={handleDateChange}
           sortOrder={sortOrder}
           onSortOrderChange={handleSortOrderChange}
+          showClearButton={false}
         />
 
         <button

@@ -30,11 +30,26 @@ const slotToTimeOfDay: Record<string, string> = {
 };
 
 const timeOfDayToSlot: Record<string, string> = {
+  เช้า: "06",
   morning: "06",
+  สาย: "10",
   late_morning: "10",
+  สายๆ: "10",
   afternoon: "14",
+  บ่าย: "14",
+  บ่ายแก่: "14",
+  เย็น: "18",
   evening: "18",
+  กลางคืน: "22",
   night: "22",
+};
+
+const slotToLabel: Record<string, string> = {
+  "06": "06:00",
+  "10": "10:00",
+  "14": "14:00",
+  "18": "18:00",
+  "22": "22:00",
 };
 
 type MatrixDraft = {
@@ -903,30 +918,30 @@ export function VitalSignsDetailTable({ patientId, selectedDate }: VitalSignsDet
                     {isSlotLoading ? <span className="text-[9px] text-gray-500">กำลังโหลดข้อมูล...</span> : null}
                   </div>
                 </td>
-                <td className="py-2 px-1 text-center"><input type="number" inputMode="decimal" value={draft.temperature} onChange={(event) => handleDraftChange("temperature", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("temperature"))} /></td>
-                <td className="py-2 px-1 text-center"><input type="number" inputMode="decimal" value={draft.heartRate} onChange={(event) => handleDraftChange("heartRate", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("heartRate"))} /></td>
+                <td className="py-2 px-1 text-center"><input type="number" inputMode="decimal" placeholder="36.5" value={draft.temperature} onChange={(event) => handleDraftChange("temperature", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("temperature"))} /></td>
+                <td className="py-2 px-1 text-center"><input type="number" inputMode="decimal" placeholder="72" value={draft.heartRate} onChange={(event) => handleDraftChange("heartRate", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("heartRate"))} /></td>
                 <td className="py-2 px-1 text-center">
                   <div className="flex items-center justify-center gap-1">
-                    <input type="number" inputMode="decimal" value={draft.bloodPressureSystolic} onChange={(event) => handleDraftChange("bloodPressureSystolic", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("bloodPressureSystolic"))} />
+                    <input type="number" inputMode="decimal" placeholder="120" value={draft.bloodPressureSystolic} onChange={(event) => handleDraftChange("bloodPressureSystolic", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("bloodPressureSystolic"))} />
                     <span className="text-[10px] text-gray-400">/</span>
-                    <input type="number" inputMode="decimal" value={draft.bloodPressureDiastolic} onChange={(event) => handleDraftChange("bloodPressureDiastolic", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("bloodPressureDiastolic"))} />
+                    <input type="number" inputMode="decimal" placeholder="80" value={draft.bloodPressureDiastolic} onChange={(event) => handleDraftChange("bloodPressureDiastolic", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("bloodPressureDiastolic"))} />
                   </div>
                 </td>
-                <td className="py-2 px-1 text-center"><input type="number" inputMode="decimal" value={draft.oxygenSaturation} onChange={(event) => handleDraftChange("oxygenSaturation", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("oxygenSaturation"))} /></td>
-                <td className="py-2 px-1 text-center"><input type="number" inputMode="decimal" value={draft.breathingRate} onChange={(event) => handleDraftChange("breathingRate", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("breathingRate"))} /></td>
-                <td className="py-2 px-1 text-center"><input type="number" inputMode="decimal" value={draft.bloodGlucose} onChange={(event) => handleDraftChange("bloodGlucose", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("bloodGlucose"))} /></td>
-                <td className="py-2 px-1 text-center"><input type="number" inputMode="decimal" value={draft.fluidIn} onChange={(event) => handleDraftChange("fluidIn", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("fluidIn"))} /></td>
-                <td className="py-2 px-1 text-center"><input type="number" inputMode="decimal" value={draft.fluidOut} onChange={(event) => handleDraftChange("fluidOut", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("fluidOut"))} /></td>
+                <td className="py-2 px-1 text-center"><input type="number" inputMode="decimal" placeholder="98" value={draft.oxygenSaturation} onChange={(event) => handleDraftChange("oxygenSaturation", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("oxygenSaturation"))} /></td>
+                <td className="py-2 px-1 text-center"><input type="number" inputMode="decimal" placeholder="16" value={draft.breathingRate} onChange={(event) => handleDraftChange("breathingRate", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("breathingRate"))} /></td>
+                <td className="py-2 px-1 text-center"><input type="number" inputMode="decimal" placeholder="110" value={draft.bloodGlucose} onChange={(event) => handleDraftChange("bloodGlucose", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("bloodGlucose"))} /></td>
+                <td className="py-2 px-1 text-center"><input type="number" inputMode="decimal" placeholder="250" value={draft.fluidIn} onChange={(event) => handleDraftChange("fluidIn", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("fluidIn"))} /></td>
+                <td className="py-2 px-1 text-center"><input type="number" inputMode="decimal" placeholder="200" value={draft.fluidOut} onChange={(event) => handleDraftChange("fluidOut", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("fluidOut"))} /></td>
                 <td className="py-2 px-1 text-center">
                   <div className="flex items-center justify-center gap-1">
-                    <input type="number" inputMode="decimal" value={draft.urineOutput} onChange={(event) => handleDraftChange("urineOutput", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("urineOutput"))} />
+                    <input type="number" inputMode="decimal" placeholder="1" value={draft.urineOutput} onChange={(event) => handleDraftChange("urineOutput", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("urineOutput"))} />
                     <button type="button" onClick={() => handleDraftChange("urineType", draft.urineType === "times" ? "ml" : "times")} className="rounded border border-gray-300 bg-white px-1.5 py-1 text-[9px] text-gray-600 hover:bg-gray-50" title="สลับหน่วยปัสสาวะ">
                       {draft.urineType === "times" ? "ครั้ง" : "มล."}
                     </button>
                   </div>
                 </td>
-                <td className="py-2 px-1 text-center"><input type="number" inputMode="decimal" value={draft.stool} onChange={(event) => handleDraftChange("stool", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("stool"))} /></td>
-                <td className="py-2 px-1 text-center"><input type="number" inputMode="decimal" value={draft.diaperChange} onChange={(event) => handleDraftChange("diaperChange", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("diaperChange"))} /></td>
+                <td className="py-2 px-1 text-center"><input type="number" inputMode="decimal" placeholder="0" value={draft.stool} onChange={(event) => handleDraftChange("stool", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("stool"))} /></td>
+                <td className="py-2 px-1 text-center"><input type="number" inputMode="decimal" placeholder="0" value={draft.diaperChange} onChange={(event) => handleDraftChange("diaperChange", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("diaperChange"))} /></td>
                 <td className="py-3 px-2 text-center">
                   <button type="button" onClick={() => void handleSave()} disabled={isSaving || isSlotLoading || !hasUnsavedChanges} className="rounded bg-blue-500 px-2 py-1 text-[10px] font-medium text-white hover:bg-blue-600 disabled:opacity-60">
                     {isSaving ? "กำลังบันทึก" : "บันทึก"}
@@ -951,14 +966,12 @@ export function VitalSignsDetailTable({ patientId, selectedDate }: VitalSignsDet
                 </tr>
               ) : (
                 filteredRows.map((row) => {
-                  const referenceTime = row.vital?.created_at || row.lab?.created_at || row.createdAt;
-                  const date = new Date(referenceTime);
-                  const dateText = date.toLocaleDateString("th-TH");
-                  const timeText = date.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" });
+                  const displayDateText = row.dateKey;
+                  const displayTimeText = slotToLabel[row.slot] || row.slot;
 
                   return (
                     <tr key={row.key} className="bg-white hover:bg-gray-50 transition-colors" style={{ borderBottom: "1px solid rgba(103, 103, 103, 0.48)" }}>
-                      <td className="py-3 px-2 text-[11px] text-gray-900">{dateText} {timeText}</td>
+                      <td className="py-3 px-2 text-[11px] text-gray-900">{displayDateText} {displayTimeText}</td>
                       <td className={`py-2 px-2 text-center text-xs ${isAbnormalTemperature(row.vital?.temperature) ? "text-red-500 font-medium" : "text-gray-900"}`}>{asText(row.vital?.temperature)}</td>
                       <td className="py-2 px-2 text-center text-xs text-gray-900">{asText(row.vital?.heart_rate)}</td>
                       <td className={`py-2 px-2 text-center text-xs ${isAbnormalPressure(row.vital?.blood_pressure_systolic, row.vital?.blood_pressure_diastolic) ? "text-red-500 font-medium" : "text-gray-900"}`}>{asBloodPressure(row.vital?.blood_pressure_systolic, row.vital?.blood_pressure_diastolic)}</td>
@@ -1003,21 +1016,21 @@ export function VitalSignsDetailTable({ patientId, selectedDate }: VitalSignsDet
           </div>
 
           <div className="grid grid-cols-2 gap-2">
-            <label className="text-[11px] text-gray-600">อุณหภูมิ <input type="number" inputMode="decimal" value={draft.temperature} onChange={(event) => handleDraftChange("temperature", event.target.value)} onKeyDown={handleInputKeyDown} className={`mt-1 w-full ${getInputClassName(abnormalDraftKeys.has("temperature"))}`} /></label>
-            <label className="text-[11px] text-gray-600">ชีพจร <input type="number" inputMode="decimal" value={draft.heartRate} onChange={(event) => handleDraftChange("heartRate", event.target.value)} onKeyDown={handleInputKeyDown} className={`mt-1 w-full ${getInputClassName(abnormalDraftKeys.has("heartRate"))}`} /></label>
-            <label className="text-[11px] text-gray-600">ความดันบน <input type="number" inputMode="decimal" value={draft.bloodPressureSystolic} onChange={(event) => handleDraftChange("bloodPressureSystolic", event.target.value)} onKeyDown={handleInputKeyDown} className={`mt-1 w-full ${getInputClassName(abnormalDraftKeys.has("bloodPressureSystolic"))}`} /></label>
-            <label className="text-[11px] text-gray-600">ความดันล่าง <input type="number" inputMode="decimal" value={draft.bloodPressureDiastolic} onChange={(event) => handleDraftChange("bloodPressureDiastolic", event.target.value)} onKeyDown={handleInputKeyDown} className={`mt-1 w-full ${getInputClassName(abnormalDraftKeys.has("bloodPressureDiastolic"))}`} /></label>
-            <label className="text-[11px] text-gray-600">O2 <input type="number" inputMode="decimal" value={draft.oxygenSaturation} onChange={(event) => handleDraftChange("oxygenSaturation", event.target.value)} onKeyDown={handleInputKeyDown} className={`mt-1 w-full ${getInputClassName(abnormalDraftKeys.has("oxygenSaturation"))}`} /></label>
-            <label className="text-[11px] text-gray-600">หายใจ <input type="number" inputMode="decimal" value={draft.breathingRate} onChange={(event) => handleDraftChange("breathingRate", event.target.value)} onKeyDown={handleInputKeyDown} className={`mt-1 w-full ${getInputClassName(abnormalDraftKeys.has("breathingRate"))}`} /></label>
-            <label className="text-[11px] text-gray-600">น้ำตาล <input type="number" inputMode="decimal" value={draft.bloodGlucose} onChange={(event) => handleDraftChange("bloodGlucose", event.target.value)} onKeyDown={handleInputKeyDown} className={`mt-1 w-full ${getInputClassName(abnormalDraftKeys.has("bloodGlucose"))}`} /></label>
-            <label className="text-[11px] text-gray-600">น้ำเข้า <input type="number" inputMode="decimal" value={draft.fluidIn} onChange={(event) => handleDraftChange("fluidIn", event.target.value)} onKeyDown={handleInputKeyDown} className={`mt-1 w-full ${getInputClassName(abnormalDraftKeys.has("fluidIn"))}`} /></label>
-            <label className="text-[11px] text-gray-600">น้ำออก <input type="number" inputMode="decimal" value={draft.fluidOut} onChange={(event) => handleDraftChange("fluidOut", event.target.value)} onKeyDown={handleInputKeyDown} className={`mt-1 w-full ${getInputClassName(abnormalDraftKeys.has("fluidOut"))}`} /></label>
-            <label className="text-[11px] text-gray-600">อุจจาระ <input type="number" inputMode="decimal" value={draft.stool} onChange={(event) => handleDraftChange("stool", event.target.value)} onKeyDown={handleInputKeyDown} className={`mt-1 w-full ${getInputClassName(abnormalDraftKeys.has("stool"))}`} /></label>
-            <label className="text-[11px] text-gray-600">ผ้าอ้อม <input type="number" inputMode="decimal" value={draft.diaperChange} onChange={(event) => handleDraftChange("diaperChange", event.target.value)} onKeyDown={handleInputKeyDown} className={`mt-1 w-full ${getInputClassName(abnormalDraftKeys.has("diaperChange"))}`} /></label>
+            <label className="text-[11px] text-gray-600">อุณหภูมิ <input type="number" inputMode="decimal" placeholder="36.5" value={draft.temperature} onChange={(event) => handleDraftChange("temperature", event.target.value)} onKeyDown={handleInputKeyDown} className={`mt-1 w-full ${getInputClassName(abnormalDraftKeys.has("temperature"))}`} /></label>
+            <label className="text-[11px] text-gray-600">ชีพจร <input type="number" inputMode="decimal" placeholder="72" value={draft.heartRate} onChange={(event) => handleDraftChange("heartRate", event.target.value)} onKeyDown={handleInputKeyDown} className={`mt-1 w-full ${getInputClassName(abnormalDraftKeys.has("heartRate"))}`} /></label>
+            <label className="text-[11px] text-gray-600">ความดันบน <input type="number" inputMode="decimal" placeholder="120" value={draft.bloodPressureSystolic} onChange={(event) => handleDraftChange("bloodPressureSystolic", event.target.value)} onKeyDown={handleInputKeyDown} className={`mt-1 w-full ${getInputClassName(abnormalDraftKeys.has("bloodPressureSystolic"))}`} /></label>
+            <label className="text-[11px] text-gray-600">ความดันล่าง <input type="number" inputMode="decimal" placeholder="80" value={draft.bloodPressureDiastolic} onChange={(event) => handleDraftChange("bloodPressureDiastolic", event.target.value)} onKeyDown={handleInputKeyDown} className={`mt-1 w-full ${getInputClassName(abnormalDraftKeys.has("bloodPressureDiastolic"))}`} /></label>
+            <label className="text-[11px] text-gray-600">O2 <input type="number" inputMode="decimal" placeholder="98" value={draft.oxygenSaturation} onChange={(event) => handleDraftChange("oxygenSaturation", event.target.value)} onKeyDown={handleInputKeyDown} className={`mt-1 w-full ${getInputClassName(abnormalDraftKeys.has("oxygenSaturation"))}`} /></label>
+            <label className="text-[11px] text-gray-600">หายใจ <input type="number" inputMode="decimal" placeholder="16" value={draft.breathingRate} onChange={(event) => handleDraftChange("breathingRate", event.target.value)} onKeyDown={handleInputKeyDown} className={`mt-1 w-full ${getInputClassName(abnormalDraftKeys.has("breathingRate"))}`} /></label>
+            <label className="text-[11px] text-gray-600">น้ำตาล <input type="number" inputMode="decimal" placeholder="110" value={draft.bloodGlucose} onChange={(event) => handleDraftChange("bloodGlucose", event.target.value)} onKeyDown={handleInputKeyDown} className={`mt-1 w-full ${getInputClassName(abnormalDraftKeys.has("bloodGlucose"))}`} /></label>
+            <label className="text-[11px] text-gray-600">น้ำเข้า <input type="number" inputMode="decimal" placeholder="250" value={draft.fluidIn} onChange={(event) => handleDraftChange("fluidIn", event.target.value)} onKeyDown={handleInputKeyDown} className={`mt-1 w-full ${getInputClassName(abnormalDraftKeys.has("fluidIn"))}`} /></label>
+            <label className="text-[11px] text-gray-600">น้ำออก <input type="number" inputMode="decimal" placeholder="200" value={draft.fluidOut} onChange={(event) => handleDraftChange("fluidOut", event.target.value)} onKeyDown={handleInputKeyDown} className={`mt-1 w-full ${getInputClassName(abnormalDraftKeys.has("fluidOut"))}`} /></label>
+            <label className="text-[11px] text-gray-600">อุจจาระ <input type="number" inputMode="decimal" placeholder="0" value={draft.stool} onChange={(event) => handleDraftChange("stool", event.target.value)} onKeyDown={handleInputKeyDown} className={`mt-1 w-full ${getInputClassName(abnormalDraftKeys.has("stool"))}`} /></label>
+            <label className="text-[11px] text-gray-600">ผ้าอ้อม <input type="number" inputMode="decimal" placeholder="0" value={draft.diaperChange} onChange={(event) => handleDraftChange("diaperChange", event.target.value)} onKeyDown={handleInputKeyDown} className={`mt-1 w-full ${getInputClassName(abnormalDraftKeys.has("diaperChange"))}`} /></label>
             <div className="text-[11px] text-gray-600">
               ปัสสาวะ
               <div className="mt-1 flex items-center gap-1">
-                <input type="number" inputMode="decimal" value={draft.urineOutput} onChange={(event) => handleDraftChange("urineOutput", event.target.value)} onKeyDown={handleInputKeyDown} className={`w-full ${getInputClassName(abnormalDraftKeys.has("urineOutput"))}`} />
+                <input type="number" inputMode="decimal" placeholder="1" value={draft.urineOutput} onChange={(event) => handleDraftChange("urineOutput", event.target.value)} onKeyDown={handleInputKeyDown} className={`w-full ${getInputClassName(abnormalDraftKeys.has("urineOutput"))}`} />
                 <button type="button" onClick={() => handleDraftChange("urineType", draft.urineType === "times" ? "ml" : "times")} className="rounded border border-gray-300 bg-white px-2 py-1 text-[10px] text-gray-700">{draft.urineType === "times" ? "ครั้ง" : "มล."}</button>
               </div>
             </div>
@@ -1039,11 +1052,10 @@ export function VitalSignsDetailTable({ patientId, selectedDate }: VitalSignsDet
           </div>
         ) : (
           filteredRows.map((row) => {
-            const referenceTime = row.vital?.created_at || row.lab?.created_at || row.createdAt;
-            const date = new Date(referenceTime);
+            const displayTimeText = slotToLabel[row.slot] || row.slot;
             return (
               <div key={row.key} className="rounded-lg border border-gray-300 bg-white px-3 py-3">
-                <p className="text-sm font-medium text-gray-900">{date.toLocaleDateString("th-TH")} {date.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })}</p>
+                <p className="text-sm font-medium text-gray-900">{row.dateKey} {displayTimeText}</p>
                 <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-gray-700">
                   <span>อุณหภูมิ: {asText(row.vital?.temperature)}</span>
                   <span>ชีพจร: {asText(row.vital?.heart_rate)}</span>

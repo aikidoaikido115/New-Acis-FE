@@ -10,7 +10,7 @@ import { ContactInformationModal } from "@/components/shared/contact/ContactInfo
 import { resolveContactInfo } from "@/components/shared/contact/contactDirectory";
 import { relativeNoteService } from "@/services/relative-note.service";
 import type { RelativeNote } from "@/types/emr-notes";
-import { filterAndSortByTimeline, formatBangkokDateTime, type TimelineSortOrder } from "../note-timeline";
+import { filterAndSortByTimeline, formatBangkokDateKey, formatBangkokDateTime, type TimelineSortOrder } from "../note-timeline";
 
 interface RelativeNoteDetailTableProps {
   patientId: string;
@@ -22,11 +22,12 @@ export function RelativeNoteDetailTable({ patientId }: RelativeNoteDetailTablePr
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<RelativeNote | null>(null);
   const [notes, setNotes] = useState<RelativeNote[]>([]);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [sortOrder, setSortOrder] = useState<TimelineSortOrder>("newest");
   const [activeContactName, setActiveContactName] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const selectedDateKey = useMemo(() => formatBangkokDateKey(selectedDate || new Date()), [selectedDate]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -39,7 +40,7 @@ export function RelativeNoteDetailTable({ patientId }: RelativeNoteDetailTablePr
       setIsLoading(true);
       setError(null);
       try {
-        const data = await relativeNoteService.getByResidentAll(patientId);
+        const data = await relativeNoteService.getByResidentAll(patientId, selectedDateKey);
         setNotes(data || []);
       } catch {
         setError("ไม่สามารถโหลดโน้ตญาติได้");
@@ -49,7 +50,7 @@ export function RelativeNoteDetailTable({ patientId }: RelativeNoteDetailTablePr
     };
 
     void loadData();
-  }, [patientId]);
+  }, [patientId, selectedDateKey]);
 
   const filteredNotes = useMemo(() => {
     return filterAndSortByTimeline(notes, selectedDate, sortOrder);
@@ -82,7 +83,7 @@ export function RelativeNoteDetailTable({ patientId }: RelativeNoteDetailTablePr
         });
       }
 
-      const refreshed = await relativeNoteService.getByResidentAll(patientId);
+      const refreshed = await relativeNoteService.getByResidentAll(patientId, selectedDateKey);
       setNotes(refreshed || []);
       handleModalClose();
       showToast({
@@ -142,6 +143,7 @@ export function RelativeNoteDetailTable({ patientId }: RelativeNoteDetailTablePr
           onDateChange={handleDateChange}
           sortOrder={sortOrder}
           onSortOrderChange={handleSortOrderChange}
+          showClearButton={false}
         />
 
         <button
