@@ -191,11 +191,11 @@ export function AppNavbar({
         </div>
 
         <div className="flex items-center gap-5">
-          {isKitchenStaff ? (
+          {/* {isKitchenStaff ? (
             <KitchenNotificationBell />
           ) : (
             <NotificationBell notificationsCount={notificationsCount} />
-          )}
+          )} */}
 
           <div className="relative" ref={menuRef}>
             <button
