@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { X, Clock } from "lucide-react";
 import type { RoutineMedication } from "../medical.types";
+import type { TimeOfDaySlot } from "./AddMedicationModal";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DatePicker } from "@/components/ui/date-picker";
 
@@ -21,7 +22,7 @@ export interface EditMedicationFormData {
   amount: string;
   amountUnit: string;
   frequencyPerDay: number;
-  route: "เช้า" | "กลางวัน" | "เย็น" | "ก่อนนอน";
+  route: TimeOfDaySlot[];
   medicationType: "ประจำ" | "ชั่วคราว";
   administrationTiming: "ก่อนอาหาร" | "หลังอาหาร" | "พร้อมอาหาร" | "ก่อนนอน";
   note: string;
@@ -36,13 +37,24 @@ const OTHER_UNIT_VALUE = "__other__";
 const STANDARD_AMOUNT_UNITS = ["เม็ด", "แคปซูล", "มล.", "หยด", "พัฟ", "ซอง", "ขวด", "IU"] as const;
 const DOSE_PATTERN = /^([0-9]+(?:\.[0-9]+)?)\s*(mcg|mg|g|kg|ml|l|iu)$/i;
 
-const asTimeSlot = (value?: string): (typeof TIME_SLOTS)[number] => {
-  if (!value) {
-    return "เช้า";
-  }
+const ALL_TIME_SLOTS: TimeOfDaySlot[] = ["เช้า", "กลางวัน", "เย็น", "ก่อนนอน"];
 
-  const match = TIME_SLOTS.find((slot) => slot === value.trim());
-  return match || "เช้า";
+const parseTimeOfDay = (value?: string): TimeOfDaySlot[] => {
+  if (!value) return ["เช้า"];
+  const valid = new Set<string>(ALL_TIME_SLOTS);
+  // Handle English aliases too
+  const aliasMap: Record<string, TimeOfDaySlot> = {
+    morning: "เช้า",
+    noon: "กลางวัน",
+    evening: "เย็น",
+    bedtime: "ก่อนนอน",
+  };
+  const result: TimeOfDaySlot[] = value
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .map((s) => (aliasMap[s] as TimeOfDaySlot) ?? (valid.has(s) ? (s as TimeOfDaySlot) : null))
+    .filter((s): s is TimeOfDaySlot => s !== null);
+  return result.length > 0 ? result : ["เช้า"];
 };
 
 const asAdministrationTiming = (value?: string): EditMedicationFormData["administrationTiming"] => {
@@ -111,7 +123,7 @@ const toInitialFormData = (medication: RoutineMedication): EditMedicationFormDat
   amount: medication.amount,
   amountUnit: medication.amountUnit,
   frequencyPerDay: medication.frequencyPerDay,
-  route: asTimeSlot(medication.timeOfDay),
+  route: parseTimeOfDay(medication.timeOfDay),
   medicationType: medication.takeType === "as_needed" ? "ชั่วคราว" : "ประจำ",
   administrationTiming: asAdministrationTiming(medication.timing),
   note: medication.description || "",
@@ -518,28 +530,42 @@ export function EditMedicationModal({
               {errors.frequencyPerDay ? <p className="mt-1 text-xs text-red-500">{errors.frequencyPerDay}</p> : null}
             </div>
 
-            {/* Frequency/Route - Icon Buttons */}
+            {/* Time of Day - Multi-select */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                ความถี่/วัน <span className="text-red-500">*</span>
+                ช่วงเวลาให้ยา <span className="text-red-500">*</span>
+                <span className="ml-1 text-xs text-gray-400 font-normal">(เลือกได้หลายช่วง)</span>
               </label>
               <div className="grid grid-cols-4 gap-2">
-                {(["เช้า", "กลางวัน", "เย็น", "ก่อนนอน"] as const).map((route) => (
-                  <button
-                    key={route}
-                    type="button"
-                    onClick={() => updateField("route", route)}
-                    className={`flex flex-col items-center justify-center px-3 py-2 border rounded-lg text-sm font-medium transition-colors ${
-                      formData.route === route
-                        ? "bg-blue-500 text-white border-blue-500"
-                        : "bg-white text-black border-gray-300 hover:bg-gray-50"
-                    }`}
-                  >
-                    <Clock className="w-5 h-5 mb-1" />
-                    <span>{route}</span>
-                  </button>
-                ))}
+                {ALL_TIME_SLOTS.map((slot) => {
+                  const isSelected = formData.route.includes(slot);
+                  return (
+                    <button
+                      key={slot}
+                      type="button"
+                      onClick={() => {
+                        const next = isSelected
+                          ? formData.route.filter((r) => r !== slot)
+                          : [...formData.route, slot];
+                        updateField("route", next.length > 0 ? next : [slot]);
+                      }}
+                      className={`flex flex-col items-center justify-center px-3 py-2 border rounded-lg text-sm font-medium transition-colors ${
+                        isSelected
+                          ? "bg-blue-500 text-white border-blue-500"
+                          : "bg-white text-black border-gray-300 hover:bg-gray-50"
+                      }`}
+                    >
+                      <Clock className="w-5 h-5 mb-1" />
+                      <span>{slot}</span>
+                    </button>
+                  );
+                })}
               </div>
+              {formData.route.length > 0 && (
+                <p className="mt-1.5 text-xs text-blue-600">
+                  เลือก: {formData.route.join(", ")}
+                </p>
+              )}
             </div>
 
             {/* Medication Type */}

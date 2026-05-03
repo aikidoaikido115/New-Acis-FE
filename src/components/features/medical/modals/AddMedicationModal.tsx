@@ -11,13 +11,15 @@ interface AddMedicationModalProps {
   onSubmit: (data: AddMedicationFormData) => void;
 }
 
+export type TimeOfDaySlot = "เช้า" | "กลางวัน" | "เย็น" | "ก่อนนอน";
+
 export interface AddMedicationFormData {
   medicationName: string;
   dosage: string;
   amount: string;
   amountUnit: string;
   frequencyPerDay: number;
-  route: "เช้า" | "กลางวัน" | "เย็น" | "ก่อนนอน";
+  route: TimeOfDaySlot[];
   medicationType: "ประจำ" | "ชั่วคราว";
   administrationTiming: "ก่อนอาหาร" | "หลังอาหาร" | "พร้อมอาหาร" | "ก่อนนอน";
   note: string;
@@ -30,13 +32,15 @@ type AddMedicationFormErrors = Partial<Record<keyof AddMedicationFormData | "cus
 const OTHER_UNIT_VALUE = "__other__";
 const STANDARD_AMOUNT_UNITS = ["เม็ด", "แคปซูล", "มล.", "หยด", "พัฟ", "ซอง", "ขวด", "IU"] as const;
 
+const TIME_OF_DAY_SLOTS: TimeOfDaySlot[] = ["เช้า", "กลางวัน", "เย็น", "ก่อนนอน"];
+
 const DEFAULT_FORM_DATA: AddMedicationFormData = {
   medicationName: "",
   dosage: "",
   amount: "1",
   amountUnit: "เม็ด",
   frequencyPerDay: 1,
-  route: "เช้า",
+  route: ["เช้า"],
   medicationType: "ประจำ",
   administrationTiming: "หลังอาหาร",
   note: "",
@@ -480,28 +484,42 @@ export function AddMedicationModal({ isOpen, onClose, onSubmit }: AddMedicationM
             {errors.frequencyPerDay ? <p className="mt-1 text-xs text-red-500">{errors.frequencyPerDay}</p> : null}
           </div>
 
-          {/* Frequency/Route - Icon Buttons */}
+          {/* Time of Day - Multi-select */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              ความถี่/วัน <span className="text-red-500">*</span>
+              ช่วงเวลาให้ยา <span className="text-red-500">*</span>
+              <span className="ml-1 text-xs text-gray-400 font-normal">(เลือกได้หลายช่วง)</span>
             </label>
             <div className="grid grid-cols-4 gap-2">
-              {(["เช้า", "กลางวัน", "เย็น", "ก่อนนอน"] as const).map((route) => (
-                <button
-                  key={route}
-                  type="button"
-                  onClick={() => updateField("route", route)}
-                  className={`flex flex-col items-center justify-center px-3 py-2 border rounded-lg text-sm font-medium transition-colors ${
-                    formData.route === route
-                      ? "bg-blue-500 text-white border-blue-500"
-                      : "bg-white text-black border-gray-300 hover:bg-gray-50"
-                  }`}
-                >
-                  <Clock className="w-5 h-5 mb-1" />
-                  <span>{route}</span>
-                </button>
-              ))}
+              {TIME_OF_DAY_SLOTS.map((slot) => {
+                const isSelected = formData.route.includes(slot);
+                return (
+                  <button
+                    key={slot}
+                    type="button"
+                    onClick={() => {
+                      const next = isSelected
+                        ? formData.route.filter((r) => r !== slot)
+                        : [...formData.route, slot];
+                      updateField("route", next.length > 0 ? next : [slot]);
+                    }}
+                    className={`flex flex-col items-center justify-center px-3 py-2 border rounded-lg text-sm font-medium transition-colors ${
+                      isSelected
+                        ? "bg-blue-500 text-white border-blue-500"
+                        : "bg-white text-black border-gray-300 hover:bg-gray-50"
+                    }`}
+                  >
+                    <Clock className="w-5 h-5 mb-1" />
+                    <span>{slot}</span>
+                  </button>
+                );
+              })}
             </div>
+            {formData.route.length > 0 && (
+              <p className="mt-1.5 text-xs text-blue-600">
+                เลือก: {formData.route.join(", ")}
+              </p>
+            )}
           </div>
 
           {/* Medication Type */}
