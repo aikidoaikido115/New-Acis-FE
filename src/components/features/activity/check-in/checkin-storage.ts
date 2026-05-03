@@ -14,6 +14,7 @@ export type CheckInSession = {
   endTime?: string;
   residents: CheckInResident[];
   selectedIds: string[];
+  initialSelectedIds?: string[];
   photos: Record<string, string>;
   rejectedIds: string[];
   updatedAt: string;

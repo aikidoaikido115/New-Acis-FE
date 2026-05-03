@@ -1,4 +1,3 @@
-// src/components/shared/app-footer.tsx
 import Link from "next/link";
 
 export function AppFooter() {

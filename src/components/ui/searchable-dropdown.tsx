@@ -60,8 +60,12 @@ export function SearchableDropdown({
 
   const selectedOption = options.find((opt) => opt.value === value);
 
-  // Filter options based on search query
-  const filteredOptions = options.filter((option) =>
+  const sortedOptions = [...options].sort((a, b) => {
+    return a.label.localeCompare(b.label, 'th', { numeric: true });
+  });
+
+  // Filter options based on search query (ใช้ sortedOptions แทน options)
+  const filteredOptions = sortedOptions.filter((option) =>
     option.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
     option.value.toLowerCase().includes(searchQuery.toLowerCase())
   );

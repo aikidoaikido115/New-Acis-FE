@@ -31,10 +31,6 @@ export function MealHistoryMobileModal({ row, onClose }: MealHistoryMobileModalP
 
         <div className="space-y-3 text-sm">
           <div>
-            <span className="block text-xs font-medium text-slate-400 mb-0.5">หมายเหตุ</span>
-            <span className="text-slate-800">{row.notes || "-"}</span>
-          </div>
-          <div>
             <span className="block text-xs font-medium text-slate-400 mb-0.5">ผู้ทำรายการ</span>
             <span className="text-slate-800">{row.createdBy}</span>
           </div>

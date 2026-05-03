@@ -9,7 +9,6 @@ import {
   saveCheckInSession,
   type CheckInSession,
 } from "@/components/features/activity/check-in/checkin-storage";
-import { activityAttendanceService } from "@/services/activity-attendance.service";
 
 const formatName = (session: CheckInSession | null, residentId?: string | null) => {
   if (!session || !residentId) return "-";
@@ -32,6 +31,7 @@ export default function ActivityCheckInCameraPage() {
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     const stored = loadCheckInSession(scheduleId);
@@ -55,24 +55,6 @@ export default function ActivityCheckInCameraPage() {
     setRejectedIds(rejectedSet);
     setQueue(orderedQueue);
   }, [scheduleId, searchParams]);
-
-  useEffect(() => {
-    if (!scheduleId) return;
-    let mounted = true;
-    const checkEditable = async () => {
-      try {
-        const att = await activityAttendanceService.getByScheduleId(scheduleId);
-        if (!mounted) return;
-        if (att && !att.can_edit) {
-          router.push(`/activity/check-in/${scheduleId}/review?view=history`);
-        }
-      } catch (err) {
-        // ignore
-      }
-    };
-    void checkEditable();
-    return () => { mounted = false; };
-  }, [scheduleId]);
 
   useEffect(() => {
     if (!navigator?.mediaDevices?.getUserMedia) return;
@@ -161,6 +143,26 @@ export default function ActivityCheckInCameraPage() {
     setIsRejectModalOpen(false);
   };
 
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    if (!file || !currentId) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result !== "string") return;
+      setPhotos((prev) => ({ ...prev, [currentId]: result }));
+      setQueue((prev) => prev.slice(1));
+      input.value = "";
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
   const currentName = formatName(session, currentId);
   const nextName = formatName(session, nextId);
 
@@ -205,15 +207,37 @@ export default function ActivityCheckInCameraPage() {
           {/* ส่วนปุ่มและข้อความถัดไป */}
           <div className="bg-white px-5 py-5">
             <div className="flex flex-wrap items-center justify-between gap-4">
-              <button
-                type="button"
-                onClick={() => setIsRejectModalOpen(true)}
-                className="inline-flex items-center gap-2 rounded-lg bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-700"
-              >
-                <Hand className="h-4 w-4" />
-                <span className="hidden sm:inline">ไม่สะดวก / </span>
-                <span>ปฏิเสธ</span>
-              </button>
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsRejectModalOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-lg bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-700"
+                >
+                  <Hand className="h-4 w-4" />
+                  <span className="hidden sm:inline">ไม่สะดวก / </span>
+                  <span>ปฏิเสธ</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="justify-center inline-flex items-center gap-2 rounded-lg bg-green-500 px-4 py-2 text-sm font-semibold text-white"
+                  title="อัปโหลดรูปภาพจากไฟล์"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+                  </svg>
+                  <span>อัปโหลดรูปภาพ</span>
+                </button>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+              </div>
 
               <button
                 type="button"

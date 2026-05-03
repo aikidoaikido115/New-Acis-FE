@@ -6,6 +6,7 @@ export interface Menu {
 
 export interface MealPlan {
   id: string;
+  meal_plan_id?: string;
   menu_id: string;
   backup_menu_id?: string;
   main_amount: number;
@@ -14,6 +15,8 @@ export interface MealPlan {
   is_allergy?: boolean;
   created_at?: string;
   updated_at?: string;
+  created_by_staff_id?: string;
+  staff_name?: string;
   menu?: Menu;
 }
 
