@@ -1,6 +1,10 @@
 import apiClient, { ApiResponse } from '@/lib/axios.ts/api-client';
 import type { DoctorOrder } from '@/types/emr-notes';
 
+function buildDateQuery(dateInput?: string): string {
+  return dateInput ? `?date=${encodeURIComponent(dateInput)}` : '';
+}
+
 export interface CreateDoctorOrderRequest {
   resident_id: string;
   order_date?: string;
@@ -25,14 +29,14 @@ export interface UpdateDoctorOrderRequest {
 }
 
 class DoctorOrderService {
-  async getOverview(): Promise<DoctorOrder[]> {
-    const response = await apiClient.get<ApiResponse<DoctorOrder[]>>('/api/emr/doctor-orders/overview');
+  async getOverview(dateInput?: string): Promise<DoctorOrder[]> {
+    const response = await apiClient.get<ApiResponse<DoctorOrder[]>>(`/api/emr/doctor-orders/overview${buildDateQuery(dateInput)}`);
     return response.data.result;
   }
 
-  async getByResidentAll(residentId: string): Promise<DoctorOrder[]> {
+  async getByResidentAll(residentId: string, dateInput?: string): Promise<DoctorOrder[]> {
     const response = await apiClient.get<ApiResponse<DoctorOrder[]>>(
-      `/api/emr/doctor-orders/resident/all?resident_id=${encodeURIComponent(residentId)}`
+      `/api/emr/doctor-orders/resident/all?resident_id=${encodeURIComponent(residentId)}${dateInput ? `&date=${encodeURIComponent(dateInput)}` : ''}`
     );
     return response.data.result;
   }
