@@ -5,6 +5,27 @@ import type { MedicationHistory } from "../medical.types";
 import { ContactInformationModal } from "@/components/shared/contact/ContactInformationModal";
 import { resolveContactInfo } from "@/components/shared/contact/contactDirectory";
 
+const formatHistoryDateTime = (dateText?: string | null): string => {
+  if (!dateText) {
+    return "-";
+  }
+
+  const date = new Date(dateText);
+  if (Number.isNaN(date.getTime())) {
+    return "-";
+  }
+
+  return `${date.toLocaleDateString("th-TH", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  })} ${date.toLocaleTimeString("th-TH", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  })}`;
+};
+
 interface HistoryTableProps {
   history: MedicationHistory[];
 }
@@ -37,7 +58,9 @@ export function HistoryTable({ history }: HistoryTableProps) {
           ) : (
             history.map((entry) => (
               <tr key={entry.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors align-middle">
-                <td className="py-3 px-4 text-xs sm:text-sm text-gray-700">{entry.time}</td>
+                <td className="py-3 px-4 text-xs sm:text-sm text-gray-700">
+                  {formatHistoryDateTime(entry.actionAt) || entry.time}
+                </td>
                 <td className="py-3 px-4 text-xs sm:text-sm text-gray-700">{entry.patientName}</td>
                 <td className="py-3 px-4 text-xs sm:text-sm text-gray-700">{entry.medication}</td>
                 <td className="py-3 px-4">

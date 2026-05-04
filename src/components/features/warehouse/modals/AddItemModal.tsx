@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import type {
   WarehouseCategory as ItemCategory,
   WarehouseItem } from "@/services/warehouse.service";
+import { Dropdown } from "@/components/ui/dropdown";
 import {
   WarehouseAlertDialog,
   WarehouseModalFooter,
@@ -116,19 +117,19 @@ export function AddItemModal({ existingItems, onClose, onConfirm }: AddItemModal
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 px-7 py-5">
             <div>
-              <label htmlFor="add-category" className={warehouseLabelClassName}>
+              <label className={warehouseLabelClassName}>
                 หมวดหมู่ <span className="text-[#FF495B]">*</span>
               </label>
-              <select
-                id="add-category"
+              <Dropdown
+                options={[
+                  { value: "MED", label: "ยาและเวชภัณฑ์" },
+                  { value: "EQU", label: "อุปกรณ์" },
+                  { value: "CON", label: "ของใช้ประจำวัน" },
+                ]}
                 value={formData.category}
-                onChange={(e) => setFormData((prev) => ({ ...prev, category: e.target.value as ItemCategory }))}
-                className={warehouseInputClassName}
-              >
-                <option value="MED">ยาและเวชภัณฑ์</option>
-                <option value="EQU">อุปกรณ์</option>
-                <option value="CON">ของใช้ประจำวัน</option>
-              </select>
+                onChange={(value) => setFormData((prev) => ({ ...prev, category: value as ItemCategory }))}
+                className="w-full"
+              />
             </div>
 
             <div>

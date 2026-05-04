@@ -2,7 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Clock, ArrowUpDown, ArrowUp, ArrowDown, ArrowDownWideNarrow } from "lucide-react";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Dropdown } from "@/components/ui/dropdown";
 import { useToast } from "@/components/ui/toast";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { vitalSignService } from "@/services/vital-sign.service";
 import { laboratoryValueService } from "@/services/laboratory-value.service";
 import type { LaboratoryValue } from "@/types/laboratory-value";
@@ -310,6 +313,7 @@ export function VitalSignsDetailTable({ patientId, selectedDate }: VitalSignsDet
   const [isSlotLoading, setIsSlotLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { confirm, confirmDialog } = useConfirmDialog();
 
   const effectiveDate = useMemo(() => selectedDate || new Date(), [selectedDate]);
   const selectedDateKey = useMemo(() => formatDateToISO(effectiveDate), [effectiveDate]);
@@ -718,11 +722,16 @@ export function VitalSignsDetailTable({ patientId, selectedDate }: VitalSignsDet
     }
   };
 
-  const handleSelectTimeSlot = (nextTime: string) => {
+  const handleSelectTimeSlot = async (nextTime: string) => {
     if (nextTime === selectedTime) return;
 
     if (hasUnsavedChanges) {
-      const confirmed = window.confirm("มีข้อมูลที่ยังไม่บันทึก ต้องการเปลี่ยนช่วงเวลาและละทิ้งการแก้ไขหรือไม่?");
+      const confirmed = await confirm({
+        title: "ยืนยันการเปลี่ยนช่วงเวลา",
+        message: "มีข้อมูลที่ยังไม่บันทึก ต้องการเปลี่ยนช่วงเวลาและละทิ้งการแก้ไขหรือไม่?",
+        confirmText: "เปลี่ยนเวลา",
+        cancelText: "กลับไปแก้ไข",
+      });
       if (!confirmed) return;
 
       setSlotDrafts((prev) => ({
@@ -810,7 +819,7 @@ export function VitalSignsDetailTable({ patientId, selectedDate }: VitalSignsDet
           {timeSlots.map((slot) => (
             <button
               key={slot.id}
-              onClick={() => handleSelectTimeSlot(slot.id)}
+              onClick={() => void handleSelectTimeSlot(slot.id)}
               className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all ${
                 selectedTime === slot.id
                   ? "bg-blue-500 text-white shadow-sm"
@@ -824,20 +833,34 @@ export function VitalSignsDetailTable({ patientId, selectedDate }: VitalSignsDet
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <select
+          <Dropdown
+            options={[
+              { value: "all", label: "สถานะทั้งหมด" },
+              { value: "normal", label: "ค่าปกติ" },
+              { value: "abnormal", label: "ค่าผิดปกติ" },
+            ]}
             value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value as HistoryStatusFilter)}
-            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs text-gray-700"
-          >
-            <option value="all">สถานะทั้งหมด</option>
-            <option value="normal">ค่าปกติ</option>
-            <option value="abnormal">ค่าผิดปกติ</option>
-          </select>
+            onChange={(value) => setStatusFilter(value as HistoryStatusFilter)}
+            className="w-36"
+          />
 
-          <select
+          <Dropdown
+            options={[
+              { value: "recordedAt", label: "เวลาบันทึก" },
+              { value: "temperature", label: "อุณหภูมิ" },
+              { value: "heartRate", label: "ชีพจร" },
+              { value: "bloodPressure", label: "ความดัน" },
+              { value: "oxygenSaturation", label: "O2" },
+              { value: "breathingRate", label: "หายใจ" },
+              { value: "bloodGlucose", label: "น้ำตาล" },
+              { value: "fluidIn", label: "น้ำเข้า" },
+              { value: "fluidOut", label: "น้ำออก" },
+              { value: "urineOutput", label: "ปัสสาวะ" },
+              { value: "stool", label: "อุจจาระ" },
+              { value: "diaperChange", label: "ผ้าอ้อม" },
+            ]}
             value={sortField ?? "recordedAt"}
-            onChange={(event) => {
-              const next = event.target.value;
+            onChange={(next) => {
               if (next === "recordedAt") {
                 setSortField(null);
                 return;
@@ -845,21 +868,8 @@ export function VitalSignsDetailTable({ patientId, selectedDate }: VitalSignsDet
               setSortField(next as SortField);
               setSortDirection("asc");
             }}
-            className="rounded border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700"
-          >
-            <option value="recordedAt">เวลาบันทึก</option>
-            <option value="temperature">อุณหภูมิ</option>
-            <option value="heartRate">ชีพจร</option>
-            <option value="bloodPressure">ความดัน</option>
-            <option value="oxygenSaturation">O2</option>
-            <option value="breathingRate">หายใจ</option>
-            <option value="bloodGlucose">น้ำตาล</option>
-            <option value="fluidIn">น้ำเข้า</option>
-            <option value="fluidOut">น้ำออก</option>
-            <option value="urineOutput">ปัสสาวะ</option>
-            <option value="stool">อุจจาระ</option>
-            <option value="diaperChange">ผ้าอ้อม</option>
-          </select>
+            className="w-36"
+          />
 
           <button
             type="button"
@@ -915,7 +925,7 @@ export function VitalSignsDetailTable({ patientId, selectedDate }: VitalSignsDet
                     </span>
                     {abnormalDraftKeys.size > 0 ? <span className="text-[9px] text-rose-600">มีค่าผิดปกติ</span> : null}
                     {hasUnsavedChanges ? <span className="text-[9px] text-amber-600">ยังไม่บันทึก</span> : null}
-                    {isSlotLoading ? <span className="text-[9px] text-gray-500">กำลังโหลดข้อมูล...</span> : null}
+                    {isSlotLoading ? <LoadingSpinner /> : null}
                   </div>
                 </td>
                 <td className="py-2 px-1 text-center"><input type="number" inputMode="decimal" placeholder="36.5" value={draft.temperature} onChange={(event) => handleDraftChange("temperature", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("temperature"))} /></td>
@@ -951,7 +961,9 @@ export function VitalSignsDetailTable({ patientId, selectedDate }: VitalSignsDet
 
               {isLoading ? (
                 <tr>
-                  <td colSpan={13} className="py-6 px-4 text-center text-sm text-gray-500">กำลังโหลดข้อมูล...</td>
+                  <td colSpan={13} className="py-6 px-4 text-center">
+                    <LoadingSpinner />
+                  </td>
                 </tr>
               ) : error ? (
                 <tr>
@@ -1042,7 +1054,9 @@ export function VitalSignsDetailTable({ patientId, selectedDate }: VitalSignsDet
         </div>
 
         {isLoading ? (
-          <div className="rounded-lg border border-gray-300 bg-white py-6 px-4 text-center text-sm text-gray-500">กำลังโหลดข้อมูล...</div>
+          <div className="rounded-lg border border-gray-300 bg-white py-6 px-4 text-center">
+            <LoadingSpinner />
+          </div>
         ) : error ? (
           <div className="rounded-lg border border-gray-300 bg-white py-6 px-4 text-center text-sm text-red-500">{error}</div>
         ) : filteredRows.length === 0 ? (
@@ -1083,6 +1097,7 @@ export function VitalSignsDetailTable({ patientId, selectedDate }: VitalSignsDet
             <span>ผ้าอ้อม: {daySummary.diaper || "-"}</span>
           </div>
         </div>
+        {confirmDialog}
       </div>
     </div>
   );

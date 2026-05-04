@@ -4,7 +4,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, Clock, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { Pagination } from "@/components/ui/pagination";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Dropdown } from "@/components/ui/dropdown";
 import { useToast } from "@/components/ui/toast";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { residentService } from "@/services/resident.service";
 import { vitalSignService } from "@/services/vital-sign.service";
 import { laboratoryValueService } from "@/services/laboratory-value.service";
@@ -307,6 +310,7 @@ export function VitalSignsTable({ selectedFloor = "all", selectedStatus = "all",
   const [failedRowIds, setFailedRowIds] = useState<Set<string>>(new Set());
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const { confirm, confirmDialog } = useConfirmDialog();
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -816,13 +820,18 @@ export function VitalSignsTable({ selectedFloor = "all", selectedStatus = "all",
     });
   };
 
-  const handleSelectTimeSlot = (nextTime: string) => {
+  const handleSelectTimeSlot = async (nextTime: string) => {
     if (nextTime === selectedTime) {
       return;
     }
 
     if (hasAnyDirtyRows) {
-      const confirmed = window.confirm("มีข้อมูลที่ยังไม่บันทึก ต้องการเปลี่ยนช่วงเวลาและละทิ้งการแก้ไขหรือไม่?");
+      const confirmed = await confirm({
+        title: "ยืนยันการเปลี่ยนช่วงเวลา",
+        message: "มีข้อมูลที่ยังไม่บันทึก ต้องการเปลี่ยนช่วงเวลาและละทิ้งการแก้ไขหรือไม่?",
+        confirmText: "เปลี่ยนเวลา",
+        cancelText: "กลับไปแก้ไข",
+      });
       if (!confirmed) {
         return;
       }
@@ -942,7 +951,7 @@ export function VitalSignsTable({ selectedFloor = "all", selectedStatus = "all",
           {timeSlots.map((slot) => (
             <button
               key={slot.id}
-              onClick={() => handleSelectTimeSlot(slot.id)}
+              onClick={() => void handleSelectTimeSlot(slot.id)}
               className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all ${
                 selectedTime === slot.id
                   ? "bg-blue-500 text-white shadow-sm"
@@ -969,10 +978,23 @@ export function VitalSignsTable({ selectedFloor = "all", selectedStatus = "all",
 
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-500">เรียงข้อมูล</span>
-          <select
+          <Dropdown
+            options={[
+              { value: "room", label: "ห้อง (น้อยไปมาก)" },
+              { value: "temperature", label: "อุณหภูมิ" },
+              { value: "heartRate", label: "ชีพจร" },
+              { value: "bloodPressure", label: "ความดัน" },
+              { value: "oxygenSaturation", label: "O2" },
+              { value: "breathingRate", label: "หายใจ" },
+              { value: "bloodGlucose", label: "น้ำตาล" },
+              { value: "fluidIn", label: "น้ำเข้า" },
+              { value: "fluidOut", label: "น้ำออก" },
+              { value: "urineOutput", label: "ปัสสาวะ" },
+              { value: "stool", label: "อุจจาระ" },
+              { value: "diaperChange", label: "ผ้าอ้อม" },
+            ]}
             value={sortField ?? "room"}
-            onChange={(event) => {
-              const next = event.target.value;
+            onChange={(next) => {
               setCurrentPage(1);
 
               if (next === "room") {
@@ -984,21 +1006,8 @@ export function VitalSignsTable({ selectedFloor = "all", selectedStatus = "all",
               setSortField(next as SortField);
               setSortDirection("asc");
             }}
-            className="rounded border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700"
-          >
-            <option value="room">ห้อง (น้อยไปมาก)</option>
-            <option value="temperature">อุณหภูมิ</option>
-            <option value="heartRate">ชีพจร</option>
-            <option value="bloodPressure">ความดัน</option>
-            <option value="oxygenSaturation">O2</option>
-            <option value="breathingRate">หายใจ</option>
-            <option value="bloodGlucose">น้ำตาล</option>
-            <option value="fluidIn">น้ำเข้า</option>
-            <option value="fluidOut">น้ำออก</option>
-            <option value="urineOutput">ปัสสาวะ</option>
-            <option value="stool">อุจจาระ</option>
-            <option value="diaperChange">ผ้าอ้อม</option>
-          </select>
+            className="w-44"
+          />
           {sortField ? (
             <button
               type="button"
@@ -1045,7 +1054,9 @@ export function VitalSignsTable({ selectedFloor = "all", selectedStatus = "all",
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={13} className="py-6 px-4 text-center text-sm text-gray-500">กำลังโหลดข้อมูล...</td>
+                  <td colSpan={13} className="py-6 px-4 text-center">
+                    <LoadingSpinner />
+                  </td>
                 </tr>
               ) : error ? (
                 <tr>
@@ -1160,7 +1171,9 @@ export function VitalSignsTable({ selectedFloor = "all", selectedStatus = "all",
 
       <div className="xl:hidden space-y-3">
         {isLoading ? (
-          <div className="rounded-lg border border-gray-300 bg-white py-6 px-4 text-center text-sm text-gray-500">กำลังโหลดข้อมูล...</div>
+          <div className="rounded-lg border border-gray-300 bg-white py-6 px-4 text-center">
+            <LoadingSpinner />
+          </div>
         ) : error ? (
           <div className="rounded-lg border border-gray-300 bg-white py-6 px-4 text-center text-sm text-red-500">{error}</div>
         ) : pagedResidents.length === 0 ? (
@@ -1255,6 +1268,7 @@ export function VitalSignsTable({ selectedFloor = "all", selectedStatus = "all",
       <div className="flex justify-end">
         <Pagination currentPage={sortedSafeCurrentPage} totalPages={sortedTotalPages} onPageChange={setCurrentPage} />
       </div>
+      {confirmDialog}
     </div>
   );
 }

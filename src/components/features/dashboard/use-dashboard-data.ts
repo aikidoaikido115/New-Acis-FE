@@ -306,10 +306,11 @@ export function useDashboardData() {
       return;
     }
     try {
+      const dateKey = toDateInputValue(selectedDate);
       const [allVitals, normalVitals, abnormalVitals] = await Promise.all([
-        vitalSignService.getOverview({ floor: normalizedFloor, vitalsign_status: "all" }),
-        vitalSignService.getOverview({ floor: normalizedFloor, vitalsign_status: "normal" }),
-        vitalSignService.getOverview({ floor: normalizedFloor, vitalsign_status: "abnormal" }),
+        vitalSignService.getOverview({ date: dateKey, floor: normalizedFloor, vitalsign_status: "all" }),
+        vitalSignService.getOverview({ date: dateKey, floor: normalizedFloor, vitalsign_status: "normal" }),
+        vitalSignService.getOverview({ date: dateKey, floor: normalizedFloor, vitalsign_status: "abnormal" }),
       ]);
 
       const allByDate = filterByDate(allVitals.items, selectedDate);

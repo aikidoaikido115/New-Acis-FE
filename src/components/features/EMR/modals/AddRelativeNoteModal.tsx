@@ -271,7 +271,7 @@ export function AddRelativeNoteModal({
             </div>
           </div>
 
-          {/* relation field removed per request */}
+          {/* relation input intentionally omitted */}
 
           <div>
             <label htmlFor="relative-note-content" className="block text-sm font-medium text-gray-700 mb-1">บันทึก</label>

@@ -15,9 +15,10 @@ interface DropdownProps {
   onChange?: (value: string) => void;
   placeholder?: string;
   className?: string;
+  disabled?: boolean;
 }
 
-export function Dropdown({ options, value, onChange, placeholder = "เลือก", className }: DropdownProps) {
+export function Dropdown({ options, value, onChange, placeholder = "เลือก", className, disabled = false }: DropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -39,6 +40,7 @@ export function Dropdown({ options, value, onChange, placeholder = "เลือ
   const selectedOption = options.find((opt) => opt.value === value);
 
   const handleSelect = (optionValue: string) => {
+    if (disabled) return;
     onChange?.(optionValue);
     setIsOpen(false);
   };
@@ -106,8 +108,15 @@ export function Dropdown({ options, value, onChange, placeholder = "เลือ
       <button
         type="button"
         ref={buttonRef}
-        onClick={() => setIsOpen(!isOpen)}
-        className="inline-flex w-full items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-50"
+        onClick={() => {
+          if (disabled) return;
+          setIsOpen(!isOpen);
+        }}
+        disabled={disabled}
+        className={cn(
+          "inline-flex w-full items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-50",
+          disabled && "cursor-not-allowed bg-slate-100 text-slate-400 hover:bg-slate-100"
+        )}
       >
         <span className={cn(!selectedOption && "text-slate-400")}>
           {selectedOption?.label || placeholder}

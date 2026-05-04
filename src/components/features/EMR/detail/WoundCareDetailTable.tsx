@@ -9,6 +9,7 @@ import { NoteTimelineControls } from "../NoteTimelineControls";
 import { ContactInformationModal } from "@/components/shared/contact/ContactInformationModal";
 import { resolveContactInfo } from "@/components/shared/contact/contactDirectory";
 import { woundCareNoteService } from "@/services/wound-care-note.service";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import type { WoundCareNote } from "@/types/emr-notes";
 import { filterAndSortByTimeline, formatBangkokDateKey, formatBangkokDateTime, type TimelineSortOrder } from "../note-timeline";
 
@@ -195,7 +196,9 @@ export function WoundCareDetailTable({ patientId }: WoundCareDetailTableProps) {
       <div className="space-y-4">
         {isLoading ? (
           <div className="border rounded-lg p-4 bg-white text-sm text-gray-500" style={{ borderColor: 'rgba(103, 103, 103, 0.48)' }}>
-            กำลังโหลดข้อมูล...
+            <div className="flex items-center justify-center py-4">
+              <LoadingSpinner />
+            </div>
           </div>
         ) : error ? (
           <div className="border rounded-lg p-4 bg-white text-sm text-red-500" style={{ borderColor: 'rgba(103, 103, 103, 0.48)' }}>

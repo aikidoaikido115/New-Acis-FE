@@ -11,6 +11,7 @@ import { NoteTimelineControls } from "../NoteTimelineControls";
 import { ContactInformationModal } from "@/components/shared/contact/ContactInformationModal";
 import { resolveContactInfo } from "@/components/shared/contact/contactDirectory";
 import { woundCareNoteService } from "@/services/wound-care-note.service";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { residentService } from "@/services/resident.service";
 import { roomService } from "@/services/room.service";
 import type { WoundCareNote } from "@/types/emr-notes";
@@ -244,8 +245,8 @@ export function WoundCareTable() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={4} className="py-6 px-4 text-center text-sm text-gray-500">
-                    กำลังโหลดข้อมูล...
+                  <td colSpan={4} className="py-6 px-4 text-center">
+                    <LoadingSpinner />
                   </td>
                 </tr>
               ) : error ? (

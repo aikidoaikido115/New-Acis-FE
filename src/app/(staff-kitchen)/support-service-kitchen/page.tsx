@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { SUPPORT_CONTACT_CONFIG } from "@/constants/support-service";
 import supportTicketService from "@/services/support-ticket.service";
+import { Dropdown } from "@/components/ui/dropdown";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
@@ -24,6 +25,15 @@ const EMPTY_FORM_DATA: SupportFormData = {
 };
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const SUBJECT_PRESET_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: "", label: "เลือกหัวข้อด่วน (ไม่บังคับ)" },
+  { value: "ปัญหาการเข้าสู่ระบบ", label: "ปัญหาการเข้าสู่ระบบ" },
+  { value: "ระบบช้า/ค้าง", label: "ระบบช้า/ค้าง" },
+  { value: "ข้อมูลไม่แสดง", label: "ข้อมูลไม่แสดง" },
+  { value: "ไม่สามารถบันทึกข้อมูล", label: "ไม่สามารถบันทึกข้อมูล" },
+  { value: "แจ้งข้อเสนอแนะ", label: "แจ้งข้อเสนอแนะ" },
+];
 
 type SupportButtonProps = {
   children: React.ReactNode;
@@ -64,6 +74,9 @@ export default function SupportPage() {
   const [formData, setFormData] = useState<SupportFormData>(EMPTY_FORM_DATA);
   const [validationErrors, setValidationErrors] = useState<Partial<Record<SupportFormField, string>>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const selectedPreset = SUBJECT_PRESET_OPTIONS.some((item) => item.value === formData.subject)
+    ? formData.subject
+    : "";
 
   const updateField = (field: SupportFormField, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -192,6 +205,13 @@ export default function SupportPage() {
               <label className="block text-body-small font-medium text-gray-700">
                 หัวข้อเรื่อง<span className="text-red-500">*</span>
               </label>
+              <div className="mt-3">
+                <Dropdown
+                  value={selectedPreset}
+                  options={SUBJECT_PRESET_OPTIONS}
+                  onChange={(value) => updateField("subject", value)}
+                />
+              </div>
               <Input
                 placeholder="สรุปปัญหาที่พบ"
                 type="text"
