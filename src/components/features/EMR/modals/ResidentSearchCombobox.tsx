@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, UserRound, X } from "lucide-react";
 import { useClickOutside } from "@/hooks/use-click-outside";
+import { Dropdown } from "@/components/ui/dropdown";
 import type { Resident } from "@/types/resident";
 import type { Room } from "@/types/room";
 
@@ -272,19 +273,18 @@ export function ResidentSearchCombobox({
           </div>
 
           <div className="min-w-28">
-            <select
+            <Dropdown
+              options={[
+                { value: "all", label: "ทุกชั้น" },
+                ...floorOptions.map((floor) => ({
+                  value: floor,
+                  label: `ชั้น ${floor}`,
+                })),
+              ]}
               value={floorFilter}
-              onChange={(event) => setFloorFilter(event.target.value)}
-              className="w-full rounded-lg border border-gray-300 bg-white px-2 py-2 text-sm text-black focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              aria-label="กรองตามชั้น"
-            >
-              <option value="all">ทุกชั้น</option>
-              {floorOptions.map((floor) => (
-                <option key={floor} value={floor}>
-                  ชั้น {floor}
-                </option>
-              ))}
-            </select>
+              onChange={(value) => setFloorFilter(value)}
+              placeholder="กรองตามชั้น"
+            />
           </div>
         </div>
       )}
