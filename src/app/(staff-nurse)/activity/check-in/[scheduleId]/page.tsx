@@ -175,7 +175,9 @@ export default function ActivityCheckInPage() {
         do {
           const overview = await residentService.getOverview({ status: "active", page, page_size: pageSize });
           overview.items?.forEach((resident) => {
-            if (resident.resident_id) activeIds.add(resident.resident_id);
+            if (resident.resident_id) {
+              activeIds.add(resident.resident_id);
+            }
           });
           totalPages = overview.pagination?.total_pages || 1;
           page += 1;

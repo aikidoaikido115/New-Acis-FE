@@ -135,10 +135,9 @@ const transformResidentData = (apiResident: ApiResident): Resident => {
   const labelBasedCareLevel = resolveCareLevelFromLabels(apiResident.resident_labels);
   const careLevel = labelBasedCareLevel || determineCareLevel(apiResident.adl_score);
   
-  const statusValue = (apiResident.status || "").toLowerCase();
-  const isActive = statusValue
-    ? statusValue === "active"
-    : !apiResident.expected_check_out_date || new Date(apiResident.expected_check_out_date) > new Date();
+  // 🌟 แก้ไขจุดที่ 1: เพิ่ม .trim() ป้องกันช่องว่างขยะจาก Database
+  const statusValue = String(apiResident.status || "").toLowerCase().trim();
+  const isActive = statusValue === "inactive" ? false : true;
 
   const backendId = apiResident.id || (apiResident as any).resident_id || "";
 
@@ -343,8 +342,15 @@ export default function Page() {
           resident.nickname.toLowerCase().includes(normalizedSearch);
 
         const matchesFloor = selectedFloor === "all" || resident.floor.toString() === selectedFloor;
-        const matchesCareType = selectedCareType === "all" || resident.care === selectedCareType;
-        const matchesActive = resident.active === showActive;
+        
+        // 🌟 แก้ไขจุดที่ 3: ค้นหาระดับการดูแลแบบยืดหยุ่น (ใช้ includes แทน ===)
+        const matchesCareType = 
+          selectedCareType === "all" || 
+          (resident.care && resident.care.includes(selectedCareType)) || 
+          (selectedCareType && selectedCareType.includes(resident.care));
+
+        // 🌟 แก้ไขจุดที่ 2: ถ้า showActive เป็น false ให้โชว์ทุกคน (ไม่กรองออก)
+        const matchesActive = showActive ? resident.active === true : true;
 
         return matchesSearch && matchesFloor && matchesCareType && matchesActive;
       });

@@ -118,11 +118,23 @@ function ActivityScheduleCard({
           const description = activity?.description && activity.description.trim() ? activity.description : "-";
           const location = activity?.location && activity.location.trim() ? activity.location : "-";
           
-          const staffId = activity?.staff_id;
-          const staffObj = (activity as any)?.staff || (activity as any)?.Staff || (activity as any)?.user;
-          const updatedByName = staffObj
-            ? `${staffObj.first_name || ""} ${staffObj.last_name || ""}`.trim() || staffObj.name || staffId || "-"
-            : staffId || "-";
+          const resolveUpdatedBy = () => {
+            const staffObj = (activity as any)?.staff || (activity as any)?.Staff || (activity as any)?.user;
+            const staffName = staffObj
+              ? `${staffObj.first_name || ""} ${staffObj.last_name || ""}`.trim() || staffObj.name
+              : undefined;
+
+            return (
+              staffName
+              || (activity as any)?.staff_name
+              || (activity as any)?.created_by_staff_name
+              || (activity as any)?.updated_by_staff_name
+              || activity?.staff_id
+              || "-"
+            );
+          };
+
+          const updatedByName = resolveUpdatedBy();
           const checkInState = resolveCheckInState(item);
           
           return (

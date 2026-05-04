@@ -19,29 +19,34 @@ type ReviewItem = CheckInResident & { photo?: string; rejected?: boolean };
 
 const buildPhotoFile = async (photoData: string, filename: string) => {
   if (!photoData) return null;
+
+  const createFile = (mime: string, dataBytes: Uint8Array) => {
+    const ext = mime.includes("png") ? "png" : "jpg";
+    return new File([dataBytes.buffer as ArrayBuffer], `${filename}.${ext}`, { type: mime });
+  };
+
+  if (photoData.startsWith("data:")) {
+    const [header, data] = photoData.split(",");
+    if (!header || !data) return null;
+
+    const match = header.match(/data:(.*?);base64/);
+    const mime = match?.[1] || "image/jpeg";
+    const binary = atob(data);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return createFile(mime, bytes as unknown as Uint8Array);
+  }
+
   try {
     const response = await fetch(photoData);
     if (!response.ok) return null;
     const blob = await response.blob();
-    const mime = blob.type || "image/jpeg";
-    const ext = mime.includes("png") ? "png" : "jpg";
-    return new File([blob], `${filename}.${ext}`, { type: mime });
+    const arrayBuffer = await blob.arrayBuffer();
+    return new File([arrayBuffer], `${filename}.${blob.type.includes("png") ? "png" : "jpg"}`, { type: blob.type || "image/jpeg" });
   } catch {
-    if (!photoData.startsWith("data:")) return null;
-    try {
-      const [header, data] = photoData.split(",");
-      if (!header || !data) return null;
-      const match = header.match(/data:(.*?);base64/);
-      const mime = match?.[1] || "image/jpeg";
-      const binary = atob(data);
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i += 1) {
-        bytes[i] = binary.charCodeAt(i);
-      }
-      return new File([bytes], `${filename}.jpg`, { type: mime });
-    } catch {
-      return null;
-    }
+    return null;
   }
 };
 
