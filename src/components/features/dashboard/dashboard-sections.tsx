@@ -78,38 +78,15 @@ export function DashboardHeader({
   );
 }
 
-export function DashboardStatCards({ isLoading, statCards }: { isLoading: boolean; statCards: StatCardItem[] }) {
-  if (isLoading) {
-    return (
-      <div className="col-span-4 flex items-center justify-center py-8">
-        <Loader2 className="h-6 w-6 animate-spin text-[#0093EF]" />
-      </div>
-    );
-  }
-
-  return (
-    <>
-      {statCards.map((card) => (
-        <StatCard
-          key={card.label}
-          label={card.label}
-          value={card.value}
-          icon={<UserRound className="h-4 w-4" />}
-          unit=""
-        />
-      ))}
-    </>
-  );
-}
-
 interface DashboardOverviewRowProps {
   vitalStats: VitalStatItem[];
   medicineStatus: MedicineStatusItem[];
   genderStats: GenderStats;
+  totalResidents: number;
   isLoading: boolean;
 }
 
-export function DashboardOverviewRow({ vitalStats, medicineStatus, genderStats, isLoading }: DashboardOverviewRowProps) {
+export function DashboardOverviewRow({ vitalStats, medicineStatus, genderStats, totalResidents, isLoading }: DashboardOverviewRowProps) {
   return (
     <div className="grid gap-6 md:grid-cols-3">
       <DashboardCard title="Vital sign" icon={<ClipboardList className="h-4 w-4" />}>
@@ -134,10 +111,16 @@ export function DashboardOverviewRow({ vitalStats, medicineStatus, genderStats, 
 
       <DashboardCard title="สัดส่วนเพศ" icon={<GenderIcon />}>
         {!isLoading ? (
-          <GenderChart {...genderStats} />
+          <div className="flex flex-col gap-8 pb-4">
+            <GenderChart {...genderStats} />
+            <div className="border-t border-slate-100 pt-8 text-black text-center">
+              <span className="text-sm text-black">ผู้สูงอายุทั้งหมด </span>
+                {totalResidents} <span className="text-sm font-normal text-black">คน</span>
+            </div>
+          </div>
         ) : (
           <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+            <Loader2 className="h-6 w-6 animate-spin text-[#0093EF]" />
           </div>
         )}
       </DashboardCard>
