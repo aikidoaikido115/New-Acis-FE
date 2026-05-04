@@ -247,8 +247,10 @@ export default function ActivityCheckInReviewPage() {
 
   return (
     <div className="flex flex-col bg-slate-50 px-4 py-6 sm:px-6 lg:px-10">
-      <BackButton text="ย้อนกลับ" href={`/activity/check-in/${scheduleId}`} />
-
+      <BackButton 
+        text="ย้อนกลับ" 
+        href={`/activity/check-in/${scheduleId}${isHistory ? '?mode=history' : ''}`} 
+      />
       <div className="mb-6">
         <h1 className="text-xl font-semibold text-slate-800">
           ตรวจสอบภาพถ่าย ({reviewItems.length}/{reviewItems.length})

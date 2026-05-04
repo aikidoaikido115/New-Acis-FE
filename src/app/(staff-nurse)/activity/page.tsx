@@ -119,22 +119,30 @@ function ActivityScheduleCard({
           const location = activity?.location && activity.location.trim() ? activity.location : "-";
           
           const resolveUpdatedBy = () => {
-            const staffObj = (activity as any)?.staff || (activity as any)?.Staff;
-            if (staffObj) {
-              const fullName = `${staffObj.first_name || ""} ${staffObj.last_name || ""}`.trim();
-              if (fullName && fullName !== "") return fullName;
-              const nickname = staffObj.nickname || staffObj.name;
+          const staffObj = (activity as any)?.staff || (activity as any)?.Staff;
+          
+          if (staffObj) {
+            const userObj = staffObj.user || staffObj.User;
+            if (userObj) {
+              const fullName = `${userObj.first_name || ""} ${userObj.last_name || ""}`.trim();
+              if (fullName !== "") return fullName;
+              
+              const nickname = userObj.nickname || userObj.name;
               if (nickname && nickname !== "") return nickname;
             }
 
-            const staffName = (activity as any)?.staff_name
-              || (activity as any)?.created_by_staff_name
-              || (activity as any)?.updated_by_staff_name;
-            if (staffName) return staffName;
+            const staffFullName = `${staffObj.first_name || ""} ${staffObj.last_name || ""}`.trim();
+            if (staffFullName !== "") return staffFullName;
+          }
 
-            return activity?.staff_id || "-";
-          };
+          const staffName = (activity as any)?.staff_name
+            || (activity as any)?.created_by_staff_name
+            || (activity as any)?.updated_by_staff_name;
+          if (staffName) return staffName;
 
+          const finalFallback = activity?.staff_id || "-";
+          return finalFallback.length > 20 ? "ไม่ระบุชื่อ" : finalFallback;
+        };
           const updatedByName = resolveUpdatedBy();
           const checkInState = resolveCheckInState(item);
           
@@ -432,78 +440,74 @@ export default function ActivityPage() {
   );
 
   const handleSubmitActivity = async (data: ActivityFormData) => {
-    const payload = {
-      activity_name: data.name.trim(),
-      activity_type: data.type.trim(),
-      description: data.description.trim() ? data.description.trim() : null,
-      location: data.location.trim() ? data.location.trim() : null,
-    };
-
-    try {
-      let saved: Activity;
-
-      if (data.activityId) {
-        saved = await activityService.update(data.activityId, payload);
-        setActivities((prev) =>
-          prev.map((a) => (a.activity_id === saved.activity_id ? saved : a))
-        );
-      } else {
-        saved = await activityService.create(payload);
-        setActivities((prev) => [saved, ...prev]);
-      }
-
-      const schedulePayload = {
-        activity_id: saved.activity_id,
-        date: data.date,
-        start_time: data.startTime,
-        end_time: data.endTime,
-      };
-
-      if (editingSchedule) {
-        await activityScheduleService.update(editingSchedule.as_id, schedulePayload);
-      } else {
-        await activityScheduleService.create(schedulePayload);
-      }
-
-      showToast({
-        type: "success",
-        title: editingSchedule ? "แก้ไขกิจกรรมสำเร็จ" : "บันทึกกิจกรรมใหม่สำเร็จ",
-        message: saved.activity_name,
-      });
-
-      const nextDate = parseLocalDate(data.date) || selectedDate;
-      const dateKey = toDateKey(nextDate); 
-
-      await loadSchedules(dateKey);
-
-      try {
-        const freshSchedules = await activityScheduleService.getByDate(dateKey);
-        setSchedulesByMonth((prev) => ({
-          ...prev,
-          [dateKey]: freshSchedules?.length ?? 0,
-        }));
-      } catch {
-        setSchedulesByMonth((prev) => ({
-          ...prev,
-          [dateKey]: (prev[dateKey] ?? 0) + (editingSchedule ? 0 : 1),
-        }));
-      }
-
-      if (nextDate.getTime() !== selectedDate.getTime()) {
-        setSelectedDate(nextDate);
-      }
-
-      setEditingSchedule(null);
-      setIsModalOpen(false); 
-    } catch (error: any) {
-      showToast({
-        type: "error",
-        title: "บันทึกกิจกรรมไม่สำเร็จ",
-        message: error?.message || "ไม่สามารถบันทึกกิจกรรมได้",
-      });
-    }
+  const payload = {
+    activity_name: data.name.trim(),
+    activity_type: data.type.trim(),
+    description: data.description.trim() ? data.description.trim() : null,
+    location: data.location.trim() ? data.location.trim() : null,
   };
 
+  try {
+    let activityId = data.activityId;
+
+    if (activityId) {
+      await activityService.update(activityId, payload);
+    } else {
+      const newActivity = await activityService.create(payload);
+      activityId = newActivity.activity_id;
+    }
+
+    const schedulePayload = {
+      activity_id: activityId,
+      date: data.date,
+      start_time: data.startTime,
+      end_time: data.endTime,
+    };
+
+    if (editingSchedule) {
+      await activityScheduleService.update(editingSchedule.as_id, schedulePayload);
+    } else {
+      await activityScheduleService.create(schedulePayload);
+    }
+
+    const nextDate = parseLocalDate(data.date) || selectedDate;
+    const dateKey = toDateKey(nextDate);
+
+    await Promise.all([
+      loadActivities(),        // โหลดรายการกิจกรรมทั้งหมดใหม่ (เพื่อให้ได้ชื่อ Staff ล่าสุด)
+      loadSchedules(dateKey)   // โหลดตารางของวันนั้นใหม่
+    ]);
+
+    try {
+      const freshSchedules = await activityScheduleService.getAll();
+      const schedulesMap: Record<string, number> = {};
+      freshSchedules.forEach((s) => {
+        const k = toDateKey(new Date(s.date));
+        schedulesMap[k] = (schedulesMap[k] ?? 0) + 1;
+      });
+      setSchedulesByMonth(schedulesMap);
+    } catch { /* ignore */ }
+
+    showToast({ 
+      type: "success", 
+      title: editingSchedule ? "แก้ไขสำเร็จ" : "บันทึกสำเร็จ" 
+    });
+
+    if (nextDate.getTime() !== selectedDate.getTime()) {
+      setSelectedDate(nextDate);
+    }
+    
+    setIsModalOpen(false);
+    setEditingSchedule(null);
+
+  } catch (error: any) {
+    showToast({
+      type: "error",
+      title: "บันทึกไม่สำเร็จ",
+      message: error?.message || "เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์",
+    });
+  }
+};
   const resolveActivity = useCallback(
     (schedule: ActivitySchedule) => schedule.activity || activities.find((activity) => activity.activity_id === schedule.activity_id),
     [activities]
