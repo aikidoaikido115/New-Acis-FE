@@ -266,16 +266,19 @@ export function useDashboardData() {
     }
     try {
       const items = await warehouseService.getItems();
-      const lowStock = items.filter((item) => {
-        const minimum = item.minimumQuantity ?? 0;
-        return minimum > 0 && item.quantity <= minimum;
-      }).length;
+      
+      const lowStock = items.filter((item: any) => {
+        const minThreshold = item.minimumQuantity ?? 5;
+        
+        return item.quantity <= minThreshold;
+      }).length; 
+      
       setLowStockCount(lowStock);
     } catch (error) {
-      logApiError("Failed to fetch warehouse items:", error);
+      console.error("Failed to fetch warehouse items:", error);
       setLowStockCount(0);
     }
-  }, []);
+  }, [isAuthenticated]);
 
   const loadPendingTransactions = useCallback(async () => {
     if (!isAuthenticated) {
