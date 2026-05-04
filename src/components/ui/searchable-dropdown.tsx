@@ -175,7 +175,7 @@ export function SearchableDropdown({
             onClick={handleCreate}
             className="flex w-full items-center px-4 py-2 text-left text-sm text-emerald-600 hover:bg-emerald-50"
           >
-            {createLabel}: "{normalizedQuery}"
+              {createLabel}: “{normalizedQuery}”
           </button>
         )}
       </div>
