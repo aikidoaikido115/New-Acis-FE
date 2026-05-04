@@ -45,9 +45,27 @@ export function GraphView({ patientId }: GraphViewProps) {
       const date = new Date(record.created_at);
       return date.toLocaleDateString("th-TH", { day: "2-digit", month: "2-digit" });
     });
+    const timeSlots = records.map((record) => {
+      // Map time_of_day to time slot labels
+      const timeOfDay = record.time_of_day?.toLowerCase() || "";
+      if (timeOfDay.includes("morning") || timeOfDay === "เช้า") return "06:00";
+      if (timeOfDay.includes("late_morning") || timeOfDay === "สาย" || timeOfDay === "สายๆ") return "10:00";
+      if (timeOfDay.includes("afternoon") || timeOfDay === "บ่าย" || timeOfDay === "บ่ายแก่") return "14:00";
+      if (timeOfDay.includes("evening") || timeOfDay === "เย็น") return "18:00";
+      if (timeOfDay.includes("night") || timeOfDay === "กลางคืน") return "22:00";
+      
+      // Fallback to hour from created_at if time_of_day not specified
+      const date = new Date(record.created_at);
+      const hour = date.getHours();
+      if (hour >= 4 && hour < 8) return "06:00";
+      if (hour >= 8 && hour < 12) return "10:00";
+      if (hour >= 12 && hour < 16) return "14:00";
+      if (hour >= 16 && hour < 20) return "18:00";
+      return "22:00";
+    });
     const heartRate = records.map((record) => record.heart_rate ?? 0);
     const temperature = records.map((record) => record.temperature ?? 0);
-    return { dates, heartRate, temperature };
+    return { dates, timeSlots, heartRate, temperature };
   }, [records]);
 
   // Calculate scale and positions
@@ -178,10 +196,16 @@ export function GraphView({ patientId }: GraphViewProps) {
           {/* X-axis labels */}
           {chartData.dates.map((date, index) => {
             const x = padding + (index / (chartData.dates.length - 1)) * chartWidth;
+            const timeSlot = chartData.timeSlots[index];
             return (
-              <text key={`x-label-${index}`} x={x} y={height - padding + 25} className="text-overline fill-gray-600 text-anchor-middle" textAnchor="middle">
-                {date}
-              </text>
+              <g key={`x-label-${index}`}>
+                <text x={x} y={height - padding + 20} className="text-overline fill-gray-600 text-anchor-middle" textAnchor="middle">
+                  {date}
+                </text>
+                <text x={x} y={height - padding + 33} className="text-overline fill-blue-600 font-medium text-anchor-middle" textAnchor="middle">
+                  {timeSlot}
+                </text>
+              </g>
             );
           })}
 

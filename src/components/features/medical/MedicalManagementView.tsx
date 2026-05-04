@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   Search,
   Download,
+  Printer,
   Plus,
   Sunrise,
   Sun,
@@ -333,6 +334,7 @@ export function MedicalManagementView() {
   const [mainSearchTerm, setMainSearchTerm] = useState("");
   const [detailSearchTerm, setDetailSearchTerm] = useState("");
   const [historySearchTerm, setHistorySearchTerm] = useState("");
+  const [printDateTime, setPrintDateTime] = useState<string>("");
   const debouncedHistorySearchTerm = useDebouncedValue(historySearchTerm, 400);
   const [selectedFloor, setSelectedFloor] = useState("ทุกชั้น");
   const [selectedHelpLevel, setSelectedHelpLevel] = useState("ทั้งหมด");
@@ -882,6 +884,25 @@ export function MedicalManagementView() {
     };
   }, [selectedPatientId]);
 
+  useEffect(() => {
+    const handleBeforePrint = () => {
+      const now = new Date();
+      const thaiDate = now.toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "2-digit" });
+      const thaiTime = now.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      setPrintDateTime(`${thaiDate} ${thaiTime}`);
+      document.body.classList.add("print-drug-history");
+    };
+    const handleAfterPrint = () => {
+      document.body.classList.remove("print-drug-history");
+    };
+    window.addEventListener("beforeprint", handleBeforePrint);
+    window.addEventListener("afterprint", handleAfterPrint);
+    return () => {
+      window.removeEventListener("beforeprint", handleBeforePrint);
+      window.removeEventListener("afterprint", handleAfterPrint);
+    };
+  }, []);
+
   const allPatientMedications = useMemo<PatientMedication[]>(() => {
     const patientsMap = new Map<string, PatientMedication>();
 
@@ -1109,6 +1130,17 @@ export function MedicalManagementView() {
       default:
         return null;
     }
+  };
+
+  const handleExport = () => {
+    const now = new Date();
+    const thaiDate = now.toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "2-digit" });
+    const thaiTime = now.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    setPrintDateTime(`${thaiDate} ${thaiTime}`);
+    document.body.classList.add("print-drug-history");
+    setTimeout(() => {
+      window.print();
+    }, 50);
   };
 
   const renderMainView = () => (
@@ -1512,16 +1544,10 @@ export function MedicalManagementView() {
         </div>
         <div className="ml-auto flex items-center gap-4">
           <button
-            className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg text-body-small font-medium hover:bg-blue-600 transition-colors whitespace-nowrap"
-            onClick={() => {
-              showToast({
-                type: "info",
-                title: "ยังไม่รองรับ",
-                message: "ฟังก์ชันพิมพ์/Export PDF จะพัฒนาในขั้นถัดไป",
-              });
-            }}
+            className="print-hide flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg text-body-small font-medium hover:bg-blue-600 transition-colors whitespace-nowrap"
+            onClick={handleExport}
           >
-            <Download className="w-4 h-4" />
+            <Printer className="w-4 h-4" />
             <span>พิมพ์ / Export PDF</span>
           </button>
         </div>
@@ -1546,6 +1572,47 @@ export function MedicalManagementView() {
         {currentView === "details" && renderDetailsView()}
         {currentView === "history" && renderHistoryView()}
       </div>
+
+      <style>{`
+        .print-hide {
+          display: inline-flex;
+        }
+
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 5mm;
+          }
+
+          :global(html, body) {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+            display: block !important;
+          }
+
+          :global(body.print-drug-history *) {
+            visibility: hidden !important;
+          }
+          :global(body.print-drug-history [style*="min-h-screen"]),
+          :global(body.print-drug-history [style*="min-h-screen"] *) {
+            visibility: visible !important;
+          }
+
+          .print-hide {
+            display: none !important;
+          }
+
+          table {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+
+          tr {
+            page-break-inside: avoid;
+          }
+        }
+      `}</style>
     </div>
   );
 }
