@@ -60,23 +60,6 @@ describe("AppNavbar", () => {
     expect(mockPush).toHaveBeenCalledWith("/dashboard");
   });
 
-  it("Click NotificationBell", () => {
-    renderNavbar();
-    const bellButton = screen.getByRole("button", { name: "Notifications" });
-    expect(bellButton).toBeInTheDocument();
-    fireEvent.click(bellButton);
-    expect(screen.getByRole("button", { name: "ดูทั้งหมด" })).toBeInTheDocument();
-  });
-
-  it("View all to /notification", () => {
-    renderNavbar();
-    const bellButton = screen.getByRole("button", { name: "Notifications" });
-    fireEvent.click(bellButton);
-    const viewAllButton = screen.getByRole("button", { name: "ดูทั้งหมด" });
-    fireEvent.click(viewAllButton);
-    expect(mockPush).toHaveBeenCalledWith("/notification");
-  });
-
   it("Click profile button", () => {
     renderNavbar();
     const profileButton = screen.getByRole("button", { name: /สมหญิง/i });

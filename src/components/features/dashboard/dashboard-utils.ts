@@ -35,7 +35,7 @@ export type ResidentSnapshot = Pick<
 export const SCHEDULE_ITEMS: { time: string; title: string; detail: string; location: string }[] = [];
 
 export const INVENTORY_ITEMS: Array<{ key: InventoryStatKey; label: string; href: string }> = [
-  { key: "lowStock", label: "รายการสินค้าใกล้หมด", href: "/warehouse" },
+  { key: "lowStock", label: "รายการใกล้หมด", href: "/warehouse" },
   { key: "pendingWithdraw", label: "รายการเบิกของรออนุมัติ", href: "/warehouse?tab=history" },
   { key: "pendingRestock", label: "รายการเติมของรออนุมัติ", href: "/warehouse?tab=history" },
 ];
@@ -135,14 +135,14 @@ export const resolveTimeOfDayKeys = (value?: string | null): string[] => {
 
 // แก้ไข DEFAULT_MEDICINE_STATUS ให้มี 4 มื้อตามจริง
 export const DEFAULT_MEDICINE_STATUS = [
-  { label: "มื้อเช้า", value: "ไม่มีข้อมูล" },
-  { label: "มื้อกลางวัน", value: "ไม่มีข้อมูล" },
-  { label: "มื้อเย็น", value: "ไม่มีข้อมูล" },
-  { label: "ก่อนนอน", value: "ไม่มีข้อมูล" },
+  { label: "มื้อเช้า", value: "-" },
+  { label: "มื้อกลางวัน", value: "-" },
+  { label: "มื้อเย็น", value: "-" },
+  { label: "ก่อนนอน", value: "-" },
 ];
 
 export const buildMedicineValue = (total: number, taken: number) => {
-  if (total <= 0) return "ไม่มีข้อมูล";
+  if (total <= 0) return "-";
   if (taken >= total) return "ให้ครบ";
   return `${taken}/${total} ยังไม่ครบ`;
 };

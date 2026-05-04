@@ -133,35 +133,51 @@ export function ResidentDetailModal({ isOpen, onClose, residentId }: ResidentDet
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="5xl" scrollable={false} printable>
       <div className="resident-detail-print overflow-y-auto max-h-[85vh] print:max-h-none print:overflow-visible">
-        <div className="print-header sticky top-0 z-20 -mx-6 -mt-6 mb-6 flex items-center justify-between border-b border-slate-200 bg-white/95 px-6 py-4 backdrop-blur-sm">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-800">แฟ้มข้อมูลผู้สูงอายุ</h2>
-            <p className="text-sm text-slate-500">ข้อมูลล่าสุดจากระบบ</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="print-only text-right text-sm font-semibold text-slate-700">
-              {printDateTime}
+        <div className="print-header sticky top-0 z-20 -mx-6 -mt-6 mb-6 flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200 bg-white/95 px-6 py-4 backdrop-blur-sm gap-4">
+          <div className="flex items-start justify-between w-full sm:w-auto">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-800">แฟ้มข้อมูลผู้สูงอายุ</h2>
+              <p className="text-sm text-slate-500">ข้อมูลล่าสุดจากระบบ</p>
             </div>
-            <button
-              type="button"
-              onClick={handleExport}
-              className="print-hide inline-flex items-center gap-2 rounded-lg bg-[#0093EF] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#0080D0]"
-            >
-              <Printer className="h-4 w-4" />
-              พิมพ์ / Export PDF
-            </button>
-            <button
-              type="button"
-              onClick={handleCopyRelativeMagicLink}
-              className="print-hide inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 shadow-sm hover:bg-emerald-100"
-            >
-              <Copy className="h-4 w-4" />
-              คัดลอกลิงก์ญาติ
-            </button>
+            
             <button
               type="button"
               onClick={onClose}
-              className="print-hide inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+              className="print-hide sm:hidden inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+              aria-label="ปิด"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="print-only text-right text-sm font-semibold text-slate-700 w-full sm:w-auto">
+              {printDateTime}
+            </div>
+             <div className="flex w-full sm:w-auto gap-2">
+              <button
+                type="button"
+                onClick={handleExport}
+                className="print-hide flex-1 sm:flex-none justify-center inline-flex items-center gap-1.5 sm:gap-2 rounded-lg bg-[#0093EF] px-2 sm:px-4 py-2 text-[13px] sm:text-sm font-semibold text-white shadow-sm hover:bg-[#0080D0]"
+              >
+                <Printer className="h-4 w-4 shrink-0" />
+                <span className="truncate">พิมพ์ / Export PDF</span>
+              </button>
+              
+              <button
+                type="button"
+                onClick={handleCopyRelativeMagicLink}
+                className="print-hide flex-1 sm:flex-none justify-center inline-flex items-center gap-1.5 sm:gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-2 sm:px-4 py-2 text-[13px] sm:text-sm font-semibold text-emerald-700 shadow-sm hover:bg-emerald-100"
+              >
+                <Copy className="h-4 w-4 shrink-0" />
+                <span className="truncate">คัดลอกลิงก์ญาติ</span>
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="print-hide hidden sm:inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
               aria-label="ปิด"
             >
               <X className="h-4 w-4" />

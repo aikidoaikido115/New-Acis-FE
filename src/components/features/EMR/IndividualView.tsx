@@ -139,7 +139,7 @@ export function IndividualView() {
           placeholder="เลือกชั้น"
         />
 
-        <span className="text-body-small text-gray-600">การช่วยเหลือตัวเอง</span>
+        <span className="text-body-small text-gray-600">ประเภท</span>
 
         {/* Help Level Dropdown */}
         <Dropdown
@@ -178,7 +178,7 @@ export function IndividualView() {
                 <th className="text-left py-3 px-4 text-xs font-semibold" style={{ color: '#000' }}>ชื่อ-นามสกุล</th>
                 <th className="text-left py-3 px-4 text-xs font-semibold" style={{ color: '#000' }}>ชื่อเล่น</th>
                 <th className="text-left py-3 px-4 text-xs font-semibold" style={{ color: '#000' }}>ห้อง</th>
-                <th className="text-left py-3 px-4 text-xs font-semibold" style={{ color: '#000' }}>การช่วยเหลือตัวเอง</th>
+                <th className="text-left py-3 px-4 text-xs font-semibold" style={{ color: '#000' }}>ประเภท</th>
               </tr>
             </thead>
             <tbody>

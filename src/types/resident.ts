@@ -80,6 +80,7 @@ export interface Resident {
   surgical_history?: string; // ประวัติการผ่าตัด
   adl_score?: number; // ADL score
   resuscitation_status?: "CPR" | "DNR"; // CPR/DNR
+  intake_label?: string | null;
 
   // Emergency Info
   preferred_emergency_hospital?: string; // โรงพยาบาลกรณีฉุกเฉิน
@@ -163,6 +164,7 @@ export interface ResidentFormState {
   adlScore: string;
   careLevel: string;
   cprStatus: "CPR" | "DNR" | "";
+  intakeLabel?: string;
 
   // Emergency Info
   emergencyHospital: string;

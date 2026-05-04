@@ -13,6 +13,7 @@ import {
   Building2, Phone, Users, User,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { intakeService } from '@/services/intake.service';
 import type { ResidentFormState } from "@/types/resident";
 import type { Room } from "@/types/room";
 
@@ -21,7 +22,7 @@ import { ProfileImageUpload }   from "./resident-form/ProfileImageUpload";
 import { MedicationTable }      from "./resident-form/MedicationTable";
 import { EmergencyContactList } from "./resident-form/EmergencyContactList";
 import {
-  STATUS_OPTIONS, GENDER_OPTIONS, FLOOR_OPTIONS, CARE_LEVEL_OPTIONS, EMERGENCY_HOSPITAL_MASTERS,
+  STATUS_OPTIONS, GENDER_OPTIONS, EMERGENCY_HOSPITAL_MASTERS,
 } from "./resident-form/constants";
 
 // ── Shared styles ─────────────────────────────────────────────────
@@ -69,14 +70,30 @@ interface ResidentFormModalProps {
   medicationOptions: Array<{ value: string; label: string; name: string; dose?: string }>;
   onCreateMedicationOption?: (name: string, dose: string) => Promise<{ value: string; label: string; name: string; dose?: string } | null>;
   onCreateRoomOption?: (roomNumber: string, floor: string) => Promise<{ value: string; label: string } | null>;
+  onCreateFloorOption?: (floorName: string) => Promise<{ value: string; label: string } | null>; 
 }
 
 // ── Component ─────────────────────────────────────────────────────
-export function ResidentFormModal({ isOpen, onClose, onSubmit, isLoading = false, rooms = [], initialValues, mode = "create", medicationOptions, onCreateMedicationOption, onCreateRoomOption }: ResidentFormModalProps) {
+export function ResidentFormModal({ 
+  isOpen, 
+  onClose, 
+  onSubmit, 
+  isLoading = false, 
+  rooms = [], 
+  initialValues, 
+  mode = "create", 
+  medicationOptions, 
+  onCreateMedicationOption, 
+  onCreateRoomOption,
+  onCreateFloorOption 
+}: ResidentFormModalProps) {
   const form = useResidentForm(onSubmit, onClose, initialValues);
   const { formData, set, updateMedication, resetForm } = form;
 
   const [hospitalOptions, setHospitalOptions] = useState(() => [...EMERGENCY_HOSPITAL_MASTERS]);
+  
+  const [floorOptions, setFloorOptions] = useState<Array<{ value: string; label: string }>>([]);
+  const [intakeOptions, setIntakeOptions] = useState<Array<{ value: string; label: string }>>([]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -99,15 +116,45 @@ export function ResidentFormModal({ isOpen, onClose, onSubmit, isLoading = false
     });
   }, [formData.emergencyHospital, formData.emergencyHospitalPhone]);
 
-  const roomOptions = rooms.map((room) => {
-    const value = (room as { room_id?: string | number; id?: string | number }).room_id ?? room.id ?? "";
-    const label = room.room_number || `ห้อง ${value || ""}`;
-    return { value: String(value), label };
-  }).sort((a, b) => {
-    const aNum = parseInt(a.label.replace(/[^\d]/g, ''), 10) || 0;
-    const bNum = parseInt(b.label.replace(/[^\d]/g, ''), 10) || 0;
-    return aNum - bNum;
-  });
+  useEffect(() => {
+    const uniqueFloors = Array.from(new Set(rooms.map((r) => String((r as any).floor ?? "")).filter(Boolean)))
+      .sort((a, b) => Number(a) - Number(b));
+
+    if (uniqueFloors.length > 0) {
+      const opts = uniqueFloors.map((f) => ({ value: f, label: `ชั้น ${f}` }));
+      setFloorOptions(opts);
+    } else {
+      setFloorOptions([]);
+    }
+  }, [rooms]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let mounted = true;
+    (async () => {
+      try {
+        const labels = await intakeService.getAllLabels();
+        if (!mounted) return;
+        const opts = labels.map((l) => ({ value: l.label_name, label: l.label_name }));
+        setIntakeOptions(opts);
+      } catch (err) {
+      }
+    })();
+    return () => { mounted = false; };
+  }, [isOpen]);
+
+  // 👉 ตรงนี้คือไฮไลท์: กรองเอาห้องที่ชื่อขึ้นต้นด้วย auto-floor- ออกไปให้หมด จะได้ไม่โผล่มากวนใจ
+  const roomOptions = rooms
+    .filter((room) => !String(room.room_number || "").startsWith("auto-floor-"))
+    .map((room) => {
+      const value = (room as { room_id?: string | number; id?: string | number }).room_id ?? room.id ?? "";
+      const label = room.room_number || `ห้อง ${value || ""}`;
+      return { value: String(value), label };
+    }).sort((a, b) => {
+      const aNum = parseInt(a.label.replace(/[^\d]/g, ''), 10) || 0;
+      const bNum = parseInt(b.label.replace(/[^\d]/g, ''), 10) || 0;
+      return aNum - bNum;
+    });
 
   const emergencyHospitalOptions = useMemo(
     () => hospitalOptions.map(({ value, label }) => ({ value, label })),
@@ -145,6 +192,30 @@ export function ResidentFormModal({ isOpen, onClose, onSubmit, isLoading = false
     });
   };
 
+  const handleCreateFloor = async (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    
+    if (onCreateFloorOption) {
+      const created = await onCreateFloorOption(trimmed);
+      if (!created) return;
+      
+      setFloorOptions((prev) => {
+        if (prev.some((f) => f.value === created.value)) return prev;
+        return [...prev, created].sort((a, b) => Number(a.value) - Number(b.value));
+      });
+      set({ floor: created.value });
+    } else {
+      const label = trimmed.startsWith('ชั้น') ? trimmed : `ชั้น ${trimmed}`;
+      const newOption = { value: trimmed, label };
+      setFloorOptions((prev) => {
+        if (prev.some((f) => f.value === trimmed)) return prev;
+        return [...prev, newOption].sort((a, b) => Number(a.value) - Number(b.value));
+      });
+      set({ floor: trimmed });
+    }
+  };
+
   const handleCreateRoom = async (name: string) => {
     const trimmed = name.trim();
     if (!trimmed) return;
@@ -170,7 +241,6 @@ export function ResidentFormModal({ isOpen, onClose, onSubmit, isLoading = false
 
         {/* ══ Section 1: ข้อมูลพื้นฐาน ══════════════════════════════ */}
         <section className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5 md:p-6">
-          {/* Status selector in header */}
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h3 className="text-base font-semibold text-slate-800">ข้อมูลพื้นฐาน</h3>
             <div className="w-full sm:w-auto sm:min-w-40 "> 
@@ -189,7 +259,6 @@ export function ResidentFormModal({ isOpen, onClose, onSubmit, isLoading = false
             />
 
             <div className="flex-1 space-y-4">
-              {/* Row 1: ชื่อ-นามสกุล / ชื่อเล่น */}
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
                   <Label icon={<User size={14} />} text="ชื่อ - นามสกุล" required />
@@ -201,7 +270,6 @@ export function ResidentFormModal({ isOpen, onClose, onSubmit, isLoading = false
                 </div>
               </div>
 
-              {/* Row 2: วันเกิด / เพศ / เลขบัตร */}
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div>
                   <Label icon={<Calendar size={14} />} text="วันเกิด" required />
@@ -230,7 +298,6 @@ export function ResidentFormModal({ isOpen, onClose, onSubmit, isLoading = false
                 </div>
               </div>
 
-              {/* Row 3: จุดประสงค์ / วันที่เข้า–ออก + ห้อง/ชั้น */}
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
                   <Label icon={<Home size={14} />} text="จุดประสงค์การเข้าพัก" required />
@@ -249,7 +316,16 @@ export function ResidentFormModal({ isOpen, onClose, onSubmit, isLoading = false
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <div>
                         <Label icon={<Layers size={14} />} text="ชั้น" />
-                        <Dropdown options={FLOOR_OPTIONS} value={formData.floor} onChange={(val) => set({ floor: val })} placeholder="เลือกชั้น" className="w-full" />
+                        <SearchableDropdown 
+                          options={floorOptions} 
+                          value={formData.floor} 
+                          onChange={(val) => set({ floor: val })} 
+                          placeholder="เลือกชั้น" 
+                          className="w-full text-black"
+                          allowCreate={true}
+                          onCreate={handleCreateFloor}
+                          createLabel="เพิ่มชั้น"
+                        />
                       </div>
                       <div>
                         <Label icon={<Home size={14} />} text="ห้อง" />
@@ -267,7 +343,7 @@ export function ResidentFormModal({ isOpen, onClose, onSubmit, isLoading = false
                             });
                           }}
                           placeholder="เลือกห้อง"
-                          className="w-full"
+                          className="w-full text-black"
                           allowCreate={Boolean(onCreateRoomOption)}
                           onCreate={handleCreateRoom}
                           createLabel="เพิ่มห้อง"
@@ -284,7 +360,6 @@ export function ResidentFormModal({ isOpen, onClose, onSubmit, isLoading = false
 
         {/* ══ Section 2: ข้อมูลทางการแพทย์ ══════════════════════════ */}
         <SectionCard title="ข้อมูลทางการแพทย์">
-          {/* โรคประจำตัว / หมายเหตุ */}
           <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
               <Label icon={<Heart size={14} />} text="โรคประจำตัว (แยกแต่ละบรรทัด)" />
@@ -302,7 +377,6 @@ export function ResidentFormModal({ isOpen, onClose, onSubmit, isLoading = false
             </div>
           </div>
 
-          {/* ตารางยา */}
           <div className="mb-4">
             <Label icon={<Pill size={14} />} text="ยาที่ใช้ประจำ" />
             <MedicationTable
@@ -315,7 +389,6 @@ export function ResidentFormModal({ isOpen, onClose, onSubmit, isLoading = false
             />
           </div>
 
-          {/* ประวัติผ่าตัด */}
           <div className="mb-4">
             <Label icon={<Scissors size={14} />} text="ประวัติการผ่าตัด (แยกแต่ละบรรทัด)" />
             <Textarea
@@ -327,7 +400,6 @@ export function ResidentFormModal({ isOpen, onClose, onSubmit, isLoading = false
             />
           </div>
 
-          {/* แพ้ยา / แพ้อาหาร */}
           <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
               <Label icon={<AlertTriangle size={14} />} text="แพ้ยา (แยกแต่ละบรรทัด)" />
@@ -351,12 +423,40 @@ export function ResidentFormModal({ isOpen, onClose, onSubmit, isLoading = false
             </div>
           </div>
 
-          {/* ADL / CPR-DNR */}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
               <Label icon={<Activity size={14} />} text="การประเมินการช่วยเหลือตัวเอง (ADL)" required />
-              <Dropdown options={CARE_LEVEL_OPTIONS} value={formData.careLevel} onChange={(val) => set({ careLevel: val })} placeholder="เลือกสถานะ" className="w-full" />
+                  <div className="mt-2">
+                    <SearchableDropdown
+                      options={intakeOptions}
+                      value={formData.careLevel} 
+                      onChange={(val) => set({ careLevel: val })} 
+                      placeholder="เลือกสถานะ" className="w-full text-black" 
+                      allowCreate={true}
+                      onCreate={async (name: string) => {
+                        const trimmed = name.trim();
+                        if (!trimmed) return;
+                        try {
+                          const created = await intakeService.createMaster(trimmed);
+                          const val = created.label_name || trimmed;
+                          setIntakeOptions((prev) => {
+                            if (prev.some((p) => p.value === val)) return prev;
+                            return [...prev, { value: val, label: val }];
+                          });
+                          set({ careLevel: val });
+                        } catch (err) {
+                          setIntakeOptions((prev) => {
+                            if (prev.some((p) => p.value === trimmed)) return prev;
+                            return [...prev, { value: trimmed, label: trimmed }];
+                          });
+                          set({ careLevel: trimmed });
+                        }
+                      }}
+                      createLabel="เพิ่มฉลาก"
+                    />
+                  </div>
             </div>
+
             <div>
               <Label icon={<ShieldCheck size={14} />} text="การกู้ชีพกรณีหยุดหายใจ" required />
               <div className="flex gap-2">
