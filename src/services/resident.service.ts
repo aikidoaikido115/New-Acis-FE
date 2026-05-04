@@ -34,13 +34,8 @@ export const isResidentActive = (resident: ResidentStatusDates): boolean => {
 
   const now = new Date();
   const checkInDate = parseDateValue(resident.check_in_date);
-  const expectedCheckOutDate = parseDateValue(resident.expected_check_out_date);
 
   if (checkInDate && now < checkInDate) {
-    return false;
-  }
-
-  if (expectedCheckOutDate && now > expectedCheckOutDate) {
     return false;
   }
 

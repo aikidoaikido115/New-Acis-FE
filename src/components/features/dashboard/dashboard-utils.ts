@@ -63,12 +63,12 @@ export const formatThaiMonthYear = (date: Date) => `${MONTHS_TH[date.getMonth()]
 
 export const isResidentActiveOnDate = (resident: ResidentSnapshot, date: Date) => {
   const admitDate = parseDateSafe(resident.check_in_date);
-  const dischargeDate = parseDateSafe(resident.expected_check_out_date);
   const target = startOfDay(date);
 
-  if (admitDate && admitDate > target) return false;
-  if (dischargeDate && dischargeDate < target) return false;
   if (resident.status && resident.status.toLowerCase() !== "active") return false;
+
+  if (admitDate && admitDate > target) return false;
+
   return true;
 };
 

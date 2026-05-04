@@ -1,7 +1,8 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { roomService } from "@/services/room.service";
-import { residentService } from "@/services/resident.service";
+// ✨ 1. นำเข้า isResidentActive เพิ่มเข้ามา
+import { isResidentActive, residentService } from "@/services/resident.service";
 import { warehouseService } from "@/services/warehouse.service";
 import { vitalSignService } from "@/services/vital-sign.service";
 import { drugPlanService } from "@/services/drug-plan.service";
@@ -137,7 +138,6 @@ export function useDashboardData() {
     return () => { mounted = false; };
   }, [activityDate, scheduleBadge]);
 
-// Load schedules for the current month to display activity count on calendar
   useEffect(() => {
     let mounted = true;
     const load = async () => {
@@ -145,22 +145,15 @@ export function useDashboardData() {
         const allSchedules = await activityScheduleService.getAll();
         if (!mounted) return;
         
-        // Group schedules by date
         const byDate: Record<string, number> = {};
         (allSchedules || []).forEach((s) => {
           if (s.date) {
-            // 1. นำข้อมูลมาแปลงเป็น Date Object เพื่อปรับ Timezone ให้ตรงกับเครื่องผู้ใช้ (ไทย)
             const d = new Date(s.date);
-            
-            // 2. เช็คว่าเป็นวันที่ที่ถูกต้อง ไม่ใช่ Invalid Date
             if (!Number.isNaN(d.getTime())) {
               const year = d.getFullYear();
               const month = String(d.getMonth() + 1).padStart(2, "0");
               const day = String(d.getDate()).padStart(2, "0");
-              
-              // 3. ประกอบร่าง YYYY-MM-DD ที่เป็นเวลา Local แล้ว
               const key = `${year}-${month}-${day}`; 
-              
               byDate[key] = (byDate[key] || 0) + 1;
             }
           }
@@ -250,7 +243,9 @@ export function useDashboardData() {
       }));
 
       setRooms(roomsRes || []);
-      setResidents(normalizedOverview);
+      // ✨ 2. ครอบ filter(isResidentActive) ตรงนี้เหมือนที่เพื่อนทำ!
+      // จะทำให้ residents มีเฉพาะคนที่ active เท่านั้น
+      setResidents(normalizedOverview.filter(isResidentActive));
     } catch (error) {
       logApiError("Failed to fetch resident overview:", error);
       setResidents([]);
@@ -269,7 +264,6 @@ export function useDashboardData() {
       
       const lowStock = items.filter((item: any) => {
         const minThreshold = item.minimumQuantity ?? 5;
-        
         return item.quantity <= minThreshold;
       }).length; 
       
@@ -327,10 +321,17 @@ export function useDashboardData() {
       const latestByResident = new Map<string, { item: (typeof allItems)[number]; timestamp: number }>();
       allItems.forEach((item) => {
         if (!item?.resident_id) return;
+
+        // โค้ดตรงนี้จะทำงานได้ถูกต้องเป๊ะๆ เพราะ residentById โดนกรองคนไม่ active ทิ้งไปตั้งแต่ setResidents แล้วครับ
+        if (!residentById.has(String(item.resident_id))) return;
+
         const timestamp = item.created_at ? new Date(item.created_at).getTime() : 0;
-        const existing = latestByResident.get(item.resident_id);
+        
+        const residentIdStr = String(item.resident_id); 
+        const existing = latestByResident.get(residentIdStr);
+        
         if (!existing || timestamp > existing.timestamp) {
-          latestByResident.set(item.resident_id, { item, timestamp });
+          latestByResident.set(residentIdStr, { item, timestamp });
         }
       });
 
@@ -346,7 +347,7 @@ export function useDashboardData() {
       logApiError("Failed to fetch vital sign stats:", error);
       setVitalStats(DEFAULT_VITAL_STATS);
     }
-  }, [normalizedFloor, selectedDate, isAuthenticated]);
+  }, [normalizedFloor, selectedDate, isAuthenticated, residentById]); 
 
   const loadMedicineStatus = useCallback(async () => {
     if (!isAuthenticated) {
@@ -354,10 +355,8 @@ export function useDashboardData() {
       return;
     }
     try {
-      // 1. ดึงข้อมูลแผนยาทั้งหมด
       const plans = await drugPlanService.getOverview();
       
-      // 2. กรองตามชั้น (Floor)
       const filteredByFloor = normalizedFloor === undefined
         ? plans
         : plans.filter((plan: any) => {
@@ -366,7 +365,6 @@ export function useDashboardData() {
             return resident?.floor === normalizedFloor;
           });
 
-      // 3. เตรียมตัวนับ
       const totals = {
         morning: new Set<string>(),
         noon: new Set<string>(),
@@ -380,11 +378,14 @@ export function useDashboardData() {
         bedtime: new Set<string>(),
       };
 
-      // 5. นับจำนวนผู้สูงอายุที่รอให้ยาในแต่ละมื้อ (นับเป็นคน)
       filteredByFloor.forEach((plan: any) => {
         const timeOfDayString = plan.PersonalDrug?.time_of_day || plan.PersonalDrug?.timing || "";
         const residentId = plan.PersonalDrug?.resident_id;
         if (!residentId) return;
+
+        // โค้ดตรงนี้ก็จะทำงานถูกต้องเหมือนกัน กันคนไม่ active ไม่ให้นับรวมได้เลย
+        if (!residentById.has(String(residentId))) return;
+
         const keys = resolveTimeOfDayKeys(timeOfDayString);
         const isPending = !plan.is_taken && !plan.is_omitted;
 
@@ -404,7 +405,6 @@ export function useDashboardData() {
         return `รอให้ยา ${pendingSet.size} คน`;
       };
 
-      // 6. อัปเดตสถานะเพื่อโชว์บนหน้า Dashboard
       setMedicineStatus([
         { label: "มื้อเช้า", value: formatPending(totals.morning, pending.morning) },
         { label: "มื้อกลางวัน", value: formatPending(totals.noon, pending.noon) },

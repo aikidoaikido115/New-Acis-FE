@@ -131,7 +131,6 @@ export const parseDose = (dose: string) => {
 const transformResidentData = (apiResident: ApiResident): Resident => {
   const fullName = `${apiResident.first_name} ${apiResident.last_name}`;
   
-  // ใช้ชื่อ Label ดิปๆ ไปเลย ถ้าไม่มีให้ไปดูคะแนน ADL แทน
   const labelBasedCareLevel = resolveCareLevelFromLabels(apiResident.resident_labels);
   const careLevel = labelBasedCareLevel || determineCareLevel(apiResident.adl_score);
   
