@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   Search,
-  ChevronDown,
   Download,
   Plus,
   Sunrise,
@@ -19,7 +18,9 @@ import { RoutineMedsTable } from "./tables/RoutineMedsTable";
 import { CombinedMedsTable } from "./tables/CombinedMedsTable";
 import { HistoryTable } from "./tables/HistoryTable";
 import { Pagination } from "@/components/ui/pagination";
+import { Dropdown } from "@/components/ui/dropdown";
 import { AddMedicationModal } from "./modals";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import type { AddMedicationFormData, EditMedicationFormData } from "./modals";
 import type { GiveAllFormData } from "./modals/GiveAllMedicationsModal";
 import type { WithholdFormData } from "./modals/WithholdMedicationModal";
@@ -602,19 +603,64 @@ export function MedicalManagementView() {
   const handleGiveAllMeds = useCallback(
     async (patientId: string, payload: GiveAllFormData) => {
       const staff = ensureStaffIdentity();
-      await drugPlanService.takeByResidentToday(patientId, {
-        ...staff,
-        note: payload.note || undefined,
-      });
-      await refreshAfterMutation();
 
-      showToast({
-        type: "success",
-        title: "บันทึกสำเร็จ",
-        message: "บันทึกการให้ยาทั้งหมดของผู้พักเรียบร้อยแล้ว",
-      });
+      // Find all drug plan ids for this resident that match the currently selected time slot
+      const plansToTake = overviewPlans
+        .filter((plan) => {
+          const personalDrug = plan.PersonalDrug;
+          const residentId = personalDrug?.resident_id;
+          const planId = plan.dpln_id || plan.id;
+          if (!planId) return false;
+          if (!residentId || residentId !== patientId) return false;
+          if (!includesTimeSlot(personalDrug?.time_of_day, selectedTimeSlot)) return false;
+          if (plan.is_taken) return false;
+          if (plan.is_omitted) return false;
+          return true;
+        })
+        .map((p) => p.dpln_id || p.id)
+        .filter(Boolean) as string[];
+
+      if (plansToTake.length === 0) {
+        showToast({ type: "info", title: "ไม่มีรายการให้ยา", message: "ไม่พบรายการยาที่ต้องให้ในช่วงเวลานี้" });
+        return;
+      }
+
+      // Optimistic update: mark those plans as taken immediately
+      setOverviewPlans((prev) =>
+        prev.map((p) => {
+          const id = p.dpln_id || p.id;
+          if (id && plansToTake.includes(id)) {
+            return { ...p, is_taken: true, is_omitted: false };
+          }
+          return p;
+        })
+      );
+
+      try {
+        // Send take request for each plan individually to restrict to the selected time slot
+        await Promise.all(
+          plansToTake.map((id) =>
+            drugPlanService.takeById(id, {
+              ...staff,
+              note: payload.note || undefined,
+            })
+          )
+        );
+
+        await refreshAfterMutation();
+
+        showToast({
+          type: "success",
+          title: "บันทึกสำเร็จ",
+          message: "บันทึกการให้ยาทั้งหมดของผู้พักเรียบร้อยแล้ว",
+        });
+      } catch (error) {
+        // Revert optimistic update on failure
+        await loadOverview();
+        throw error;
+      }
     },
-    [ensureStaffIdentity, refreshAfterMutation, showToast]
+    [ensureStaffIdentity, refreshAfterMutation, showToast, overviewPlans, selectedTimeSlot, loadOverview]
   );
 
   const handleAddMedication = useCallback(
@@ -1114,39 +1160,34 @@ export function MedicalManagementView() {
 
           <span className="text-body-small text-gray-600">ชั้น</span>
 
-          <div className="relative">
-            <select
-              value={selectedFloor}
-              onChange={(e) => setSelectedFloor(e.target.value)}
-              className="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-body-small bg-white cursor-pointer text-black"
-            >
-              <option>ทุกชั้น</option>
-              {[...new Set(rooms.map((room) => room.floor))]
+          <Dropdown
+            options={[
+              { value: "ทุกชั้น", label: "ทุกชั้น" },
+              ...[...new Set(rooms.map((room) => room.floor))]
                 .sort((a, b) => a - b)
-                .map((floor) => (
-                  <option key={floor} value={String(floor)}>
-                    {floor}
-                  </option>
-                ))}
-            </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-          </div>
+                .map((floor) => ({
+                  value: String(floor),
+                  label: String(floor),
+                })),
+            ]}
+            value={selectedFloor}
+            onChange={(value) => setSelectedFloor(value)}
+            className="w-32"
+          />
 
           <span className="text-body-small text-gray-600">การช่วยเหลือตัวเอง</span>
 
-          <div className="relative">
-            <select
-              value={selectedHelpLevel}
-              onChange={(e) => setSelectedHelpLevel(e.target.value)}
-              className="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-body-small bg-white cursor-pointer text-black"
-            >
-              <option>ทั้งหมด</option>
-              <option>ช่วยเหลือตัวเองได้</option>
-              <option>ต้องการความช่วยเหลือ</option>
-              <option>ติดเตียง</option>
-            </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-          </div>
+          <Dropdown
+            options={[
+              { value: "ทั้งหมด", label: "ทั้งหมด" },
+              { value: "ช่วยเหลือตัวเองได้", label: "ช่วยเหลือตัวเองได้" },
+              { value: "ต้องการความช่วยเหลือ", label: "ต้องการความช่วยเหลือ" },
+              { value: "ติดเตียง", label: "ติดเตียง" },
+            ]}
+            value={selectedHelpLevel}
+            onChange={(value) => setSelectedHelpLevel(value)}
+            className="w-48"
+          />
         </div>
 
         <button
@@ -1162,8 +1203,8 @@ export function MedicalManagementView() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {isLoadingMain ? (
-          <div className="md:col-span-2 rounded-lg border border-gray-200 bg-white py-12 px-4 text-center text-sm text-gray-600">
-            กำลังโหลดรายการยา...
+          <div className="md:col-span-2 rounded-lg border border-gray-200 bg-white py-12 px-4 text-center">
+            <LoadingSpinner />
           </div>
         ) : visiblePatients.length === 0 ? (
           <div className="md:col-span-2 rounded-lg border border-gray-200 bg-white py-12 px-4 text-center">
@@ -1299,8 +1340,8 @@ export function MedicalManagementView() {
           </div>
 
           {isLoadingDetails ? (
-            <div className="rounded-lg border border-gray-200 bg-white py-10 px-4 text-center text-sm text-gray-600">
-              กำลังโหลดข้อมูลรายการยา...
+            <div className="rounded-lg border border-gray-200 bg-white py-10 px-4 text-center">
+              <LoadingSpinner />
             </div>
           ) : medsDisplayMode === "split" ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1382,7 +1423,7 @@ export function MedicalManagementView() {
               }}
             />
           </div>
-          {isLoadingHistory ? <div className="py-6 text-center text-sm text-gray-600">กำลังโหลดประวัติ...</div> : null}
+          {isLoadingHistory ? <div className="py-6 text-center"><LoadingSpinner /></div> : null}
           <HistoryTable history={historyBySelectedPatient} />
         </div>
       )}
@@ -1420,45 +1461,40 @@ export function MedicalManagementView() {
 
         <span className="text-body-small text-gray-600">ชั้น</span>
 
-        <div className="relative">
-          <select
-            value={selectedFloor}
-            onChange={(e) => {
-              setSelectedFloor(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-body-small bg-white cursor-pointer text-black"
-          >
-            <option>ทุกชั้น</option>
-            {[...new Set(rooms.map((room) => room.floor))]
+        <Dropdown
+          options={[
+            { value: "ทุกชั้น", label: "ทุกชั้น" },
+            ...[...new Set(rooms.map((room) => room.floor))]
               .sort((a, b) => a - b)
-              .map((floor) => (
-                <option key={floor} value={String(floor)}>
-                  {floor}
-                </option>
-              ))}
-          </select>
-          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-        </div>
+              .map((floor) => ({
+                value: String(floor),
+                label: String(floor),
+              })),
+          ]}
+          value={selectedFloor}
+          onChange={(value) => {
+            setSelectedFloor(value);
+            setCurrentPage(1);
+          }}
+          className="w-32"
+        />
 
         <span className="text-body-small text-gray-600">สถานะ</span>
 
-        <div className="relative">
-          <select
-            value={selectedStatus}
-            onChange={(e) => {
-              setSelectedStatus(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-body-small bg-white cursor-pointer text-black"
-          >
-            <option>ทั้งหมด</option>
-            <option>ให้แล้ว</option>
-            <option>งด</option>
-            <option>รอให้</option>
-          </select>
-          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-        </div>
+        <Dropdown
+          options={[
+            { value: "ทั้งหมด", label: "ทั้งหมด" },
+            { value: "ให้แล้ว", label: "ให้แล้ว" },
+            { value: "งด", label: "งด" },
+            { value: "รอให้", label: "รอให้" },
+          ]}
+          value={selectedStatus}
+          onChange={(value) => {
+            setSelectedStatus(value);
+            setCurrentPage(1);
+          }}
+          className="w-32"
+        />
 
         <div className="ml-auto">
           <NoteTimelineControls
@@ -1493,7 +1529,9 @@ export function MedicalManagementView() {
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         {isLoadingHistory ? (
-          <div className="py-6 text-center text-sm text-gray-600">กำลังโหลดประวัติ...</div>
+          <div className="py-6 text-center">
+            <LoadingSpinner />
+          </div>
         ) : null}
         <HistoryTable history={visibleHistory} />
         <Pagination currentPage={currentPage} totalPages={historyTotalPages} onPageChange={setCurrentPage} />
