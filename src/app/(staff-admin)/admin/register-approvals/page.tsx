@@ -7,6 +7,7 @@ import { Dropdown } from "@/components/ui/dropdown";
 import { Pagination } from "@/components/ui/pagination";
 import { useToast } from "@/components/ui/toast";
 import { AdminSectionTabs } from "@/components/features/admin/admin-section-tabs";
+import { useAdminContext } from "@/components/features/admin/AdminContext";
 import {
   formatDateTime,
   toRoleLabel,
@@ -79,6 +80,7 @@ function toRegistrationRequest(user: AdminManagedUser): RegistrationRequest {
 
 export default function AdminRegisterApprovalsPage() {
   const { showToast } = useToast();
+  const { refetchPendingCount } = useAdminContext();
   const [requests, setRequests] = useState<RegistrationRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -176,6 +178,8 @@ export default function AdminRegisterApprovalsPage() {
         message: `${target.username} ถูก${status === "approved" ? "อนุมัติการใช้งาน" : "ปิดการใช้งาน"}เรียบร้อย`,
         type: "success",
       });
+
+      await refetchPendingCount();
     } catch {
       showToast({
         title: "บันทึกไม่สำเร็จ",

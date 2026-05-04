@@ -1,18 +1,26 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { ADMIN_NAV_ITEMS } from "@/components/features/admin/admin-data";
+import { useAdminContext } from "@/components/features/admin/AdminContext";
 
 export function AdminSectionTabs() {
   const pathname = usePathname();
+  const { pendingCount, refetchPendingCount } = useAdminContext();
+
+  useEffect(() => {
+    void refetchPendingCount();
+  }, [refetchPendingCount]);
 
   return (
     <div className="overflow-x-auto">
       <div className="inline-flex min-w-full gap-2 rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
         {ADMIN_NAV_ITEMS.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const isApprovalTab = item.href === "/admin/register-approvals";
           return (
             <Link
               key={item.href}
@@ -24,7 +32,14 @@ export function AdminSectionTabs() {
                   : "text-slate-600 hover:bg-slate-100"
               )}
             >
-              {item.label}
+              <span className="flex items-center gap-2">
+                {item.label}
+                {isApprovalTab && pendingCount > 0 && (
+                  <span className="flex items-center justify-center w-5 h-5 text-xs font-bold bg-red-500 text-white rounded-full">
+                    {pendingCount}
+                  </span>
+                )}
+              </span>
             </Link>
           );
         })}
