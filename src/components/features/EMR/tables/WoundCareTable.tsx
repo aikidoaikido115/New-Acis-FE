@@ -118,7 +118,7 @@ export function WoundCareTable() {
           if (data.status) form.append('status', data.status);
           if (data.note) form.append('note', data.note);
           form.append('image', data.image);
-          await woundCareNoteService.updateById(editingId, form as any);
+          await woundCareNoteService.updateById(editingId, form);
         } else {
           await woundCareNoteService.updateById(editingId, {
             location: data.location,
@@ -142,8 +142,8 @@ export function WoundCareTable() {
           if (data.supplies) form.append('supplies', data.supplies);
           if (data.status) form.append('status', data.status);
           if (data.note) form.append('note', data.note);
-          form.append('file', data.image);
-          await woundCareNoteService.create(form as any);
+          form.append('image', data.image);
+          await woundCareNoteService.create(form);
         } else {
           await woundCareNoteService.create({
             resident_id: data.residentId,
