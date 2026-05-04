@@ -15,35 +15,12 @@ import type { IntakeLabel } from "@/types/intake";
 
 type SubTab = "vital_signs" | "doctor_order" | "nurse_note" | "wound_care" | "relative_note";
 type VitalSignStatus = "all" | "normal" | "abnormal";
-type HelpLevelFilter = "all" | "self" | "partial" | "bedridden";
-
-function getHelpLevelLabelIds(labels: IntakeLabel[], helpLevel: HelpLevelFilter): string[] {
-  if (helpLevel === "all") {
-    return [];
-  }
-
-  if (helpLevel === "self") {
-    return labels
-      .filter((item) => item.label_name.includes("ช่วยเหลือตัวเองได้ทั้งหมด"))
-      .map((item) => item.label_id);
-  }
-
-  if (helpLevel === "partial") {
-    return labels
-      .filter((item) => item.label_name.includes("ช่วยเหลือตัวเองได้บางส่วน"))
-      .map((item) => item.label_id);
-  }
-
-  return labels
-    .filter((item) => item.label_name.includes("ติดเตียง"))
-    .map((item) => item.label_id);
-}
 
 export function OverviewView() {
   const [activeTab, setActiveTab] = useState<SubTab>("vital_signs");
   const [selectedFloor, setSelectedFloor] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState<VitalSignStatus>("all");
-  const [selectedHelpLevel, setSelectedHelpLevel] = useState<HelpLevelFilter>("all");
+  const [selectedLabelId, setSelectedLabelId] = useState("all");
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [rooms, setRooms] = useState<Room[]>([]);
   const [intakeLabels, setIntakeLabels] = useState<IntakeLabel[]>([]);
@@ -68,10 +45,12 @@ export function OverviewView() {
     return uniqueFloors.sort((a, b) => a - b);
   }, [rooms]);
 
-  const selectedLabelIds = useMemo(
-    () => getHelpLevelLabelIds(intakeLabels, selectedHelpLevel),
-    [intakeLabels, selectedHelpLevel]
-  );
+  const selectedLabelIds = useMemo(() => {
+    if (selectedLabelId === "all") {
+      return [];
+    }
+    return [selectedLabelId];
+  }, [selectedLabelId]);
 
   const overviewDatePickerClassName =
     "w-[200px] [&>button]:w-full [&>button]:justify-between [&>button]:border-2 [&>button]:border-blue-500 [&>button]:hover:bg-blue-50";
@@ -111,12 +90,13 @@ export function OverviewView() {
             <Dropdown
               options={[
                 { value: "all", label: "ทั้งหมด" },
-                { value: "self", label: "ช่วยเหลือตัวเองได้" },
-                { value: "partial", label: "ต้องการความช่วยเหลือ" },
-                { value: "bedridden", label: "ติดเตียง" },
+                ...intakeLabels.map((label) => ({
+                  value: label.label_id,
+                  label: label.label_name,
+                })),
               ]}
-              value={selectedHelpLevel}
-              onChange={(value) => setSelectedHelpLevel(value as HelpLevelFilter)}
+              value={selectedLabelId}
+              onChange={(value) => setSelectedLabelId(value)}
               placeholder="เลือก"
             />
 

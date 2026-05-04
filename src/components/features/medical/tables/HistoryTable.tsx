@@ -65,15 +65,15 @@ export function HistoryTable({ history }: HistoryTableProps) {
                 <td className="py-3 px-4 text-xs sm:text-sm text-gray-700">{entry.medication}</td>
                 <td className="py-3 px-4">
                   {entry.status === "ให้แล้ว" ? (
-                    <span className="inline-flex px-3 py-1 bg-green-100 text-green-600 rounded-full text-xs sm:text-sm font-medium">
+                    <span className="status-pill inline-flex px-3 py-1 bg-green-100 text-green-600 rounded-full text-xs sm:text-sm font-medium">
                       ให้แล้ว
                     </span>
                   ) : entry.status === "รอให้" ? (
-                    <span className="inline-flex px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs sm:text-sm font-medium">
+                    <span className="status-pill inline-flex px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs sm:text-sm font-medium">
                       รอให้
                     </span>
                   ) : (
-                    <span className="inline-flex px-3 py-1 bg-red-100 text-red-600 rounded-full text-xs sm:text-sm font-medium">
+                    <span className="status-pill inline-flex px-3 py-1 bg-red-100 text-red-600 rounded-full text-xs sm:text-sm font-medium">
                       งด
                     </span>
                   )}

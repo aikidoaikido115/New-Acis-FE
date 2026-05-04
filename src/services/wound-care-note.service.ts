@@ -28,6 +28,8 @@ export interface UpdateWoundCareNoteRequest {
   note?: string;
 }
 
+type WoundCareNotePayload = CreateWoundCareNoteRequest | UpdateWoundCareNoteRequest | FormData;
+
 class WoundCareNoteService {
   async getOverview(dateInput?: string): Promise<WoundCareNote[]> {
     const response = await apiClient.get<ApiResponse<WoundCareNote[]>>(`/api/emr/wound-care-notes/overview${buildDateQuery(dateInput)}`);
@@ -41,11 +43,11 @@ class WoundCareNoteService {
     return response.data.result;
   }
 
-  async create(payload: CreateWoundCareNoteRequest): Promise<WoundCareNote> {
+  async create(payload: WoundCareNotePayload): Promise<WoundCareNote> {
     const isFormData = payload instanceof FormData;
     const response = await apiClient.post<ApiResponse<WoundCareNote>>(
       '/api/emr/wound-care-notes',
-      payload as any,
+      payload,
       isFormData
         ? {
             headers: {
@@ -57,11 +59,11 @@ class WoundCareNoteService {
     return response.data.result;
   }
 
-  async updateById(id: string, payload: UpdateWoundCareNoteRequest): Promise<WoundCareNote> {
+  async updateById(id: string, payload: WoundCareNotePayload): Promise<WoundCareNote> {
     const isFormData = payload instanceof FormData;
     const response = await apiClient.patch<ApiResponse<WoundCareNote>>(
       `/api/emr/wound-care-notes/${id}`,
-      payload as any,
+      payload,
       isFormData
         ? {
             headers: {

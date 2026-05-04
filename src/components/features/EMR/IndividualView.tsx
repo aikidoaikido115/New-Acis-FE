@@ -5,12 +5,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Dropdown } from "@/components/ui/dropdown";
 import { isResidentActive, residentService } from "@/services/resident.service";
+import { intakeService } from "@/services/intake.service";
 import { roomService } from "@/services/room.service";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import type { Resident } from "@/types/resident";
 import type { Room } from "@/types/room";
+import type { IntakeLabel } from "@/types/intake";
 
-type CareLevelFilter = "all" | "general" | "partial_assist" | "bedridden";
 type StatusFilter = "all" | "active" | "inactive";
 
 export function IndividualView() {
@@ -18,9 +19,10 @@ export function IndividualView() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedFloor, setSelectedFloor] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<StatusFilter>("all");
-  const [selectedHelpLevel, setSelectedHelpLevel] = useState<CareLevelFilter>("all");
+  const [selectedLabelId, setSelectedLabelId] = useState("all");
   const [residents, setResidents] = useState<Resident[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [intakeLabels, setIntakeLabels] = useState<IntakeLabel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,14 +32,17 @@ export function IndividualView() {
       setError(null);
 
       try {
-        const [residentData, roomData] = await Promise.all([
+        const [residentData, roomData, labelData] = await Promise.all([
           residentService.getAll(),
           roomService.getAll(),
+          intakeService.getAllLabels(),
         ]);
         setResidents((residentData || []).filter(isResidentActive));
         setRooms(roomData || []);
+        setIntakeLabels(labelData || []);
       } catch {
         setError("ไม่สามารถโหลดข้อมูลผู้พักได้");
+        setIntakeLabels([]);
       } finally {
         setIsLoading(false);
       }
@@ -60,6 +65,17 @@ export function IndividualView() {
     return uniqueFloors;
   }, [rooms]);
 
+  const careOptions = useMemo(
+    () => [
+      { value: "all", label: "ทั้งหมด" },
+      ...intakeLabels.map((label) => ({
+        value: label.label_id,
+        label: label.label_name,
+      })),
+    ],
+    [intakeLabels]
+  );
+
   const filteredResidents = useMemo(() => {
     return residents.filter((resident) => {
       const fullName = `${resident.first_name || ""} ${resident.last_name || ""}`.trim().toLowerCase();
@@ -76,21 +92,16 @@ export function IndividualView() {
       const residentStatus = String(resident.status || "").toLowerCase();
       const matchesStatus = selectedStatus === "all" || residentStatus === selectedStatus;
 
-      const careLevel = resident.resident_labels
-        ?.map((label) => label.intake_label?.label_name || "")
-        .find((labelName) => labelName.includes("ช่วยเหลือตัวเอง") || labelName === "ติดเตียง") || "";
-      const careLevelKey = careLevel.includes("บางส่วน")
-        ? "partial_assist"
-        : careLevel.includes("ติดเตียง")
-        ? "bedridden"
-        : careLevel.includes("ทั้งหมด")
-        ? "general"
-        : "";
-      const matchesCareLevel = selectedHelpLevel === "all" || careLevelKey === selectedHelpLevel;
+      const matchesCareLevel =
+        selectedLabelId === "all" ||
+        (resident.resident_labels || []).some((label) => {
+          const labelId = label.label_id || label.intake_label?.label_id;
+          return labelId === selectedLabelId;
+        });
 
       return matchesSearch && matchesFloor && matchesStatus && matchesCareLevel;
     });
-  }, [residents, roomById, searchTerm, selectedFloor, selectedStatus, selectedHelpLevel]);
+  }, [residents, roomById, searchTerm, selectedFloor, selectedStatus, selectedLabelId]);
 
   const getCareLevelText = (resident: Resident) => {
     const labelName = resident.resident_labels
@@ -143,14 +154,9 @@ export function IndividualView() {
 
         {/* Help Level Dropdown */}
         <Dropdown
-          options={[
-            { value: "all", label: "ทั้งหมด" },
-            { value: "general", label: "ช่วยเหลือตัวเองได้" },
-            { value: "partial_assist", label: "ต้องการความช่วยเหลือ" },
-            { value: "bedridden", label: "ติดเตียง" },
-          ]}
-          value={selectedHelpLevel}
-          onChange={(value) => setSelectedHelpLevel(value as CareLevelFilter)}
+          options={careOptions}
+          value={selectedLabelId}
+          onChange={(value) => setSelectedLabelId(value)}
           placeholder="เลือก"
         />
 

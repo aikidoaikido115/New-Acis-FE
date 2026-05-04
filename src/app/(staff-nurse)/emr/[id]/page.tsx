@@ -134,13 +134,13 @@ export default function PatientDetailPage() {
       <div className="max-w-screen-2xl mx-auto space-y-4">
         <button
           onClick={() => router.back()}
-          className="flex items-center gap-2 text-blue-500 hover:text-blue-700 transition-colors"
+          className="print-hide flex items-center gap-2 text-blue-500 hover:text-blue-700 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           <span className="text-body-small font-medium">ย้อนกลับ</span>
         </button>
 
-        <div className="flex items-center justify-between">
+        <div className="print-hide flex items-center justify-between">
           <h1 className="text-headline-5 font-bold text-gray-800">เวชระเบียน</h1>
 
           <div className="w-[220px]">
@@ -241,7 +241,7 @@ export default function PatientDetailPage() {
           )}
         </div>
 
-        <div className="flex bg-gray-100 rounded-full p-1" style={{ border: "1px solid rgba(103, 103, 103, 0.48)" }}>
+        <div className="print-hide flex bg-gray-100 rounded-full p-1" style={{ border: "1px solid rgba(103, 103, 103, 0.48)" }}>
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -261,6 +261,9 @@ export default function PatientDetailPage() {
             <VitalSignsDetailTable
               patientId={residentId}
               selectedDate={selectedDate}
+              patientName={residentName}
+              patientRoom={roomDisplay}
+              patientStatus={statusText}
             />
           )}
           {activeTab === "graph" && <GraphView patientId={residentId} />}
