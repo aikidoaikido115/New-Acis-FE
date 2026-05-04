@@ -4,7 +4,7 @@ import { Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Dropdown } from "@/components/ui/dropdown";
-import { residentService } from "@/services/resident.service";
+import { isResidentActive, residentService } from "@/services/resident.service";
 import { roomService } from "@/services/room.service";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import type { Resident } from "@/types/resident";
@@ -34,7 +34,7 @@ export function IndividualView() {
           residentService.getAll(),
           roomService.getAll(),
         ]);
-        setResidents(residentData || []);
+        setResidents((residentData || []).filter(isResidentActive));
         setRooms(roomData || []);
       } catch {
         setError("ไม่สามารถโหลดข้อมูลผู้พักได้");

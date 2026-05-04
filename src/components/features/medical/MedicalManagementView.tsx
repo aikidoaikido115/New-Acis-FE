@@ -38,7 +38,7 @@ import { authService } from "@/services/auth.service";
 import { drugMasterService } from "@/services/drug-master.service";
 import { drugPlanService } from "@/services/drug-plan.service";
 import { personalDrugService, type PersonalDrug } from "@/services/personal-drug.service";
-import { residentService } from "@/services/resident.service";
+import { isResidentActive, residentService } from "@/services/resident.service";
 import { roomService } from "@/services/room.service";
 import { drugAllergyService } from "@/services/drug-allergy.service";
 import type { DrugAdministrationStatus, DrugPlan } from "@/types/drug-plan";
@@ -398,7 +398,7 @@ export function MedicalManagementView() {
   const loadReferenceData = useCallback(async () => {
     try {
       const [residentData, roomData] = await Promise.all([residentService.getAll(), roomService.getAll()]);
-      setResidents(residentData || []);
+      setResidents((residentData || []).filter(isResidentActive));
       setRooms(roomData || []);
     } catch (error) {
       showToast({

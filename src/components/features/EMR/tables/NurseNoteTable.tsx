@@ -11,7 +11,7 @@ import { NoteTimelineControls } from "../NoteTimelineControls";
 import { ContactInformationModal } from "@/components/shared/contact/ContactInformationModal";
 import { resolveContactInfo } from "@/components/shared/contact/contactDirectory";
 import { nurseNoteService } from "@/services/nurse-note.service";
-import { residentService } from "@/services/resident.service";
+import { isResidentActive, residentService } from "@/services/resident.service";
 import { roomService } from "@/services/room.service";
 import type { NurseNote } from "@/types/emr-notes";
 import type { Resident } from "@/types/resident";
@@ -45,7 +45,7 @@ export function NurseNoteTable() {
         roomService.getAll(),
       ]);
       setNotes(noteData || []);
-      setResidents(residentData || []);
+      setResidents((residentData || []).filter(isResidentActive));
       setRooms(roomData || []);
     } catch {
       setError("ไม่สามารถโหลดข้อมูลบันทึกพยาบาลได้");

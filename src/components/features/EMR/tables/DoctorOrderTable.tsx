@@ -11,7 +11,7 @@ import { NoteTimelineControls } from "../NoteTimelineControls";
 import { ContactInformationModal } from "@/components/shared/contact/ContactInformationModal";
 import { resolveContactInfo } from "@/components/shared/contact/contactDirectory";
 import { doctorOrderService } from "@/services/doctor-order.service";
-import { residentService } from "@/services/resident.service";
+import { isResidentActive, residentService } from "@/services/resident.service";
 import { roomService } from "@/services/room.service";
 import type { DoctorOrder } from "@/types/emr-notes";
 import type { Resident } from "@/types/resident";
@@ -46,7 +46,7 @@ export function DoctorOrderTable() {
           roomService.getAll(),
         ]);
         setOrders(orderData || []);
-        setResidents(residentData || []);
+        setResidents((residentData || []).filter(isResidentActive));
         setRooms(roomData || []);
       } catch {
         setError("ไม่สามารถโหลดข้อมูลคำสั่งแพทย์ได้");
