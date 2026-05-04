@@ -19,6 +19,7 @@ export interface PatientMedication {
   allergies: string[];
   drugAllergies: string[];
   helpLevel: string;
+  labelIds?: string[];
   medications: Medication[];
   pendingCount: number;
 }
