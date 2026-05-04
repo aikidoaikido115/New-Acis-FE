@@ -9,53 +9,16 @@ import { useToast } from "@/components/ui/toast";
 import { activityService } from "@/services/activity.service";
 import { activityScheduleService } from "@/services/activity-schedule.service";
 import { activityParticipationService } from "@/services/activity-participation.service";
-import { adminService } from "@/services/admin.service";
-import { authService } from "@/services/auth.service";
 import { ContactInformationModal } from "@/components/shared/contact/ContactInformationModal";
 import { resolveContactInfo } from "@/components/shared/contact/contactDirectory";
 import type { Activity } from "@/types/activity";
 import type { ActivitySchedule } from "@/types/activity-schedule";
-import apiClient from "@/lib/axios.ts/api-client";
 
 const DAYS_FULL = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
 const MONTHS = [
   "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
   "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม",
 ];
-const STAFF_PROFILE_CACHE_KEY = "activity-staff-profiles";
-
-const loadStaffProfileCache = () => {
-  if (typeof window === "undefined") return {} as Record<string, any>;
-  try {
-    const raw = localStorage.getItem(STAFF_PROFILE_CACHE_KEY);
-    return raw ? (JSON.parse(raw) as Record<string, any>) : {};
-  } catch {
-    return {} as Record<string, any>;
-  }
-};
-
-const saveStaffProfileCache = (profile: {
-  user_id: string;
-  first_name: string;
-  last_name: string;
-  nickname?: string;
-  email: string;
-  phone?: string;
-  profile_image?: string;
-}) => {
-  if (typeof window === "undefined" || !profile.user_id) return;
-  const cache = loadStaffProfileCache();
-  cache[profile.user_id] = {
-    user_id: profile.user_id,
-    first_name: profile.first_name || "",
-    last_name: profile.last_name || "",
-    nickname: profile.nickname || "",
-    email: profile.email || "",
-    phone: profile.phone || "",
-    profile_image: profile.profile_image || "",
-  };
-  localStorage.setItem(STAFF_PROFILE_CACHE_KEY, JSON.stringify(cache));
-};
 
 interface EmptyActivityCardProps {
   selectedDate: Date;
@@ -105,7 +68,6 @@ interface ActivityScheduleCardProps {
   onCheckIn: (schedule: ActivitySchedule, activity: Activity | undefined, mode: "checkin" | "history") => void;
   resolveActivity: (schedule: ActivitySchedule) => Activity | undefined;
   onOpenContact: (name: string) => void; 
-  staffNames: Record<string, string>;
 }
 
 function ActivityScheduleCard({
@@ -118,15 +80,12 @@ function ActivityScheduleCard({
   onCheckIn,
   resolveActivity,
   onOpenContact,
-  staffNames,
 }: ActivityScheduleCardProps) {
   const isSmallScreen = typeof window !== "undefined" ? window.innerWidth < 640 : false;
   const dayName = DAYS_FULL[selectedDate.getDay()];
   const date = selectedDate.getDate();
   const monthName = MONTHS[selectedDate.getMonth()];
   
-  const safeStaffNames = staffNames || {};
-
   const resolveCheckInState = (schedule: ActivitySchedule) => {
     const rawStart = schedule.start_time || schedule.date;
     if (!rawStart) return "active";
@@ -136,7 +95,7 @@ function ActivityScheduleCard({
     const windowStart = new Date(start.getFullYear(), start.getMonth(), start.getDate());
     const windowEnd = new Date(windowStart);
     windowEnd.setDate(windowEnd.getDate() + 1);
-    windowEnd.setHours(12, 0, 0, 0);
+    windowEnd.setHours(23, 59, 59, 999);
 
     const now = new Date();
     if (now < windowStart) return "upcoming";
@@ -161,15 +120,9 @@ function ActivityScheduleCard({
           
           const staffId = activity?.staff_id;
           const staffObj = (activity as any)?.staff || (activity as any)?.Staff || (activity as any)?.user;
-          let resolvedName = staffId || "-";
-          
-          if (staffObj && (staffObj.first_name || staffObj.name)) {
-            resolvedName = `${staffObj.first_name || ""} ${staffObj.last_name || ""}`.trim() || staffObj.name;
-          } else if (staffId && safeStaffNames[staffId] && safeStaffNames[staffId] !== staffId) {
-            resolvedName = safeStaffNames[staffId];
-          }
-          
-          const updatedByName = resolvedName;
+          const updatedByName = staffObj
+            ? `${staffObj.first_name || ""} ${staffObj.last_name || ""}`.trim() || staffObj.name || staffId || "-"
+            : staffId || "-";
           const checkInState = resolveCheckInState(item);
           
           return (
@@ -335,7 +288,6 @@ export default function ActivityPage() {
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   
   const [activeContactName, setActiveContactName] = useState<string | null>(null);
-  const [staffNames, setStaffNames] = useState<Record<string, string>>({});
 
   // ⭐️ แก้ไขให้โหลดข้อมูลกิจกรรมในทุกๆ เดือน "ทั้งหมด" เข้ามาเก็บตั้งแต่ตอนเปิดเว็บ
   useEffect(() => {
@@ -363,83 +315,10 @@ export default function ActivityPage() {
     return () => { mounted = false; };
   }, []); // รันครั้งเดียวตอนโหลด
 
-  useEffect(() => {
-    const loadProfile = async () => {
-      try {
-        const profile = await authService.fetchUserProfile();
-        if (profile?.user_id) {
-          saveStaffProfileCache(profile);
-          setStaffNames((prev) => ({
-            ...prev,
-            [profile.user_id]: `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || profile.username,
-          }));
-        }
-      } catch {
-        // ignore
-      }
-    };
-
-    void loadProfile();
-  }, []);
-
-  const loadStaffNames = useCallback(async (activityList: Activity[]) => {
-    const staffIds = [...new Set(activityList.map(a => a.staff_id).filter(Boolean) as string[])];
-    if (staffIds.length === 0) return;
-    
-    const cache = loadStaffProfileCache();
-
-    try {
-      let rawData: any = null;
-      if (typeof (adminService as any).getAllStaff === 'function') {
-        rawData = await (adminService as any).getAllStaff();
-      } else if (typeof (adminService as any).getAllUsers === 'function') {
-        rawData = await (adminService as any).getAllUsers();
-      } else if (typeof (adminService as any).getUsers === 'function') {
-        rawData = await (adminService as any).getUsers();
-      } else {
-        const res = await apiClient.get('/users').catch(() => null);
-        rawData = res?.data;
-      }
-      
-      let users: any[] = [];
-      if (Array.isArray(rawData)) users = rawData;
-      else if (rawData?.data && Array.isArray(rawData.data)) users = rawData.data;
-      else if (rawData?.items && Array.isArray(rawData.items)) users = rawData.items;
-
-      setStaffNames(prev => {
-        const next = { ...prev };
-        staffIds.forEach(id => {
-          const user = users.find((u: any) => u.id === id || u.user_id === id || u.staff_id === id);
-          if (user && (user.first_name || user.name)) {
-            next[id] = `${user.first_name || ""} ${user.last_name || ""}`.trim() || user.name;
-          } else if (cache[id] && cache[id].first_name) {
-            next[id] = `${cache[id].first_name} ${cache[id].last_name || ""}`.trim();
-          } else if (!next[id]) {
-            next[id] = id;
-          }
-        });
-        return next;
-      });
-    } catch {
-      setStaffNames(prev => {
-        const next = { ...prev };
-        staffIds.forEach(id => {
-          if (cache[id] && cache[id].first_name) {
-            next[id] = `${cache[id].first_name} ${cache[id].last_name || ""}`.trim();
-          } else if (!next[id]) {
-            next[id] = id;
-          }
-        });
-        return next;
-      });
-    }
-  }, []);
-
   const loadActivities = useCallback(async () => {
     try {
       const data = await activityService.getAll();
       setActivities(data);
-      await loadStaffNames(data);
     } catch (error: any) {
       showToast({
         type: "error",
@@ -447,7 +326,7 @@ export default function ActivityPage() {
         message: error?.message || "ไม่สามารถโหลดรายการกิจกรรมจากระบบได้",
       });
     }
-  }, [showToast, loadStaffNames]);
+  }, [showToast]);
 
   useEffect(() => {
     loadActivities();
@@ -525,9 +404,6 @@ export default function ActivityPage() {
       try {
         const created = await activityService.create(payload);
         setActivities((prev) => [created, ...prev]);
-        if (created.staff_id) {
-          loadStaffNames([created]);
-        }
         showToast({ type: "success", title: "เพิ่มกิจกรรมใหม่สำเร็จ", message: created.activity_name });
         return created;
       } catch (error: any) {
@@ -539,7 +415,7 @@ export default function ActivityPage() {
         return null;
       }
     },
-    [showToast, loadStaffNames]
+    [showToast]
   );
 
   const handleSubmitActivity = async (data: ActivityFormData) => {
@@ -561,23 +437,6 @@ export default function ActivityPage() {
       } else {
         saved = await activityService.create(payload);
         setActivities((prev) => [saved, ...prev]);
-      }
-
-      if (saved.staff_id) {
-        loadStaffNames([saved]);
-      }
-
-      try {
-        const profile = await authService.fetchUserProfile();
-        if (profile?.user_id) {
-          saveStaffProfileCache(profile);
-          setStaffNames((prev) => ({
-            ...prev,
-            [profile.user_id]: `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || profile.username,
-          }));
-        }
-      } catch {
-        // ignore profile cache errors
       }
 
       const schedulePayload = {
@@ -751,7 +610,7 @@ export default function ActivityPage() {
       end: schedule.end_time,
     });
     if (mode === "history") {
-      router.push(`/activity/check-in/${schedule.as_id}/review?${query.toString()}&mode=history`);
+      router.push(`/activity/check-in/${schedule.as_id}?${query.toString()}&mode=history`);
       return;
     }
     router.push(`/activity/check-in/${schedule.as_id}?${query.toString()}`);
@@ -783,7 +642,6 @@ export default function ActivityPage() {
               onCheckIn={handleCheckIn}
               resolveActivity={resolveActivity}
               onOpenContact={setActiveContactName} 
-              staffNames={staffNames || {}}
             />
           )}
         </div>

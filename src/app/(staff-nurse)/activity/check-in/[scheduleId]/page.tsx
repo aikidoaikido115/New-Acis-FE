@@ -54,6 +54,8 @@ export default function ActivityCheckInPage() {
   const activityTitle = searchParams.get("title") || "กิจกรรม";
   const activityDate = formatThaiDate(searchParams.get("date"));
   const activityTime = `${formatTime(searchParams.get("start"))}-${formatTime(searchParams.get("end"))}`;
+  const mode = searchParams.get("mode");
+  const isHistoryMode = mode === "history";
 
   const [residents, setResidents] = useState<ResidentByScheduleResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -256,7 +258,7 @@ export default function ActivityCheckInPage() {
       // Calculate window end: next day at 12:00 (noon)
       const windowEnd = new Date(windowStart);
       windowEnd.setDate(windowEnd.getDate() + 1);
-      windowEnd.setHours(12, 0, 0, 0);
+      windowEnd.setHours(23, 59, 59, 999);
 
       const isUpcoming = now < windowStart;
       const isWithinWindow = now >= windowStart && now <= windowEnd;
@@ -269,6 +271,7 @@ export default function ActivityCheckInPage() {
   };
 
   const { isWithinWindow, hasExpired, isUpcoming } = calculateTimeWindow();
+  const isReadOnly = isHistoryMode || hasExpired || isUpcoming;
 
   const handleViewPhotos = () => {
     const session = buildSession();
@@ -277,6 +280,7 @@ export default function ActivityCheckInPage() {
   };
 
   const toggleResident = (residentId: string) => {
+    if (isReadOnly) return;
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(residentId)) {
@@ -289,6 +293,7 @@ export default function ActivityCheckInPage() {
   };
 
   const toggleAll = () => {
+    if (isReadOnly) return;
     if (selectedCount === filteredResidents.length) {
       setSelectedIds(new Set());
     } else {
@@ -350,6 +355,7 @@ export default function ActivityCheckInPage() {
   };
 
   const handleSaveOnly = async () => {
+    if (isReadOnly) return;
     if (selectedCount === 0) {
       showToast({ type: "error", title: "กรุณาเลือกรายชื่ออย่างน้อย 1 คน",message: ""  });
       return;
@@ -370,6 +376,7 @@ export default function ActivityCheckInPage() {
   };
 
   const handleSaveAndCapture = () => {
+    if (isReadOnly) return;
     if (selectedCount === 0) {
       showToast({ type: "error", title: "กรุณาเลือกรายชื่ออย่างน้อย 1 คน" ,message: "" });
       return;
@@ -533,6 +540,7 @@ export default function ActivityCheckInPage() {
                     type="checkbox"
                     checked={filteredResidents.length > 0 && selectedCount === filteredResidents.length}
                     onChange={toggleAll}
+                    disabled={isReadOnly}
                   />
                 </th>
                 <th className="px-4 py-3">ชื่อ-นามสกุล</th>
@@ -562,6 +570,7 @@ export default function ActivityCheckInPage() {
                         type="checkbox"
                         checked={selectedIds.has(resident.id)}
                         onChange={() => toggleResident(resident.id)}
+                        disabled={isReadOnly}
                       />
                     </td>
                     <td className="px-4 py-3 text-slate-800">{resident.name}</td>
@@ -577,7 +586,7 @@ export default function ActivityCheckInPage() {
       </div>
 
       <div className="mt-6 flex flex-wrap items-center justify-center gap-4 ">
-        {isWithinWindow && (
+        {isWithinWindow && !isHistoryMode && (
           <button
             type="button"
             onClick={handleSaveOnly}
@@ -588,7 +597,7 @@ export default function ActivityCheckInPage() {
         )}
         
         {/* Time-window check-in button */}
-        {isWithinWindow ? (
+        {isWithinWindow && !isHistoryMode ? (
           <div className="inline-flex items-center gap-2">
             <button
               type="button"

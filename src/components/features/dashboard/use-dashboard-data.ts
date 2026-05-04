@@ -10,13 +10,12 @@ import type { GenderStats, ResidentStats } from "@/types/dashboard";
 import type { Room } from "@/types/room";
 import type { ResidentOverviewItem } from "@/types/resident";
 import type { DrugPlan } from "@/types/drug-plan";
+import type { VitalSign } from "@/types/vital-sign";
 import {
   DEFAULT_MEDICINE_STATUS,
   DEFAULT_VITAL_STATS,
   INVENTORY_ITEMS,
-  buildMedicineValue,
   computeResidentAndGenderStats,
-  filterByDate,
   filterResidents,
   formatThaiDate,
   getScheduleItemsForDate,
@@ -173,7 +172,7 @@ export function useDashboardData() {
     };
     void load();
     return () => { mounted = false; };
-  }, []);
+  }, [isAuthenticated]);
 
   const scheduleItems = useMemo<ScheduleItemWithBadge[]>(
     () => (scheduleItemsApi.length ? scheduleItemsApi : getScheduleItemsForDate(activityDate).map((item) => ({ ...item, badge: scheduleBadge }))),
@@ -190,7 +189,7 @@ export function useDashboardData() {
     return INVENTORY_ITEMS.map((item) => {
       const count = countMap[item.key] || 0;
       const valueClass = count > 0 ? "text-red-500" : "text-slate-500";
-      const linkLabel = item.href === "/warehouse" ? "หน้าสินค้าคงคลัง" : "หน้าประวัติการทำรายการ";
+      const linkLabel = item.href === "/warehouse" ? "หน้ายาและเวชภัณฑ์" : "หน้าประวัติการทำรายการ";
       return { ...item, count, valueClass, linkLabel };
     });
   }, [lowStockCount, pendingWithdrawCount, pendingRestockCount]);
@@ -285,11 +284,8 @@ export function useDashboardData() {
       return;
     }
     try {
-      const dateKey = toDateInputValue(selectedDate);
       const pendingTransactions = await warehouseService.getTransactions({
         status: "รออนุมัติ",
-        startDate: dateKey,
-        endDate: dateKey,
       });
       setPendingWithdrawCount(pendingTransactions.filter((tx) => tx.type === "เบิกสินค้า").length);
       setPendingRestockCount(pendingTransactions.filter((tx) => tx.type === "เติมสินค้า").length);
@@ -298,7 +294,7 @@ export function useDashboardData() {
       setPendingWithdrawCount(0);
       setPendingRestockCount(0);
     }
-  }, [selectedDate]);
+  }, [isAuthenticated]);
 
   const loadVitalStats = useCallback(async () => {
     if (!isAuthenticated) {
@@ -306,26 +302,48 @@ export function useDashboardData() {
       return;
     }
     try {
-      const [allVitals, normalVitals, abnormalVitals] = await Promise.all([
-        vitalSignService.getOverview({ floor: normalizedFloor, vitalsign_status: "all" }),
-        vitalSignService.getOverview({ floor: normalizedFloor, vitalsign_status: "normal" }),
-        vitalSignService.getOverview({ floor: normalizedFloor, vitalsign_status: "abnormal" }),
-      ]);
+      const dateKey = toDateInputValue(selectedDate);
+      const pageSize = 100;
+      let page = 1;
+      let totalPages = 1;
+      const allItems: VitalSign[] = [];
 
-      const allByDate = filterByDate(allVitals.items, selectedDate);
-      const normalByDate = filterByDate(normalVitals.items, selectedDate);
-      const abnormalByDate = filterByDate(abnormalVitals.items, selectedDate);
-      const warningCount = Math.max(0, allByDate.length - normalByDate.length - abnormalByDate.length);
+      do {
+        const response = await vitalSignService.getOverview({
+          floor: normalizedFloor,
+          vitalsign_status: "all",
+          date: dateKey,
+          page,
+          page_size: pageSize,
+        });
+        allItems.push(...(response.items || []));
+        totalPages = response.pagination?.total_pages || 1;
+        page += 1;
+      } while (page <= totalPages);
+
+      const latestByResident = new Map<string, { item: (typeof allItems)[number]; timestamp: number }>();
+      allItems.forEach((item) => {
+        if (!item?.resident_id) return;
+        const timestamp = item.created_at ? new Date(item.created_at).getTime() : 0;
+        const existing = latestByResident.get(item.resident_id);
+        if (!existing || timestamp > existing.timestamp) {
+          latestByResident.set(item.resident_id, { item, timestamp });
+        }
+      });
+
+      const latestItems = Array.from(latestByResident.values()).map((entry) => entry.item);
+      const normalCount = latestItems.filter((item: any) => (item.abnormal_list?.length ?? 0) === 0).length;
+      const abnormalCount = latestItems.filter((item: any) => (item.abnormal_list?.length ?? 0) > 0).length;
 
       setVitalStats([
-        { label: "ปกติ", value: normalByDate.length, variant: "normal" },
-        { label: "ต้องติดตาม", value: abnormalByDate.length, variant: "danger" },
+        { label: "ปกติ", value: normalCount, variant: "normal" },
+        { label: "ต้องติดตาม", value: abnormalCount, variant: "danger" },
       ]);
     } catch (error) {
       logApiError("Failed to fetch vital sign stats:", error);
       setVitalStats(DEFAULT_VITAL_STATS);
     }
-  }, [normalizedFloor, selectedDate]);
+  }, [normalizedFloor, selectedDate, isAuthenticated]);
 
   const loadMedicineStatus = useCallback(async () => {
     if (!isAuthenticated) {
@@ -336,55 +354,65 @@ export function useDashboardData() {
       // 1. ดึงข้อมูลแผนยาทั้งหมด
       const plans = await drugPlanService.getOverview();
       
-      // 2. กรองเอาเฉพาะแผนของ "วันที่เราเลือกดู" (targetDateKey) 
-      // เปลี่ยนจาก filterByDate(plans, selectedDate) มาเป็นแบบนี้:
-      const targetDateKey = toDateInputValue(selectedDate);
-      const filteredByDate = plans.filter((plan: any) => plan.date === targetDateKey);
-
-      // 3. กรองตามชั้น (Floor)
+      // 2. กรองตามชั้น (Floor)
       const filteredByFloor = normalizedFloor === undefined
-        ? filteredByDate
-        : filteredByDate.filter((plan: any) => {
+        ? plans
+        : plans.filter((plan: any) => {
             const residentId = plan.PersonalDrug?.resident_id;
             const resident = residentId ? residentById.get(String(residentId)) : undefined;
             return resident?.floor === normalizedFloor;
           });
 
-      // 4. เตรียมตัวนับ
-      const counts = {
-        morning: { total: 0, taken: 0 },
-        noon: { total: 0, taken: 0 },
-        evening: { total: 0, taken: 0 },
-        bedtime: { total: 0, taken: 0 },
+      // 3. เตรียมตัวนับ
+      const totals = {
+        morning: new Set<string>(),
+        noon: new Set<string>(),
+        evening: new Set<string>(),
+        bedtime: new Set<string>(),
+      };
+      const pending = {
+        morning: new Set<string>(),
+        noon: new Set<string>(),
+        evening: new Set<string>(),
+        bedtime: new Set<string>(),
       };
 
-      // 5. นับจำนวนยาแยกตามมื้อ
+      // 5. นับจำนวนผู้สูงอายุที่รอให้ยาในแต่ละมื้อ (นับเป็นคน)
       filteredByFloor.forEach((plan: any) => {
         const timeOfDayString = plan.PersonalDrug?.time_of_day || plan.PersonalDrug?.timing || "";
+        const residentId = plan.PersonalDrug?.resident_id;
+        if (!residentId) return;
         const keys = resolveTimeOfDayKeys(timeOfDayString);
+        const isPending = !plan.is_taken && !plan.is_omitted;
 
-        keys.forEach(key => {
-          if (counts[key as keyof typeof counts]) {
-            counts[key as keyof typeof counts].total += 1;
-            if (plan.is_taken) {
-              counts[key as keyof typeof counts].taken += 1;
+        keys.forEach((key) => {
+          if (totals[key as keyof typeof totals]) {
+            totals[key as keyof typeof totals].add(residentId);
+            if (isPending) {
+              pending[key as keyof typeof pending].add(residentId);
             }
           }
         });
       });
 
+      const formatPending = (totalSet: Set<string>, pendingSet: Set<string>) => {
+        if (totalSet.size === 0) return "-";
+        if (pendingSet.size === 0) return "ครบ";
+        return `รอให้ยา ${pendingSet.size} คน`;
+      };
+
       // 6. อัปเดตสถานะเพื่อโชว์บนหน้า Dashboard
       setMedicineStatus([
-        { label: "มื้อเช้า", value: buildMedicineValue(counts.morning.total, counts.morning.taken) },
-        { label: "มื้อกลางวัน", value: buildMedicineValue(counts.noon.total, counts.noon.taken) },
-        { label: "มื้อเย็น", value: buildMedicineValue(counts.evening.total, counts.evening.taken) },
-        { label: "ก่อนนอน", value: buildMedicineValue(counts.bedtime.total, counts.bedtime.taken) },
+        { label: "มื้อเช้า", value: formatPending(totals.morning, pending.morning) },
+        { label: "มื้อกลางวัน", value: formatPending(totals.noon, pending.noon) },
+        { label: "มื้อเย็น", value: formatPending(totals.evening, pending.evening) },
+        { label: "ก่อนนอน", value: formatPending(totals.bedtime, pending.bedtime) },
       ]);
     } catch (error) {
       logApiError("Failed to fetch medicine status:", error);
       setMedicineStatus(DEFAULT_MEDICINE_STATUS);
     }
-  }, [selectedDate, normalizedFloor, residentById, isAuthenticated]);
+  }, [normalizedFloor, residentById, isAuthenticated]);
 
   useEffect(() => {
     void refreshResidents();
