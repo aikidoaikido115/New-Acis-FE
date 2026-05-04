@@ -78,11 +78,25 @@ export default function ActivityCheckInReviewPage() {
         const participating = residents.filter((resident) => resident.is_participating);
         setIsHistory(mode === "history");
 
-        const photoEntries = await Promise.all(
+       const photoEntries = await Promise.all(
           participating.map(async (resident) => {
             try {
               const participation = await activityParticipationService.getByCompositeKey(resident.resident_id, scheduleId);
-              const firstUrl = participation.img_urls?.[0]?.url;
+              
+              let firstUrl = null;
+              const rawImg = participation.img_urls;
+              
+              if (Array.isArray(rawImg) && rawImg.length > 0) {
+                 firstUrl = rawImg[0]?.url || rawImg[0]; 
+              } else if (typeof rawImg === 'string') {
+                 try {
+                   const parsed = JSON.parse(rawImg);
+                   firstUrl = parsed?.[0]?.url || parsed?.[0];
+                 } catch (e) {
+                   firstUrl = rawImg;
+                 }
+              }
+
               return firstUrl ? [resident.resident_id, firstUrl] : null;
             } catch {
               return null;

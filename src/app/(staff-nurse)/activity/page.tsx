@@ -119,19 +119,20 @@ function ActivityScheduleCard({
           const location = activity?.location && activity.location.trim() ? activity.location : "-";
           
           const resolveUpdatedBy = () => {
-            const staffObj = (activity as any)?.staff || (activity as any)?.Staff || (activity as any)?.user;
-            const staffName = staffObj
-              ? `${staffObj.first_name || ""} ${staffObj.last_name || ""}`.trim() || staffObj.name
-              : undefined;
+            const staffObj = (activity as any)?.staff || (activity as any)?.Staff;
+            if (staffObj) {
+              const fullName = `${staffObj.first_name || ""} ${staffObj.last_name || ""}`.trim();
+              if (fullName && fullName !== "") return fullName;
+              const nickname = staffObj.nickname || staffObj.name;
+              if (nickname && nickname !== "") return nickname;
+            }
 
-            return (
-              staffName
-              || (activity as any)?.staff_name
+            const staffName = (activity as any)?.staff_name
               || (activity as any)?.created_by_staff_name
-              || (activity as any)?.updated_by_staff_name
-              || activity?.staff_id
-              || "-"
-            );
+              || (activity as any)?.updated_by_staff_name;
+            if (staffName) return staffName;
+
+            return activity?.staff_id || "-";
           };
 
           const updatedByName = resolveUpdatedBy();

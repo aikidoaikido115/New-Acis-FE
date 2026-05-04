@@ -6,11 +6,11 @@ import { Camera, Search } from "lucide-react";
 import { BackButton } from "@/components/features/relative/back-button";
 import { useToast } from "@/components/ui/toast";
 import { activityParticipationService } from "@/services/activity-participation.service";
-import { residentService } from "@/services/resident.service";
 import { roomService } from "@/services/room.service";
 import { intakeService } from "@/services/intake.service";
 import type { ResidentByScheduleResponse } from "@/types/activity-participation";
 import {
+  clearCheckInSession,
   saveCheckInRecord,
   saveCheckInSession,
   type CheckInResident,
@@ -164,34 +164,17 @@ export default function ActivityCheckInPage() {
     setIsLoading(true);
     try {
       const items = await activityParticipationService.getResidentsByScheduleId(scheduleId);
-      let filteredItems = items;
 
-      try {
-        const pageSize = 100;
-        let page = 1;
-        let totalPages = 1;
-        const activeIds = new Set<string>();
-
-        do {
-          const overview = await residentService.getOverview({ status: "active", page, page_size: pageSize });
-          overview.items?.forEach((resident) => {
-            if (resident.resident_id) {
-              activeIds.add(resident.resident_id);
-            }
-          });
-          totalPages = overview.pagination?.total_pages || 1;
-          page += 1;
-        } while (page <= totalPages);
-
-        filteredItems = items.filter((item) => activeIds.has(item.resident_id));
-      } catch {
-        filteredItems = items;
-      }
-
-      const participating = new Set(
-        filteredItems.filter((item) => item.is_participating).map((item) => item.resident_id)
-      );
-      setResidents(filteredItems);
+      const participating = new Set<string>();
+      
+      items.forEach((item) => {
+        const resId = item.resident_id;
+        if (item.is_participating && resId) {
+          participating.add(resId);
+        }
+      });
+      
+      setResidents(items);
       setSelectedIds(participating);
       setInitialSelectedIds(participating);
     } catch (error: any) {
@@ -276,8 +259,7 @@ export default function ActivityCheckInPage() {
   const isReadOnly = isHistoryMode || hasExpired || isUpcoming;
 
   const handleViewPhotos = () => {
-    const session = buildSession();
-    saveCheckInSession(session);
+    clearCheckInSession(scheduleId);
     router.push(`/activity/check-in/${scheduleId}/review?mode=history`);
   };
 
@@ -398,9 +380,7 @@ export default function ActivityCheckInPage() {
   };
 
   const handleViewHistory = () => {
-    const session = buildSession();
-    saveCheckInSession(session);
-    // Navigate to review page in history/read-only mode
+    clearCheckInSession(scheduleId);
     router.push(`/activity/check-in/${scheduleId}/review?mode=history`);
   };
 

@@ -247,7 +247,6 @@ export function RelativeNoteTable() {
                       </td>
                       <td className="py-4 px-4 align-middle">
                         <p className="text-xs sm:text-sm text-gray-700">{note.content || "-"}</p>
-                        <p className="text-[11px] text-gray-500 mt-1">ความสัมพันธ์: {note.relation}</p>
                       </td>
                       <td className="py-4 px-4 align-middle">
                         <div className="flex items-center justify-end gap-3 whitespace-nowrap">
