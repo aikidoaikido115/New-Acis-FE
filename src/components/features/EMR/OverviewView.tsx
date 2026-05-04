@@ -105,7 +105,7 @@ export function OverviewView() {
               placeholder="เลือกชั้น"
             />
 
-            <span className="text-body-small text-gray-600">การช่วยเหลือตัวเอง</span>
+            <span className="text-body-small text-gray-600">ประเภท</span>
 
             {/* Help Level Dropdown */}
             <Dropdown

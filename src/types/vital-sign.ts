@@ -14,6 +14,8 @@ export interface VitalSign {
   created_by_staff_id?: string;
   created_at: string;
   updated_at: string;
+  normal_list?: string[];
+  abnormal_list?: string[];
 }
 
 export interface VitalSignOverviewQuery {

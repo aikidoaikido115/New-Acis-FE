@@ -17,20 +17,31 @@ import { activityParticipationService } from "@/services/activity-participation.
 
 type ReviewItem = CheckInResident & { photo?: string; rejected?: boolean };
 
-const dataUrlToFile = (dataUrl: string, filename: string) => {
-  const [header, data] = dataUrl.split(",");
-  if (!header || !data) return null;
-  const match = header.match(/data:(.*?);base64/);
-  const mime = match?.[1] || "image/jpeg";
+const buildPhotoFile = async (photoData: string, filename: string) => {
+  if (!photoData) return null;
   try {
-    const binary = atob(data);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i += 1) {
-      bytes[i] = binary.charCodeAt(i);
-    }
-    return new File([bytes], filename, { type: mime });
+    const response = await fetch(photoData);
+    if (!response.ok) return null;
+    const blob = await response.blob();
+    const mime = blob.type || "image/jpeg";
+    const ext = mime.includes("png") ? "png" : "jpg";
+    return new File([blob], `${filename}.${ext}`, { type: mime });
   } catch {
-    return null;
+    if (!photoData.startsWith("data:")) return null;
+    try {
+      const [header, data] = photoData.split(",");
+      if (!header || !data) return null;
+      const match = header.match(/data:(.*?);base64/);
+      const mime = match?.[1] || "image/jpeg";
+      const binary = atob(data);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i += 1) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return new File([bytes], `${filename}.jpg`, { type: mime });
+    } catch {
+      return null;
+    }
   }
 };
 
@@ -164,7 +175,7 @@ export default function ActivityCheckInReviewPage() {
     const deselectedIds = Array.from(initialSelectedSet).filter((id) => !selectedSet.has(id));
 
     const upsertParticipation = async (residentId: string, isParticipating: boolean, photoData?: string) => {
-      const file = photoData ? dataUrlToFile(photoData, `activity-${residentId}.jpg`) : null;
+      const file = photoData ? await buildPhotoFile(photoData, `activity-${residentId}`) : null;
       const files = file ? [file] : undefined;
       try {
         await activityParticipationService.create(

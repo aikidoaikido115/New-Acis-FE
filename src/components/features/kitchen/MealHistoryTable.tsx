@@ -15,7 +15,7 @@ export function MealHistoryTable({ rows, onOpenPopover }: MealHistoryTableProps)
           <tr>
             <th className="w-[35%] sm:w-[20%] md:w-[35%] pl-4 md:pl-8 pr-2 py-3 text-xs font-semibold text-slate-600 text-left">
               <span className="sm:hidden">วันที่เตรียม</span>
-              <span className="hidden sm:inline">วันที่จัดเตรียมมื้ออาหาร</span>
+              <span className="hidden sm:inline">วันที่บันทึกมื้ออาหาร</span>
             </th>
             
             <th className="w-[25%] sm:w-[20%] md:w-[20%] px-2 md:px-4 py-3 text-xs font-semibold text-slate-600 text-left">

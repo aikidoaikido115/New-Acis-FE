@@ -1207,7 +1207,7 @@ export function MedicalManagementView() {
             className="w-32"
           />
 
-          <span className="text-body-small text-gray-600">การช่วยเหลือตัวเอง</span>
+          <span className="text-body-small text-gray-600">ประเภท</span>
 
           <Dropdown
             options={[
