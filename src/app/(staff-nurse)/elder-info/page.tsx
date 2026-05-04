@@ -236,7 +236,7 @@ export default function Page() {
       drugAllergies: "",
       foodAllergies: "",
       adlScore: resident.adl_score !== undefined && resident.adl_score !== null ? String(resident.adl_score) : "",
-      careLevel: fallbackCareLevel || "", // ปล่อยว่างถ้าไม่เจอ จะได้ไม่บังคับเป็นค่าเก่า
+      careLevel: fallbackCareLevel || "", 
       cprStatus: resident.resuscitation_status || "",
       emergencyHospital: resident.preferred_emergency_hospital || "",
       emergencyHospitalPhone: resident.emergency_hospital_phone || "",
@@ -356,7 +356,7 @@ export default function Page() {
 
     return filteredResidents.slice(startIndex, endIndex).map(resident => ({
       ...resident,
-      care: resident.care || "-", // ใช้ชื่อดิบๆ ที่ดึงมาจาก DB ได้เลย
+      care: resident.care || "-",
       room: roomNumberMap.get(resident.room) || resident.room || "-",
     }));
   }, [filteredResidents, currentPage, ITEMS_PER_PAGE, roomNumberMap]);
@@ -692,17 +692,30 @@ export default function Page() {
 
       validateMedications(formData.medications);
 
-      const careLevelLabel = formData.careLevel?.trim(); // รับชื่อดิบที่พยาบาลเลือกมาตรงๆ 
+      const careLevelLabel = formData.careLevel?.trim();
       const labels = modalMode === "edit" && careLevelLabel ? [{ label_name: careLevelLabel }] : undefined;
-      const payload = formData.profileImage
-        ? buildResidentFormData(formData, labels)
-        : buildResidentPayload(formData, labels);
+      
       let savedResident: ApiResident;
 
       if (modalMode === "edit" && editingResidentId) {
+        // โหมดแก้ไข: ถ้ามีรูปให้ส่ง FormData ถ้าไม่มีส่ง JSON
+        const payload = formData.profileImage
+          ? buildResidentFormData(formData, labels)
+          : buildResidentPayload(formData, labels);
         savedResident = await residentService.update(editingResidentId, payload as any);
       } else {
-        savedResident = await residentService.create(payload as any);
+        // โหมดสร้างใหม่: สร้างด้วย JSON ก่อนเสมอเพื่อหลบ 400 Bad Request
+        const jsonPayload = buildResidentPayload(formData, labels);
+        savedResident = await residentService.create(jsonPayload as any);
+
+        // ถ้ามีการแนบรูปมาด้วย ให้อัปเดตตามไปทันที (เทคนิค 2 Step)
+        if (formData.profileImage) {
+          const newResidentId = savedResident.id || (savedResident as any).resident_id;
+          if (newResidentId) {
+            const formDataPayload = buildResidentFormData(formData, labels);
+            savedResident = await residentService.update(newResidentId, formDataPayload as any);
+          }
+        }
       }
 
       const residentId = savedResident.id || (savedResident as any).resident_id || editingResidentId || "";
@@ -710,6 +723,7 @@ export default function Page() {
         throw new Error("ไม่พบรหัสผู้สูงอายุจากระบบ");
       }
 
+      // บันทึกข้อมูลอื่นๆ เพิ่มเติม
       const postSaveTasks: Promise<unknown>[] = [];
       if (modalMode !== "edit" && careLevelLabel) {
         postSaveTasks.push(
