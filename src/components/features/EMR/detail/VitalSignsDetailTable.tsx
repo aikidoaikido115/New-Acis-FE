@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Clock, ArrowUpDown, ArrowUp, ArrowDown, ArrowDownWideNarrow } from "lucide-react";
+import { Clock, ArrowUpDown, ArrowUp, ArrowDown, ArrowDownWideNarrow, Printer } from "lucide-react";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Dropdown } from "@/components/ui/dropdown";
 import { useToast } from "@/components/ui/toast";
@@ -301,6 +301,7 @@ export function VitalSignsDetailTable({ patientId, selectedDate }: VitalSignsDet
   const [sortOrder, setSortOrder] = useState<HistorySortOrder>("newest");
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [printDateTime, setPrintDateTime] = useState<string>("");
 
   const [vitalHistory, setVitalHistory] = useState<VitalSign[]>([]);
   const [labHistory, setLabHistory] = useState<LaboratoryValue[]>([]);
@@ -420,6 +421,25 @@ export function VitalSignsDetailTable({ patientId, selectedDate }: VitalSignsDet
   useEffect(() => {
     void loadSelectedSlot();
   }, [loadSelectedSlot]);
+
+  useEffect(() => {
+    const handleBeforePrint = () => {
+      const now = new Date();
+      const thaiDate = now.toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "2-digit" });
+      const thaiTime = now.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      setPrintDateTime(`${thaiDate} ${thaiTime}`);
+      document.body.classList.add("print-vital-signs");
+    };
+    const handleAfterPrint = () => {
+      document.body.classList.remove("print-vital-signs");
+    };
+    window.addEventListener("beforeprint", handleBeforePrint);
+    window.addEventListener("afterprint", handleAfterPrint);
+    return () => {
+      window.removeEventListener("beforeprint", handleBeforePrint);
+      window.removeEventListener("afterprint", handleAfterPrint);
+    };
+  }, []);
 
   const historyRows = useMemo<HistoryRow[]>(() => {
     const merged = new Map<string, HistoryRow>();
@@ -785,6 +805,17 @@ export function VitalSignsDetailTable({ patientId, selectedDate }: VitalSignsDet
     return sortDirection === "asc" ? "↑" : "↓";
   };
 
+  const handleExport = () => {
+    const now = new Date();
+    const thaiDate = now.toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "2-digit" });
+    const thaiTime = now.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    setPrintDateTime(`${thaiDate} ${thaiTime}`);
+    document.body.classList.add("print-vital-signs");
+    setTimeout(() => {
+      window.print();
+    }, 50);
+  };
+
   const renderSortableHeader = (label: string, field: SortField, className: string) => {
     const isActive = sortField === field;
 
@@ -891,6 +922,15 @@ export function VitalSignsDetailTable({ patientId, selectedDate }: VitalSignsDet
             <span className="font-semibold text-slate-900">{getSortLabel(sortField)}</span>
             {sortField ? (sortDirection === "asc" ? <ArrowUp className="h-3.5 w-3.5 text-blue-700" /> : <ArrowDown className="h-3.5 w-3.5 text-blue-700" />) : null}
           </div>
+
+          <button
+            type="button"
+            onClick={handleExport}
+            className="print-hide inline-flex items-center gap-2 rounded-lg bg-[#0093EF] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#0080D0]"
+          >
+            <Printer className="h-4 w-4" />
+            พิมพ์ / Export PDF
+          </button>
         </div>
       </div>
 
@@ -1099,6 +1139,47 @@ export function VitalSignsDetailTable({ patientId, selectedDate }: VitalSignsDet
         </div>
         {confirmDialog}
       </div>
+
+      <style>{`
+        .print-hide {
+          display: inline-flex;
+        }
+
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 5mm;
+          }
+
+          :global(html, body) {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+            display: block !important;
+          }
+
+          :global(body.print-vital-signs *) {
+            visibility: hidden !important;
+          }
+          :global(body.print-vital-signs [style*="p-6"]),
+          :global(body.print-vital-signs [style*="p-6"] *) {
+            visibility: visible !important;
+          }
+
+          .print-hide {
+            display: none !important;
+          }
+
+          table {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+
+          tr {
+            page-break-inside: avoid;
+          }
+        }
+      `}</style>
     </div>
   );
 }

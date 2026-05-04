@@ -2,7 +2,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
-import { residentService } from "@/services/resident.service";
+import { isResidentActive, residentService } from "@/services/resident.service";
 import { roomService } from "@/services/room.service";
 import { drugMasterService } from "@/services/drug-master.service";
 import { personalDrugService } from "@/services/personal-drug.service";
@@ -135,9 +135,11 @@ const transformResidentData = (apiResident: ApiResident): Resident => {
   const labelBasedCareLevel = resolveCareLevelFromLabels(apiResident.resident_labels);
   const careLevel = labelBasedCareLevel || determineCareLevel(apiResident.adl_score);
   
-  // 🌟 แก้ไขจุดที่ 1: เพิ่ม .trim() ป้องกันช่องว่างขยะจาก Database
-  const statusValue = String(apiResident.status || "").toLowerCase().trim();
-  const isActive = statusValue === "inactive" ? false : true;
+  const isActive = isResidentActive({
+    status: apiResident.status,
+    check_in_date: apiResident.check_in_date,
+    expected_check_out_date: apiResident.expected_check_out_date,
+  });
 
   const backendId = apiResident.id || (apiResident as any).resident_id || "";
 

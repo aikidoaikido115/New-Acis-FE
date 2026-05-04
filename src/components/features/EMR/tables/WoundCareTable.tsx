@@ -12,7 +12,7 @@ import { ContactInformationModal } from "@/components/shared/contact/ContactInfo
 import { resolveContactInfo } from "@/components/shared/contact/contactDirectory";
 import { woundCareNoteService } from "@/services/wound-care-note.service";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { residentService } from "@/services/resident.service";
+import { isResidentActive, residentService } from "@/services/resident.service";
 import { roomService } from "@/services/room.service";
 import type { WoundCareNote } from "@/types/emr-notes";
 import type { Resident } from "@/types/resident";
@@ -47,7 +47,7 @@ export function WoundCareTable() {
         roomService.getAll(),
       ]);
       setNotes(noteData || []);
-      setResidents(residentData || []);
+      setResidents((residentData || []).filter(isResidentActive));
       setRooms(roomData || []);
     } catch {
       setError("ไม่สามารถโหลดข้อมูลทำแผลได้");
