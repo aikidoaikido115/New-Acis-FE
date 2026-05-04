@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import type { RelativeDashboardNote } from '@/services/relative-portal.service';
 
 interface AdditionalNotesProps {
@@ -23,7 +24,9 @@ export function AdditionalNotes({ notes = [], isLoading = false, error = null }:
       <h2 className="text-xl font-semibold text-gray-800 mb-4 pb-4 border-b border-gray-200">บันทึกประจำวันสำหรับญาติ</h2>
       <div className="min-h-40">
         {isLoading ? (
-          <div className="flex items-center justify-center py-8 text-sm text-gray-500">กำลังโหลดข้อมูล...</div>
+          <div className="flex items-center justify-center py-8">
+            <LoadingSpinner />
+          </div>
         ) : error ? (
           <div className="flex items-center justify-center py-8 text-sm text-red-500">{error}</div>
         ) : additionalNotes.length === 0 ? (

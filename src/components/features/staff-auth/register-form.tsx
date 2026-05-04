@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Camera, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dropdown } from "@/components/ui/dropdown";
 import { Input } from "@/components/ui/input";
 
 type RegisterFormData = {
@@ -31,6 +32,11 @@ const DEFAULT_FORM_DATA: RegisterFormData = {
   gender: "",
   role_name: "",
 };
+
+const ROLE_OPTIONS: Array<{ value: RegisterFormData["role_name"]; label: string }> = [
+  { value: "Medical Staff", label: "แพทย์ / พยาบาล" },
+  { value: "Kitchen Staff", label: "โภชนา / ห้องครัว" },
+];
 
 function getInitialFormData(): RegisterFormData {
   if (typeof window === "undefined") {
@@ -81,7 +87,7 @@ export function RegisterForm() {
 
   const [formData, setFormData] = useState<RegisterFormData>(getInitialFormData);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value });
@@ -126,6 +132,11 @@ export function RegisterForm() {
 
     if (!formData.gender) {
       setError("กรุณาเลือกเพศ");
+      return;
+    }
+
+    if (!formData.role_name) {
+      setError("กรุณาเลือกตำแหน่ง");
       return;
     }
 
@@ -279,17 +290,15 @@ export function RegisterForm() {
               <label className="text-body-small font-normal text-gray-700">
                 ตำแหน่ง<span className="text-red-500">*</span>
               </label>
-              <select 
-                name="role_name"
+              <Dropdown
                 value={formData.role_name}
-                onChange={handleChange}
-                className="w-full h-10 border border-gray-300 rounded-md px-3 bg-[rgba(245,245,245,1)] text-overline text-[rgba(103,103,103,1)] focus:outline-none focus:ring-2 focus:ring-[#4A8B6A] focus:border-transparent"
-                required
-              >
-                <option value="">เลือกตำแหน่ง</option>
-                <option value="Medical Staff">แพทย์ / พยาบาล</option>
-                <option value="Kitchen Staff">โภชนา / ห้องครัว</option>
-              </select>
+                onChange={(value) => {
+                  setFormData((prev) => ({ ...prev, role_name: value }));
+                  if (error) setError("");
+                }}
+                options={ROLE_OPTIONS}
+                placeholder="เลือกตำแหน่ง"
+              />
             </div>
           </div>
 
