@@ -3,9 +3,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowUpDown, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Dropdown } from "@/components/ui/dropdown";
 import { Pagination } from "@/components/ui/pagination";
 import { AdminSectionTabs } from "@/components/features/admin/admin-section-tabs";
 import { useToast } from "@/components/ui/toast";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
+
 import {
   AUDIT_SEVERITY_STYLES,
   formatDateTime,
@@ -18,6 +21,13 @@ const ITEMS_PER_PAGE = 10;
 type SortField = "createdAt" | "actor" | "severity";
 type SortDirection = "asc" | "desc";
 type SeverityFilter = "all" | AuditSeverity;
+
+const SEVERITY_FILTER_OPTIONS: Array<{ value: SeverityFilter; label: string }> = [
+  { value: "all", label: "ทุกระดับ" },
+  { value: "info", label: "ข้อมูล" },
+  { value: "warning", label: "เตือน" },
+  { value: "danger", label: "สำคัญ" },
+];
 
 function getSortLabel(field: SortField): string {
   if (field === "actor") return "ผู้ดำเนินการ";
@@ -422,19 +432,15 @@ export default function AdminAuditLogsPage() {
             />
           </div>
 
-          <select
+          <Dropdown
             value={severityFilter}
-            onChange={(event) => {
-              setSeverityFilter(event.target.value as SeverityFilter);
+            onChange={(value) => {
+              setSeverityFilter(value as SeverityFilter);
               setCurrentPage(1);
             }}
-            className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-blue-400"
-          >
-            <option value="all">ทุกระดับ</option>
-            <option value="info">ข้อมูล</option>
-            <option value="warning">เตือน</option>
-            <option value="danger">สำคัญ</option>
-          </select>
+            options={SEVERITY_FILTER_OPTIONS}
+            className="h-10"
+          />
         </div>
 
         <div className="overflow-x-auto">
@@ -467,8 +473,8 @@ export default function AdminAuditLogsPage() {
             <tbody>
               {isLoading && (
                 <tr>
-                  <td colSpan={5} className="px-6 py-10 text-center text-sm text-slate-500">
-                    กำลังโหลดประวัติการใช้งาน...
+                  <td colSpan={5} className="px-6 py-10 text-center">
+                    <LoadingSpinner />
                   </td>
                 </tr>
               )}

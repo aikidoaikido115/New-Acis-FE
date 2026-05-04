@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowUpDown, Search, Trash2 } from "lucide-react";
+import { Dropdown } from "@/components/ui/dropdown";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Pagination } from "@/components/ui/pagination";
 import { useToast } from "@/components/ui/toast";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -14,6 +16,20 @@ const ITEMS_PER_PAGE = 8;
 
 type SortField = "residentName" | "createdAt";
 type SortDirection = "asc" | "desc";
+type DateFilter = "all" | "7d" | "30d";
+type AlphabetFilter = "all" | "latin" | "thai";
+
+const ALPHABET_FILTER_OPTIONS: Array<{ value: AlphabetFilter; label: string }> = [
+  { value: "all", label: "ทุกตัวอักษร" },
+  { value: "latin", label: "A-Z" },
+  { value: "thai", label: "ก-ฮ" },
+];
+
+const DATE_FILTER_OPTIONS: Array<{ value: DateFilter; label: string }> = [
+  { value: "all", label: "ทุกช่วงเวลา" },
+  { value: "7d", label: "ภายใน 7 วันล่าสุด" },
+  { value: "30d", label: "ภายใน 30 วันล่าสุด" },
+];
 
 function getSortLabel(field: SortField): string {
   if (field === "residentName") return "ชื่อผู้สูงอายุ";
@@ -28,8 +44,8 @@ export default function AdminRelativeUsersPage() {
   const [isDeletingUserId, setIsDeletingUserId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearchTerm = useDebouncedValue(searchTerm, 400);
-  const [dateFilter, setDateFilter] = useState<"all" | "7d" | "30d">("all");
-  const [alphabetFilter, setAlphabetFilter] = useState<"all" | "latin" | "thai">("all");
+  const [dateFilter, setDateFilter] = useState<DateFilter>("all");
+  const [alphabetFilter, setAlphabetFilter] = useState<AlphabetFilter>("all");
   const [sortField, setSortField] = useState<SortField>("createdAt");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [currentPage, setCurrentPage] = useState(1);
@@ -195,31 +211,25 @@ export default function AdminRelativeUsersPage() {
             />
           </div>
 
-          <select
+          <Dropdown
             value={alphabetFilter}
-            onChange={(event) => {
-              setAlphabetFilter(event.target.value as "all" | "latin" | "thai");
+            onChange={(value) => {
+              setAlphabetFilter(value as AlphabetFilter);
               setCurrentPage(1);
             }}
-            className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-blue-400"
-          >
-            <option value="all">ทุกตัวอักษร</option>
-            <option value="latin">A-Z</option>
-            <option value="thai">ก-ฮ</option>
-          </select>
+            options={ALPHABET_FILTER_OPTIONS}
+            className="h-10"
+          />
 
-          <select
+          <Dropdown
             value={dateFilter}
-            onChange={(event) => {
-              setDateFilter(event.target.value as "all" | "7d" | "30d");
+            onChange={(value) => {
+              setDateFilter(value as DateFilter);
               setCurrentPage(1);
             }}
-            className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-blue-400"
-          >
-            <option value="all">ทุกช่วงเวลา</option>
-            <option value="7d">ภายใน 7 วันล่าสุด</option>
-            <option value="30d">ภายใน 30 วันล่าสุด</option>
-          </select>
+            options={DATE_FILTER_OPTIONS}
+            className="h-10"
+          />
 
           <button
             type="button"
@@ -254,8 +264,8 @@ export default function AdminRelativeUsersPage() {
             <tbody>
               {isLoading && (
                 <tr>
-                  <td colSpan={3} className="px-6 py-10 text-center text-sm text-slate-500">
-                    กำลังโหลดข้อมูลบัญชีญาติ...
+                  <td colSpan={6} className="px-6 py-10 text-center">
+                    <LoadingSpinner />
                   </td>
                 </tr>
               )}

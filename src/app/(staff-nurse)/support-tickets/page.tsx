@@ -3,10 +3,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { Search, Eye, Trash2 } from "lucide-react";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Dropdown } from "@/components/ui/dropdown";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import supportTicketService, { SupportTicket, SupportTicketStatus } from "@/services/support-ticket.service";
 
 type TicketStatusFilter = "all" | SupportTicketStatus;
@@ -281,17 +283,12 @@ export default function SupportTicketsPage() {
               />
             </div>
 
-            <select
+            <Dropdown
               value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value as TicketStatusFilter)}
-              className="h-11 rounded-lg border border-gray-300 px-3 text-body-small text-gray-700 focus:border-blue-500 focus:outline-none"
-            >
-              {STATUS_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+              onChange={(value) => setStatusFilter(value as TicketStatusFilter)}
+              options={STATUS_OPTIONS}
+              className="h-11"
+            />
           </div>
         </div>
 
@@ -311,8 +308,8 @@ export default function SupportTicketsPage() {
               <tbody>
                 {isLoading ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-12 text-center text-body-small text-gray-500">
-                      กำลังโหลดข้อมูล...
+                    <td colSpan={6} className="px-4 py-12 text-center">
+                      <LoadingSpinner />
                     </td>
                   </tr>
                 ) : error ? (
@@ -396,7 +393,9 @@ export default function SupportTicketsPage() {
             </div>
 
             {isDetailLoading || !selectedTicket ? (
-              <div className="px-6 py-10 text-body-small text-gray-500">กำลังโหลดรายละเอียด...</div>
+              <div className="px-6 py-10 flex items-center justify-center">
+                <LoadingSpinner />
+              </div>
             ) : (
               <div className="space-y-5 px-6 py-5">
                 <div className="grid gap-4 md:grid-cols-2">
@@ -439,18 +438,13 @@ export default function SupportTicketsPage() {
                   <div className="grid gap-3 border-t border-gray-200 pt-4 md:grid-cols-[1fr_auto_auto] md:items-end">
                     <div>
                       <label className="text-caption text-gray-500">อัปเดตสถานะ</label>
-                      <select
+                      <Dropdown
                         value={statusDraft}
-                        onChange={(event) => setStatusDraft(event.target.value as SupportTicketStatus)}
+                        onChange={(value) => setStatusDraft(value as SupportTicketStatus)}
                         disabled={isStatusUpdating || deletingTicketId === selectedTicket.support_ticket_id}
-                        className="mt-1 h-11 w-full rounded-lg border border-gray-300 px-3 text-body-small text-gray-700 focus:border-blue-500 focus:outline-none disabled:bg-gray-100"
-                      >
-                        {STATUS_OPTIONS.filter((item) => item.value !== "all").map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
+                        options={STATUS_OPTIONS.filter((item) => item.value !== "all")}
+                        className="mt-1 h-11"
+                      />
                     </div>
 
                     <button

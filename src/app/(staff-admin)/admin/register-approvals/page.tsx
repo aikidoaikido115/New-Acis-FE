@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowUpDown, CheckCircle2, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Dropdown } from "@/components/ui/dropdown";
 import { Pagination } from "@/components/ui/pagination";
 import { useToast } from "@/components/ui/toast";
 import { AdminSectionTabs } from "@/components/features/admin/admin-section-tabs";
@@ -12,6 +13,8 @@ import {
   type SystemRole,
 } from "@/components/features/admin/admin-data";
 import adminService, { type AdminManagedUser } from "@/services/admin.service";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
+
 
 const ITEMS_PER_PAGE = 8;
 
@@ -20,6 +23,19 @@ type SortDirection = "asc" | "desc";
 type RoleFilter = "all" | SystemRole;
 type RegistrationStatus = "pending" | "approved";
 type StatusFilter = "all" | RegistrationStatus;
+
+const ROLE_FILTER_OPTIONS: Array<{ value: RoleFilter; label: string }> = [
+  { value: "all", label: "ทุกบทบาท" },
+  { value: "nurse", label: "เจ้าหน้าที่ดูแล" },
+  { value: "kitchen", label: "เจ้าหน้าที่ครัว" },
+  { value: "admin", label: "ผู้ดูแลระบบ" },
+];
+
+const STATUS_FILTER_OPTIONS: Array<{ value: StatusFilter; label: string }> = [
+  { value: "all", label: "ทุกสถานะ" },
+  { value: "pending", label: "รอตรวจสอบ" },
+  { value: "approved", label: "เปิดใช้งานแล้ว" },
+];
 
 interface RegistrationRequest {
   id: string;
@@ -202,32 +218,25 @@ export default function AdminRegisterApprovalsPage() {
             />
           </div>
 
-          <select
+          <Dropdown
             value={roleFilter}
-            onChange={(event) => {
-              setRoleFilter(event.target.value as RoleFilter);
+            onChange={(value) => {
+              setRoleFilter(value as RoleFilter);
               setCurrentPage(1);
             }}
-            className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-blue-400"
-          >
-            <option value="all">ทุกบทบาท</option>
-            <option value="nurse">เจ้าหน้าที่ดูแล</option>
-            <option value="kitchen">เจ้าหน้าที่ครัว</option>
-            <option value="admin">ผู้ดูแลระบบ</option>
-          </select>
+            options={ROLE_FILTER_OPTIONS}
+            className="h-10"
+          />
 
-          <select
+          <Dropdown
             value={statusFilter}
-            onChange={(event) => {
-              setStatusFilter(event.target.value as StatusFilter);
+            onChange={(value) => {
+              setStatusFilter(value as StatusFilter);
               setCurrentPage(1);
             }}
-            className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-blue-400"
-          >
-            <option value="all">ทุกสถานะ</option>
-            <option value="pending">รอตรวจสอบ</option>
-            <option value="approved">เปิดใช้งานแล้ว</option>
-          </select>
+            options={STATUS_FILTER_OPTIONS}
+            className="h-10"
+          />
         </div>
 
         <div className="overflow-x-auto">
@@ -261,8 +270,8 @@ export default function AdminRegisterApprovalsPage() {
             <tbody>
               {isLoading && (
                 <tr>
-                  <td colSpan={6} className="px-6 py-10 text-center text-sm text-slate-500">
-                    กำลังโหลดรายการสมัคร...
+                  <td colSpan={6} className="px-6 py-10 text-center">
+                    <LoadingSpinner />
                   </td>
                 </tr>
               )}

@@ -13,6 +13,7 @@ import { RelativeNoteDetailTable } from "@/components/features/EMR/detail/Relati
 import { DatePicker } from "@/components/ui/date-picker";
 import { residentService } from "@/services/resident.service";
 import { roomService } from "@/services/room.service";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import apiClient, { ApiResponse } from "@/lib/axios.ts/api-client";
 import type { Resident } from "@/types/resident";
 import type { Room } from "@/types/room";
@@ -154,7 +155,9 @@ export default function PatientDetailPage() {
 
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 relative">
           {isLoading ? (
-            <div className="py-8 text-center text-sm text-gray-500">กำลังโหลดข้อมูล...</div>
+            <div className="flex items-center justify-center py-8">
+              <LoadingSpinner />
+            </div>
           ) : error ? (
             <div className="py-8 text-center text-sm text-red-500">{error}</div>
           ) : (
