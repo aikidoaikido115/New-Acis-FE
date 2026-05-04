@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { vitalSignService } from "@/services/vital-sign.service";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import type { VitalSign } from "@/types/vital-sign";
 
 interface GraphViewProps {
@@ -67,7 +68,11 @@ export function GraphView({ patientId }: GraphViewProps) {
   const tempRange = tempMax - tempMin;
 
   if (isLoading) {
-    return <div className="p-6 text-sm text-gray-500">กำลังโหลดข้อมูลกราฟ...</div>;
+    return (
+      <div className="p-6 text-center">
+        <LoadingSpinner />
+      </div>
+    );
   }
 
   if (error) {

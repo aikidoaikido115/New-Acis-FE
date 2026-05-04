@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Search, Filter, Plus, PackagePlus, PackageMinus, Edit, Trash2, Check } from "lucide-react";
 import { Pagination } from "@/components/ui/pagination";
 import { useToast } from "@/components/ui/toast";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useAuth } from "@/hooks/useAuth";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import {
@@ -457,8 +458,8 @@ export function InventoryTable() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="py-12 px-4 text-center text-sm text-gray-500">
-                    กำลังโหลดข้อมูล...
+                  <td colSpan={6} className="py-12 px-4 text-center">
+                    <LoadingSpinner />
                   </td>
                 </tr>
               ) : error ? (

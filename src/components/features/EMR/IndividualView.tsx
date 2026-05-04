@@ -1,10 +1,12 @@
 "use client";
 
-import { Search, ChevronDown } from "lucide-react";
+import { Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Dropdown } from "@/components/ui/dropdown";
 import { residentService } from "@/services/resident.service";
 import { roomService } from "@/services/room.service";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import type { Resident } from "@/types/resident";
 import type { Room } from "@/types/room";
 
@@ -124,54 +126,47 @@ export function IndividualView() {
         <span className="text-body-small text-gray-600">ชั้น</span>
 
         {/* Floor Dropdown */}
-        <div className="relative">
-          <select
-            value={selectedFloor}
-            onChange={(e) => setSelectedFloor(e.target.value)}
-            className="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-body-small bg-white cursor-pointer text-black"
-          >
-            <option value="all">ทุกชั้น</option>
-            {floorOptions.map((floor) => (
-              <option key={floor} value={String(floor)}>
-                ชั้น {floor}
-              </option>
-            ))}
-          </select>
-          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-        </div>
+        <Dropdown
+          options={[
+            { value: "all", label: "ทุกชั้น" },
+            ...floorOptions.map((floor) => ({
+              value: String(floor),
+              label: `ชั้น ${floor}`,
+            })),
+          ]}
+          value={selectedFloor}
+          onChange={(value) => setSelectedFloor(value)}
+          placeholder="เลือกชั้น"
+        />
 
         <span className="text-body-small text-gray-600">ประเภท</span>
 
         {/* Help Level Dropdown */}
-        <div className="relative">
-          <select
-            value={selectedHelpLevel}
-            onChange={(e) => setSelectedHelpLevel(e.target.value as CareLevelFilter)}
-            className="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-body-small bg-white cursor-pointer text-black"
-          >
-            <option value="all">ทั้งหมด</option>
-            <option value="general">ช่วยเหลือตัวเองได้</option>
-            <option value="partial_assist">ต้องการความช่วยเหลือ</option>
-            <option value="bedridden">ติดเตียง</option>
-          </select>
-          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-        </div>
+        <Dropdown
+          options={[
+            { value: "all", label: "ทั้งหมด" },
+            { value: "general", label: "ช่วยเหลือตัวเองได้" },
+            { value: "partial_assist", label: "ต้องการความช่วยเหลือ" },
+            { value: "bedridden", label: "ติดเตียง" },
+          ]}
+          value={selectedHelpLevel}
+          onChange={(value) => setSelectedHelpLevel(value as CareLevelFilter)}
+          placeholder="เลือก"
+        />
 
         <span className="text-body-small text-gray-600">สถานะ</span>
 
         {/* Status Dropdown */}
-        <div className="relative">
-          <select
-            value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value as StatusFilter)}
-            className="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-body-small bg-white cursor-pointer text-black"
-          >
-            <option value="all">ทุกสถานะ</option>
-            <option value="active">ใช้งาน</option>
-            <option value="inactive">ไม่ใช้งาน</option>
-          </select>
-          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-        </div>
+        <Dropdown
+          options={[
+            { value: "all", label: "ทุกสถานะ" },
+            { value: "active", label: "ใช้งาน" },
+            { value: "inactive", label: "ไม่ใช้งาน" },
+          ]}
+          value={selectedStatus}
+          onChange={(value) => setSelectedStatus(value as StatusFilter)}
+          placeholder="เลือก"
+        />
       </div>
 
       {/* Data Table */}
@@ -189,8 +184,8 @@ export function IndividualView() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={4} className="py-6 px-4 text-center text-sm text-gray-500">
-                    กำลังโหลดข้อมูล...
+                  <td colSpan={4} className="py-6 px-4 text-center">
+                    <LoadingSpinner />
                   </td>
                 </tr>
               ) : error ? (

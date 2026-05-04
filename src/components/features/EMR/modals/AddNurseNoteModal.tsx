@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { X, MessageSquare, AlertTriangle } from "lucide-react";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Dropdown } from "@/components/ui/dropdown";
 import { useToast } from "@/components/ui/toast";
 import { DatePicker } from "@/components/ui/date-picker";
 import { ResidentSearchCombobox } from "./ResidentSearchCombobox";
@@ -238,7 +239,7 @@ export function AddNurseNoteModal({
         >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 sticky top-0 bg-white z-10">
-          <h2 id="modal-title" className="text-lg font-semibold text-slate-800">{mode === "edit" ? "แก้ไข Nurse Note" : "เขียน Nurse Note"}</h2>
+          <h2 id="modal-title" className="text-lg font-semibold text-slate-800">{mode === "edit" ? "แก้ไขบันทึกพยาบาล" : "เขียนบันทึกพยาบาล"}</h2>
           <button 
             onClick={() => void handleClose()} 
             className="text-gray-400 hover:text-gray-600 transition-colors rounded-lg p-1 hover:bg-gray-100"
@@ -289,22 +290,16 @@ export function AddNurseNoteModal({
           {/* Category */}
           <div>
             <label htmlFor="nurse-note-category" className="block text-sm font-medium text-gray-700 mb-1">ประเภทบันทึก</label>
-            <div className="relative">
-              <MessageSquare className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-              <select
-                id="nurse-note-category"
-                value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                className={`w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white appearance-none ${
-                  formData.category ? "text-black" : "text-slate-400"
-                }`}
-              >
-                <option value="" disabled>เลือกประเภทบันทึก</option>
-                <option value="ประจำวัน">ประจำวัน</option>
-                <option value="พิเศษ">พิเศษ</option>
-                <option value="ฉุกเฉิน">ฉุกเฉิน</option>
-              </select>
-            </div>
+            <Dropdown
+              options={[
+                { value: "ประจำวัน", label: "ประจำวัน" },
+                { value: "พิเศษ", label: "พิเศษ" },
+                { value: "ฉุกเฉิน", label: "ฉุกเฉิน" },
+              ]}
+              value={formData.category}
+              onChange={(value) => setFormData({ ...formData, category: value })}
+              placeholder="เลือกประเภทบันทึก"
+            />
           </div>
 
           {/* Content */}

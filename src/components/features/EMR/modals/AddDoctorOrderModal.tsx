@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { X } from "lucide-react";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Dropdown } from "@/components/ui/dropdown";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useToast } from "@/components/ui/toast";
 import { ResidentSearchCombobox, type ResidentComboboxOption } from "./ResidentSearchCombobox";
@@ -313,24 +314,21 @@ export function AddDoctorOrderModal({
               </div>
               <div>
                 <label htmlFor="doctor-order-type" className="block text-sm font-medium text-gray-700 mb-1">ประเภทคำสั่ง</label>
-                <select
-                  id="doctor-order-type"
+                <Dropdown
+                  options={[
+                    { value: "แนวทางรักษา", label: "แนวทางรักษา" },
+                    { value: "การใช้ยา/ปรับยา", label: "การใช้ยา/ปรับยา" },
+                    { value: "การให้ยาแบบฉุกเฉิน (PRN)", label: "การให้ยาแบบฉุกเฉิน (PRN)" },
+                    { value: "หยุดยา/ปรับแผนยา", label: "หยุดยา/ปรับแผนยา" },
+                    { value: "การพยาบาล", label: "การพยาบาล" },
+                    { value: "การติดตามอาการ", label: "การติดตามอาการ" },
+                    { value: "การตรวจทางห้องปฏิบัติการ", label: "การตรวจทางห้องปฏิบัติการ" },
+                    { value: "อื่นๆ", label: "อื่นๆ" },
+                  ]}
                   value={formData.orderType}
-                  onChange={(e) => setFormData({ ...formData, orderType: e.target.value })}
-                  className={`${baseSelectClassName} ${
-                    formData.orderType ? "text-black" : "text-slate-400"
-                  }`}
-                >
-                  <option value="" disabled>เลือกประเภท</option>
-                  <option value="แนวทางรักษา">แนวทางรักษา</option>
-                  <option value="การใช้ยา/ปรับยา">การใช้ยา/ปรับยา</option>
-                  <option value="การให้ยาแบบฉุกเฉิน (PRN)">การให้ยาแบบฉุกเฉิน (PRN)</option>
-                  <option value="หยุดยา/ปรับแผนยา">หยุดยา/ปรับแผนยา</option>
-                  <option value="การพยาบาล">การพยาบาล</option>
-                  <option value="การติดตามอาการ">การติดตามอาการ</option>
-                  <option value="การตรวจทางห้องปฏิบัติการ">การตรวจทางห้องปฏิบัติการ</option>
-                  <option value="อื่นๆ">อื่นๆ</option>
-                </select>
+                  onChange={(value) => setFormData({ ...formData, orderType: value })}
+                  placeholder="เลือกประเภท"
+                />
               </div>
             </div>
 

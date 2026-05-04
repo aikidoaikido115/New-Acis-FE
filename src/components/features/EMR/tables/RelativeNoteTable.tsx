@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Pagination } from "@/components/ui/pagination";
 import { useToast } from "@/components/ui/toast";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { AddRelativeNoteModal, RelativeNoteFormData } from "../modals/AddRelativeNoteModal";
 import { NoteTimelineControls } from "../NoteTimelineControls";
 import { ContactInformationModal } from "@/components/shared/contact/ContactInformationModal";
@@ -206,8 +207,8 @@ export function RelativeNoteTable() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={3} className="py-6 px-4 text-center text-sm text-gray-500">
-                    กำลังโหลดข้อมูล...
+                  <td colSpan={3} className="py-6 px-4 text-center">
+                    <LoadingSpinner />
                   </td>
                 </tr>
               ) : error ? (

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { X, Image as ImageIcon } from "lucide-react";
 import Image from "next/image";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Dropdown } from "@/components/ui/dropdown";
 import { useToast } from "@/components/ui/toast";
 import { DatePicker } from "@/components/ui/date-picker";
 import { ResidentSearchCombobox } from "./ResidentSearchCombobox";
@@ -361,19 +362,16 @@ export function AddWoundCareModal({
 
           <div>
             <label htmlFor="wound-status" className="block text-sm font-medium text-gray-700 mb-1">สภาพแผล</label>
-            <select
-              id="wound-status"
+            <Dropdown
+              options={[
+                { value: "คงที่", label: "คงที่" },
+                { value: "ดีขึ้น", label: "ดีขึ้น" },
+                { value: "แย่ลง", label: "แย่ลง" },
+              ]}
               value={formData.status}
-              onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-              className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white ${
-                formData.status ? "text-black" : "text-slate-400"
-              }`}
-            >
-              <option value="" disabled>เลือกสภาพแผล</option>
-              <option value="คงที่">คงที่</option>
-              <option value="ดีขึ้น">ดีขึ้น</option>
-              <option value="แย่ลง">แย่ลง</option>
-            </select>
+              onChange={(value) => setFormData({ ...formData, status: value })}
+              placeholder="เลือกสภาพแผล"
+            />
           </div>
 
           <div>

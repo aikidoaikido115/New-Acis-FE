@@ -1,10 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Search, ChevronDown } from "lucide-react";
+import { Search } from "lucide-react";
 import { Pagination } from "@/components/ui/pagination";
+import { Dropdown } from "@/components/ui/dropdown";
 import { useToast } from "@/components/ui/toast";
 import { DatePicker } from "@/components/ui/date-picker";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useAuth } from "@/hooks/useAuth";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import {
@@ -345,37 +347,37 @@ export function TransactionHistoryTable() {
           </div>
 
           {/* Status Dropdown */}
-          <div className="relative">
-            <select
-              value={selectedStatus}
-              onChange={(e) => { setSelectedStatus(e.target.value as "" | ApprovalStatus); resetPage(); }}
-              className="appearance-none pl-4 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-body-small bg-[rgba(204,204,204,0.16)] text-gray-700 cursor-pointer"
-              style={{ borderColor: "rgba(204, 204, 204, 1)" }}
-            >
-              <option value="">สถานะการอนุมัติ</option>
-              <option value="รออนุมัติ">รออนุมัติ</option>
-              <option value="อนุมัติ">อนุมัติ</option>
-              <option value="ไม่อนุมัติ">ไม่อนุมัติ</option>
-            </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-          </div>
+          <Dropdown
+            options={[
+              { value: "", label: "สถานะการอนุมัติ" },
+              { value: "รออนุมัติ", label: "รออนุมัติ" },
+              { value: "อนุมัติ", label: "อนุมัติ" },
+              { value: "ไม่อนุมัติ", label: "ไม่อนุมัติ" },
+            ]}
+            value={selectedStatus}
+            onChange={(value) => {
+              setSelectedStatus(value as "" | ApprovalStatus);
+              resetPage();
+            }}
+            className="w-44"
+          />
 
           {/* Type Dropdown */}
-          <div className="relative">
-            <select
-              value={selectedType}
-              onChange={(e) => { setSelectedType(e.target.value as "" | TransactionType); resetPage(); }}
-              className="appearance-none pl-4 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-body-small bg-[rgba(204,204,204,0.16)] text-gray-700 cursor-pointer"
-              style={{ borderColor: "rgba(204, 204, 204, 1)" }}
-            >
-              <option value="">ประเภทรายการ</option>
-              <option value="เพิ่มสินค้าใหม่">เพิ่มเวชภัณฑ์ใหม่</option>
-              <option value="เติมสินค้า">เติมเวชภัณฑ์</option>
-              <option value="เบิกสินค้า">เบิกเวชภัณฑ์</option>
-              <option value="นำออก">นำออก</option>
-            </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-          </div>
+          <Dropdown
+            options={[
+              { value: "", label: "ประเภทรายการ" },
+              { value: "เพิ่มสินค้าใหม่", label: "เพิ่มเวชภัณฑ์ใหม่" },
+              { value: "เติมสินค้า", label: "เติมเวชภัณฑ์" },
+              { value: "เบิกสินค้า", label: "เบิกเวชภัณฑ์" },
+              { value: "นำออก", label: "นำออก" },
+            ]}
+            value={selectedType}
+            onChange={(value) => {
+              setSelectedType(value as "" | TransactionType);
+              resetPage();
+            }}
+            className="w-44"
+          />
         </div>
       </div>
 
@@ -453,8 +455,8 @@ export function TransactionHistoryTable() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={columnCount} className="py-12 px-4 text-center text-sm text-gray-500">
-                    กำลังโหลดข้อมูล...
+                  <td colSpan={columnCount} className="py-12 px-4 text-center">
+                    <LoadingSpinner />
                   </td>
                 </tr>
               ) : error ? (

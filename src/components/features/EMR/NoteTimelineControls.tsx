@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo } from "react";
-import { Calendar, ChevronDown } from "lucide-react";
+import { Calendar } from "lucide-react";
 import { DatePicker } from "@/components/ui/date-picker";
+import { Dropdown } from "@/components/ui/dropdown";
 import type { TimelineSortOrder } from "./note-timeline";
 
 interface NoteTimelineControlsProps {
@@ -51,17 +52,15 @@ export function NoteTimelineControls({
 
       <div className="relative flex items-center gap-2">
         <span className="text-body-small text-gray-600">เรียงเวลา</span>
-        <div className="relative">
-          <select
-            value={sortOrder}
-            onChange={(event) => onSortOrderChange(event.target.value as TimelineSortOrder)}
-            className="appearance-none rounded-lg border border-gray-300 bg-white py-2 pl-4 pr-10 text-body-small text-black focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="newest">ใหม่สุดก่อน</option>
-            <option value="oldest">เก่าสุดก่อน</option>
-          </select>
-          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-        </div>
+        <Dropdown
+          options={[
+            { value: "newest", label: "ใหม่สุดก่อน" },
+            { value: "oldest", label: "เก่าสุดก่อน" },
+          ]}
+          value={sortOrder}
+          onChange={(value) => onSortOrderChange(value as TimelineSortOrder)}
+          placeholder="เลือก"
+        />
       </div>
     </div>
   );

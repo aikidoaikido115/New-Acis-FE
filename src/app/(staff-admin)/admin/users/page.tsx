@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowUpDown, Search, ShieldCheck, ShieldOff, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { Dropdown } from "@/components/ui/dropdown";
 import { Pagination } from "@/components/ui/pagination";
 import { useToast } from "@/components/ui/toast";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -17,6 +19,19 @@ type SortDirection = "asc" | "desc";
 
 type RoleFilter = "all" | SystemRole;
 type SuperuserFilter = "all" | "yes" | "no";
+
+const ROLE_FILTER_OPTIONS: Array<{ value: RoleFilter; label: string }> = [
+  { value: "all", label: "ทุกบทบาท" },
+  { value: "nurse", label: "เจ้าหน้าที่ดูแล" },
+  { value: "kitchen", label: "เจ้าหน้าที่ครัว" },
+  { value: "admin", label: "ผู้ดูแลระบบ" },
+];
+
+const SUPERUSER_FILTER_OPTIONS: Array<{ value: SuperuserFilter; label: string }> = [
+  { value: "all", label: "ทุกระดับสิทธิ์" },
+  { value: "yes", label: "เฉพาะผู้มีสิทธิ์หัวหน้า" },
+  { value: "no", label: "เฉพาะผู้ไม่มีสิทธิ์หัวหน้า" },
+];
 
 function getRoleBadgeClass(role: SystemRole): string {
   if (role === "admin") return "bg-blue-100 text-blue-700";
@@ -245,32 +260,25 @@ export default function AdminUsersPage() {
             />
           </div>
 
-          <select
+          <Dropdown
             value={roleFilter}
-            onChange={(event) => {
-              setRoleFilter(event.target.value as RoleFilter);
+            onChange={(value) => {
+              setRoleFilter(value as RoleFilter);
               setCurrentPage(1);
             }}
-            className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-blue-400"
-          >
-            <option value="all">ทุกบทบาท</option>
-            <option value="nurse">เจ้าหน้าที่ดูแล</option>
-            <option value="kitchen">เจ้าหน้าที่ครัว</option>
-            <option value="admin">ผู้ดูแลระบบ</option>
-          </select>
+            options={ROLE_FILTER_OPTIONS}
+            className="h-10"
+          />
 
-          <select
+          <Dropdown
             value={superuserFilter}
-            onChange={(event) => {
-              setSuperuserFilter(event.target.value as SuperuserFilter);
+            onChange={(value) => {
+              setSuperuserFilter(value as SuperuserFilter);
               setCurrentPage(1);
             }}
-            className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-blue-400"
-          >
-            <option value="all">ทุกระดับสิทธิ์</option>
-            <option value="yes">เฉพาะผู้มีสิทธิ์หัวหน้า</option>
-            <option value="no">เฉพาะผู้ไม่มีสิทธิ์หัวหน้า</option>
-          </select>
+            options={SUPERUSER_FILTER_OPTIONS}
+            className="h-10"
+          />
         </div>
 
         <div className="overflow-x-auto">
@@ -304,8 +312,8 @@ export default function AdminUsersPage() {
             <tbody>
               {isLoading && (
                 <tr>
-                  <td colSpan={6} className="px-6 py-10 text-center text-sm text-slate-500">
-                    กำลังโหลดข้อมูลผู้ใช้...
+                  <td colSpan={6} className="px-6 py-10 text-center">
+                    <LoadingSpinner />
                   </td>
                 </tr>
               )}

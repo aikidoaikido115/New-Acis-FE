@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown } from "lucide-react";
 import { DatePicker } from "@/components/ui/date-picker";
+import { Dropdown } from "@/components/ui/dropdown";
 import { intakeService } from "@/services/intake.service";
 import { roomService } from "@/services/room.service";
 import { VitalSignsTable } from "./tables/VitalSignsTable";
@@ -92,54 +92,47 @@ export function OverviewView() {
             <span className="text-body-small text-gray-600">ชั้น</span>
 
             {/* Floor Dropdown */}
-            <div className="relative">
-              <select
-                value={selectedFloor}
-                onChange={(e) => setSelectedFloor(e.target.value)}
-                className="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-body-small bg-white cursor-pointer text-black"
-              >
-                <option value="all">ทุกชั้น</option>
-                {floorOptions.map((floor) => (
-                  <option key={floor} value={String(floor)}>
-                    ชั้น {floor}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-            </div>
+            <Dropdown
+              options={[
+                { value: "all", label: "ทุกชั้น" },
+                ...floorOptions.map((floor) => ({
+                  value: String(floor),
+                  label: `ชั้น ${floor}`,
+                })),
+              ]}
+              value={selectedFloor}
+              onChange={(value) => setSelectedFloor(value)}
+              placeholder="เลือกชั้น"
+            />
 
             <span className="text-body-small text-gray-600">ประเภท</span>
 
             {/* Help Level Dropdown */}
-            <div className="relative">
-              <select
-                value={selectedHelpLevel}
-                onChange={(e) => setSelectedHelpLevel(e.target.value as HelpLevelFilter)}
-                className="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-body-small bg-white cursor-pointer text-black"
-              >
-                <option value="all">ทั้งหมด</option>
-                <option value="self">ช่วยเหลือตัวเองได้</option>
-                <option value="partial">ต้องการความช่วยเหลือ</option>
-                <option value="bedridden">ติดเตียง</option>
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-            </div>
+            <Dropdown
+              options={[
+                { value: "all", label: "ทั้งหมด" },
+                { value: "self", label: "ช่วยเหลือตัวเองได้" },
+                { value: "partial", label: "ต้องการความช่วยเหลือ" },
+                { value: "bedridden", label: "ติดเตียง" },
+              ]}
+              value={selectedHelpLevel}
+              onChange={(value) => setSelectedHelpLevel(value as HelpLevelFilter)}
+              placeholder="เลือก"
+            />
 
             <span className="text-body-small text-gray-600">สถานะ</span>
 
             {/* Status Dropdown */}
-            <div className="relative">
-              <select
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value as VitalSignStatus)}
-                className="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-body-small bg-white cursor-pointer text-black"
-              >
-                <option value="all">ทั้งหมด</option>
-                <option value="normal">ปกติ</option>
-                <option value="abnormal">ต้องติดตาม</option>
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-            </div>
+            <Dropdown
+              options={[
+                { value: "all", label: "ทั้งหมด" },
+                { value: "normal", label: "ปกติ" },
+                { value: "abnormal", label: "ต้องติดตาม" },
+              ]}
+              value={selectedStatus}
+              onChange={(value) => setSelectedStatus(value as VitalSignStatus)}
+              placeholder="เลือก"
+            />
           </div>
 
           {/* Date Picker (เฉพาะ Vital Signs) */}

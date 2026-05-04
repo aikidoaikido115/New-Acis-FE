@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { X, Sunrise, Sun, Sunset, MoonStar } from "lucide-react";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DatePicker } from "@/components/ui/date-picker";
+import { Dropdown } from "@/components/ui/dropdown";
 
 interface AddMedicationModalProps {
   isOpen: boolean;
@@ -95,9 +96,6 @@ const formatDateAsIso = (date: Date): string => {
 
 const baseInputClassName =
   "w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-black placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500";
-
-const baseSelectClassName =
-  "w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500";
 
 const fullWidthDatePickerClassName = "w-full [&>button]:w-full [&>button]:justify-between";
 
@@ -418,22 +416,18 @@ export function AddMedicationModal({ isOpen, onClose, onSubmit }: AddMedicationM
               {errors.amount ? <p className="mt-1 text-xs text-red-500">{errors.amount}</p> : null}
             </div>
             <div>
-              <label htmlFor="med-amount-unit" className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 หน่วย <span className="text-red-500">*</span>
               </label>
-              <select
-                id="med-amount-unit"
+              <Dropdown
+                options={[
+                  ...STANDARD_AMOUNT_UNITS.map((unit) => ({ value: unit, label: unit })),
+                  { value: OTHER_UNIT_VALUE, label: "อื่นๆ" },
+                ]}
                 value={amountUnitOption}
-                onChange={(e) => handleAmountUnitSelect(e.target.value)}
-                className={baseSelectClassName}
-              >
-                {STANDARD_AMOUNT_UNITS.map((unit) => (
-                  <option key={unit} value={unit}>
-                    {unit}
-                  </option>
-                ))}
-                <option value={OTHER_UNIT_VALUE}>อื่นๆ</option>
-              </select>
+                onChange={handleAmountUnitSelect}
+                className="w-full"
+              />
               {amountUnitOption === OTHER_UNIT_VALUE ? (
                 <input
                   type="text"
@@ -578,20 +572,20 @@ export function AddMedicationModal({ isOpen, onClose, onSubmit }: AddMedicationM
 
           {/* Administration Timing */}
           <div>
-            <label htmlFor="med-admin-timing" className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               เวลาให้ยา (Timing) <span className="text-red-500">*</span>
             </label>
-            <select
-              id="med-admin-timing"
+            <Dropdown
+              options={[
+                { value: "ก่อนอาหาร", label: "ก่อนอาหาร" },
+                { value: "หลังอาหาร", label: "หลังอาหาร" },
+              ]}
               value={formData.administrationTiming}
-              onChange={(e) =>
-                updateField("administrationTiming", e.target.value as AddMedicationFormData["administrationTiming"])
+              onChange={(value) =>
+                updateField("administrationTiming", value as AddMedicationFormData["administrationTiming"])
               }
-              className={baseSelectClassName}
-            >
-              <option value="ก่อนอาหาร">ก่อนอาหาร</option>
-              <option value="หลังอาหาร">หลังอาหาร</option>
-            </select>
+              className="w-full"
+            />
           </div>
 
           {/* Note */}

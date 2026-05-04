@@ -160,7 +160,7 @@ const buildNurseNotifications = async (now: Date): Promise<NotificationItemData[
   const notifications: BuiltNotification[] = [];
 
   try {
-    const vitalOverview = await vitalSignService.getOverview({ vitalsign_status: "abnormal" });
+    const vitalOverview = await vitalSignService.getOverview({ date: dateKey, vitalsign_status: "abnormal" });
     const uniqueResidents = new Set(
       (vitalOverview.items || [])
         .map((item) => item.resident_id)
