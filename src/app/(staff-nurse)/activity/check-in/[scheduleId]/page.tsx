@@ -538,7 +538,7 @@ export default function ActivityCheckInPage() {
                 <th className="px-4 py-3">ชื่อ-นามสกุล</th>
                 <th className="px-4 py-3">ชื่อเล่น</th>
                 <th className="px-4 py-3">ห้อง</th>
-                <th className="px-4 py-3">การช่วยเหลือตนเอง</th>
+                <th className="px-4 py-3">ประเภท</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">

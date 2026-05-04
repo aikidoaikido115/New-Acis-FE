@@ -13,10 +13,9 @@ import { adminService } from "@/services/admin.service";
 import { authService } from "@/services/auth.service";
 import { ContactInformationModal } from "@/components/shared/contact/ContactInformationModal";
 import { resolveContactInfo } from "@/components/shared/contact/contactDirectory";
-import type { ContactInfo } from "@/components/shared/contact/contactDirectory";
 import type { Activity } from "@/types/activity";
 import type { ActivitySchedule } from "@/types/activity-schedule";
-import apiClient, { ApiResponse } from "@/lib/axios.ts/api-client";
+import apiClient from "@/lib/axios.ts/api-client";
 
 const DAYS_FULL = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
 const MONTHS = [
@@ -105,9 +104,8 @@ interface ActivityScheduleCardProps {
   onCopy: (schedule: ActivitySchedule, activity?: Activity) => void;
   onCheckIn: (schedule: ActivitySchedule, activity: Activity | undefined, mode: "checkin" | "history") => void;
   resolveActivity: (schedule: ActivitySchedule) => Activity | undefined;
-  onOpenContact: (staffId: string) => void;
+  onOpenContact: (name: string) => void; 
   staffNames: Record<string, string>;
-
 }
 
 function ActivityScheduleCard({
@@ -126,6 +124,8 @@ function ActivityScheduleCard({
   const dayName = DAYS_FULL[selectedDate.getDay()];
   const date = selectedDate.getDate();
   const monthName = MONTHS[selectedDate.getMonth()];
+  
+  const safeStaffNames = staffNames || {};
 
   const resolveCheckInState = (schedule: ActivitySchedule) => {
     const rawStart = schedule.start_time || schedule.date;
@@ -158,9 +158,20 @@ function ActivityScheduleCard({
           const isLast = index === items.length - 1;
           const description = activity?.description && activity.description.trim() ? activity.description : "-";
           const location = activity?.location && activity.location.trim() ? activity.location : "-";
+          
           const staffId = activity?.staff_id;
-          const updatedByName = staffId ? (staffNames[staffId] || staffId) : "-";
+          const staffObj = (activity as any)?.staff || (activity as any)?.Staff || (activity as any)?.user;
+          let resolvedName = staffId || "-";
+          
+          if (staffObj && (staffObj.first_name || staffObj.name)) {
+            resolvedName = `${staffObj.first_name || ""} ${staffObj.last_name || ""}`.trim() || staffObj.name;
+          } else if (staffId && safeStaffNames[staffId] && safeStaffNames[staffId] !== staffId) {
+            resolvedName = safeStaffNames[staffId];
+          }
+          
+          const updatedByName = resolvedName;
           const checkInState = resolveCheckInState(item);
+          
           return (
             <div key={item.as_id} className="flex gap-4 py-4">
               {!isSmallScreen && (
@@ -217,10 +228,10 @@ function ActivityScheduleCard({
                 <div className="mt-3 flex items-center justify-between gap-2">
                   <p className="text-xs text-slate-500">
                     อัปเดตล่าสุดโดย:{" "}
-                    {staffId ? (
+                    {updatedByName !== "-" ? (
                       <button
                         type="button"
-                        onClick={() => onOpenContact(staffId)}
+                        onClick={() => onOpenContact(updatedByName)}
                         className="text-xs text-blue-600 underline hover:text-blue-700"
                       >
                         {updatedByName}
@@ -322,10 +333,35 @@ export default function ActivityPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ActivitySchedule | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
-  const [contactInfo, setContactInfo] = useState<ContactInfo | null>(null);
+  
+  const [activeContactName, setActiveContactName] = useState<string | null>(null);
   const [staffNames, setStaffNames] = useState<Record<string, string>>({});
-  const [staffData, setStaffData] = useState<Record<string, any>>({}); // Store full staff data
-  const [scheduleImages, setScheduleImages] = useState<Record<string, boolean>>({}); // Track which schedules have images
+
+  // ⭐️ แก้ไขให้โหลดข้อมูลกิจกรรมในทุกๆ เดือน "ทั้งหมด" เข้ามาเก็บตั้งแต่ตอนเปิดเว็บ
+  useEffect(() => {
+    let mounted = true;
+    const loadAllMonthSchedules = async () => {
+      try {
+        const schedules = await activityScheduleService.getAll();
+        if (!mounted) return;
+        const schedulesMap: Record<string, number> = {};
+        
+        schedules.forEach((schedule) => {
+          const dateKey = toDateKeyFromValue(schedule.date);
+          if (!dateKey) return;
+          // นับจำนวนกิจกรรมทุกวันที่เจอ
+          schedulesMap[dateKey] = (schedulesMap[dateKey] ?? 0) + 1;
+        });
+        
+        setSchedulesByMonth(schedulesMap);
+      } catch {
+        // ignore
+      }
+    };
+    loadAllMonthSchedules();
+    
+    return () => { mounted = false; };
+  }, []); // รันครั้งเดียวตอนโหลด
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -337,18 +373,6 @@ export default function ActivityPage() {
             ...prev,
             [profile.user_id]: `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || profile.username,
           }));
-          setStaffData((prev) => ({
-            ...prev,
-            [profile.user_id]: {
-              user_id: profile.user_id,
-              first_name: profile.first_name || "",
-              last_name: profile.last_name || "",
-              nickname: profile.nickname || "",
-              email: profile.email || "",
-              phone: profile.phone || "",
-              profile_image: profile.profile_image || "",
-            },
-          }));
         }
       } catch {
         // ignore
@@ -358,70 +382,56 @@ export default function ActivityPage() {
     void loadProfile();
   }, []);
 
-  // ✅ โหลดชื่อและข้อมูล staff จาก adminService (fallback ถ้าไม่มีเมธอดที่ต้องการ)
   const loadStaffNames = useCallback(async (activityList: Activity[]) => {
     const staffIds = [...new Set(activityList.map(a => a.staff_id).filter(Boolean) as string[])];
     if (staffIds.length === 0) return;
+    
+    const cache = loadStaffProfileCache();
+
     try {
-      // ลองใช้ adminService.getAllStaff() (หรือ adminService.getStaffList())
-      let users: any[] = [];
+      let rawData: any = null;
       if (typeof (adminService as any).getAllStaff === 'function') {
-        users = await (adminService as any).getAllStaff();
+        rawData = await (adminService as any).getAllStaff();
       } else if (typeof (adminService as any).getAllUsers === 'function') {
-        users = await (adminService as any).getAllUsers();
+        rawData = await (adminService as any).getAllUsers();
       } else if (typeof (adminService as any).getUsers === 'function') {
-        users = await (adminService as any).getUsers();
+        rawData = await (adminService as any).getUsers();
+      } else {
+        const res = await apiClient.get('/users').catch(() => null);
+        rawData = res?.data;
       }
       
-      const nameMap: Record<string, string> = {};
-      const dataMap: Record<string, any> = {};
-      users.forEach((user: any) => {
-        const id = user.id || user.user_id || user.staff_id;
-        if (id && staffIds.includes(id)) {
-          const fullName = `${user.first_name || ""} ${user.last_name || ""}`.trim() || user.name || id;
-          const [firstName, ...rest] = fullName.split(" ");
-          const lastName = rest.join(" ");
-          nameMap[id] = fullName;
-          dataMap[id] = {
-            user_id: id,
-            first_name: user.first_name || firstName || "",
-            last_name: user.last_name || lastName || "",
-            nickname: user.nickname || "",
-            email: user.email || "",
-            phone: user.phone || "",
-            profile_image: user.profile_image || "",
-          };
-        }
-      });
+      let users: any[] = [];
+      if (Array.isArray(rawData)) users = rawData;
+      else if (rawData?.data && Array.isArray(rawData.data)) users = rawData.data;
+      else if (rawData?.items && Array.isArray(rawData.items)) users = rawData.items;
 
-      const cache = loadStaffProfileCache();
-      staffIds.forEach((id) => {
-        if (cache[id]) {
-          const cached = cache[id];
-          nameMap[id] = nameMap[id] || `${cached.first_name || ""} ${cached.last_name || ""}`.trim() || id;
-          dataMap[id] = { ...dataMap[id], ...cached };
-        }
+      setStaffNames(prev => {
+        const next = { ...prev };
+        staffIds.forEach(id => {
+          const user = users.find((u: any) => u.id === id || u.user_id === id || u.staff_id === id);
+          if (user && (user.first_name || user.name)) {
+            next[id] = `${user.first_name || ""} ${user.last_name || ""}`.trim() || user.name;
+          } else if (cache[id] && cache[id].first_name) {
+            next[id] = `${cache[id].first_name} ${cache[id].last_name || ""}`.trim();
+          } else if (!next[id]) {
+            next[id] = id;
+          }
+        });
+        return next;
       });
-
-      // เติมส่วนที่ขาดด้วย id
-      staffIds.forEach(id => {
-        if (!nameMap[id]) {
-          nameMap[id] = id;
-          dataMap[id] = { user_id: id, first_name: "", last_name: id, nickname: "", email: "", phone: "", profile_image: "" };
-        }
-      });
-      setStaffNames(prev => ({ ...prev, ...nameMap }));
-      setStaffData(prev => ({ ...prev, ...dataMap }));
     } catch {
-      // fallback ใช้ staff_id แสดงอย่างเดียว
-      const fallback: Record<string, string> = {};
-      const dataFallback: Record<string, any> = {};
-      staffIds.forEach(id => {
-        fallback[id] = id;
-        dataFallback[id] = { user_id: id, first_name: "", last_name: id, nickname: "", email: "", phone: "", profile_image: "" };
+      setStaffNames(prev => {
+        const next = { ...prev };
+        staffIds.forEach(id => {
+          if (cache[id] && cache[id].first_name) {
+            next[id] = `${cache[id].first_name} ${cache[id].last_name || ""}`.trim();
+          } else if (!next[id]) {
+            next[id] = id;
+          }
+        });
+        return next;
       });
-      setStaffNames(prev => ({ ...prev, ...fallback }));
-      setStaffData(prev => ({ ...prev, ...dataFallback }));
     }
   }, []);
 
@@ -467,42 +477,6 @@ export default function ActivityPage() {
   useEffect(() => {
     loadSchedules(toDateKey(selectedDate));
   }, [selectedDate, loadSchedules]);
-
-const [viewYearMonth, setViewYearMonth] = useState(() => ({
-  year: new Date().getFullYear(),
-  month: new Date().getMonth(),
-}));
-
-useEffect(() => {
-  const y = selectedDate.getFullYear();
-  const m = selectedDate.getMonth();
-  setViewYearMonth((prev) => {
-    if (prev.year === y && prev.month === m) return prev;
-    return { year: y, month: m };
-  });
-}, [selectedDate]);
-
-useEffect(() => {
-  const { year, month } = viewYearMonth;
-  const loadMonthSchedules = async () => {
-    try {
-      const schedules = await activityScheduleService.getAll();
-      const schedulesMap: Record<string, number> = {};
-      schedules.forEach((schedule) => {
-        const dateKey = toDateKeyFromValue(schedule.date);
-        if (!dateKey) return;
-        const [keyYear, keyMonth] = dateKey.split("-").map(Number);
-        if (keyYear === year && keyMonth === month + 1) {
-          schedulesMap[dateKey] = (schedulesMap[dateKey] ?? 0) + 1;
-        }
-      });
-      setSchedulesByMonth(schedulesMap);
-    } catch {
-      // ignore
-    }
-  };
-  loadMonthSchedules();
-}, [viewYearMonth]); 
 
   useEffect(() => {
     let mounted = true;
@@ -569,106 +543,94 @@ useEffect(() => {
   );
 
   const handleSubmitActivity = async (data: ActivityFormData) => {
-  const payload = {
-    activity_name: data.name.trim(),
-    activity_type: data.type.trim(),
-    description: data.description.trim() ? data.description.trim() : null,
-    location: data.location.trim() ? data.location.trim() : null,
-  };
-
-  try {
-    let saved: Activity;
-
-    if (data.activityId) {
-      saved = await activityService.update(data.activityId, payload);
-      setActivities((prev) =>
-        prev.map((a) => (a.activity_id === saved.activity_id ? saved : a))
-      );
-    } else {
-      saved = await activityService.create(payload);
-      setActivities((prev) => [saved, ...prev]);
-    }
-
-    if (saved.staff_id) {
-      loadStaffNames([saved]);
-    }
-
-    try {
-      const profile = await authService.fetchUserProfile();
-      if (profile?.user_id) {
-        saveStaffProfileCache(profile);
-        setStaffNames((prev) => ({
-          ...prev,
-          [profile.user_id]: `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || profile.username,
-        }));
-        setStaffData((prev) => ({
-          ...prev,
-          [profile.user_id]: {
-            user_id: profile.user_id,
-            first_name: profile.first_name || "",
-            last_name: profile.last_name || "",
-            nickname: profile.nickname || "",
-            email: profile.email || "",
-            phone: profile.phone || "",
-            profile_image: profile.profile_image || "",
-          },
-        }));
-      }
-    } catch {
-      // ignore profile cache errors
-    }
-
-    const schedulePayload = {
-      activity_id: saved.activity_id,
-      date: data.date,
-      start_time: data.startTime,
-      end_time: data.endTime,
+    const payload = {
+      activity_name: data.name.trim(),
+      activity_type: data.type.trim(),
+      description: data.description.trim() ? data.description.trim() : null,
+      location: data.location.trim() ? data.location.trim() : null,
     };
 
-    if (editingSchedule) {
-      await activityScheduleService.update(editingSchedule.as_id, schedulePayload);
-    } else {
-      await activityScheduleService.create(schedulePayload);
-    }
-
-    showToast({
-      type: "success",
-      title: editingSchedule ? "แก้ไขกิจกรรมสำเร็จ" : "บันทึกกิจกรรมใหม่สำเร็จ",
-      message: saved.activity_name,
-    });
-
-    const nextDate = parseLocalDate(data.date) || selectedDate;
-    const dateKey = toDateKey(nextDate); 
-
-    await loadSchedules(dateKey);
-
     try {
-      const freshSchedules = await activityScheduleService.getByDate(dateKey);
-      setSchedulesByMonth((prev) => ({
-        ...prev,
-        [dateKey]: freshSchedules?.length ?? 0,
-      }));
-    } catch {
-      setSchedulesByMonth((prev) => ({
-        ...prev,
-        [dateKey]: (prev[dateKey] ?? 0) + (editingSchedule ? 0 : 1),
-      }));
-    }
+      let saved: Activity;
 
-    if (nextDate.getTime() !== selectedDate.getTime()) {
-      setSelectedDate(nextDate);
-    }
+      if (data.activityId) {
+        saved = await activityService.update(data.activityId, payload);
+        setActivities((prev) =>
+          prev.map((a) => (a.activity_id === saved.activity_id ? saved : a))
+        );
+      } else {
+        saved = await activityService.create(payload);
+        setActivities((prev) => [saved, ...prev]);
+      }
 
-    setEditingSchedule(null);
-    setIsModalOpen(false); 
-  } catch (error: any) {
-    showToast({
-      type: "error",
-      title: "บันทึกกิจกรรมไม่สำเร็จ",
-      message: error?.message || "ไม่สามารถบันทึกกิจกรรมได้",
-    });
-  }
-};
+      if (saved.staff_id) {
+        loadStaffNames([saved]);
+      }
+
+      try {
+        const profile = await authService.fetchUserProfile();
+        if (profile?.user_id) {
+          saveStaffProfileCache(profile);
+          setStaffNames((prev) => ({
+            ...prev,
+            [profile.user_id]: `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || profile.username,
+          }));
+        }
+      } catch {
+        // ignore profile cache errors
+      }
+
+      const schedulePayload = {
+        activity_id: saved.activity_id,
+        date: data.date,
+        start_time: data.startTime,
+        end_time: data.endTime,
+      };
+
+      if (editingSchedule) {
+        await activityScheduleService.update(editingSchedule.as_id, schedulePayload);
+      } else {
+        await activityScheduleService.create(schedulePayload);
+      }
+
+      showToast({
+        type: "success",
+        title: editingSchedule ? "แก้ไขกิจกรรมสำเร็จ" : "บันทึกกิจกรรมใหม่สำเร็จ",
+        message: saved.activity_name,
+      });
+
+      const nextDate = parseLocalDate(data.date) || selectedDate;
+      const dateKey = toDateKey(nextDate); 
+
+      await loadSchedules(dateKey);
+
+      try {
+        const freshSchedules = await activityScheduleService.getByDate(dateKey);
+        setSchedulesByMonth((prev) => ({
+          ...prev,
+          [dateKey]: freshSchedules?.length ?? 0,
+        }));
+      } catch {
+        setSchedulesByMonth((prev) => ({
+          ...prev,
+          [dateKey]: (prev[dateKey] ?? 0) + (editingSchedule ? 0 : 1),
+        }));
+      }
+
+      if (nextDate.getTime() !== selectedDate.getTime()) {
+        setSelectedDate(nextDate);
+      }
+
+      setEditingSchedule(null);
+      setIsModalOpen(false); 
+    } catch (error: any) {
+      showToast({
+        type: "error",
+        title: "บันทึกกิจกรรมไม่สำเร็จ",
+        message: error?.message || "ไม่สามารถบันทึกกิจกรรมได้",
+      });
+    }
+  };
 
   const resolveActivity = useCallback(
     (schedule: ActivitySchedule) => schedule.activity || activities.find((activity) => activity.activity_id === schedule.activity_id),
@@ -716,7 +678,6 @@ useEffect(() => {
       }
     }
     try {
-      // Delete all participations for this schedule first to avoid FK constraint violation
       try {
         const participations = await activityParticipationService.getAll();
         const scheduleParts = (participations || []).filter(p => p.as_id === deleteTarget.as_id);
@@ -724,13 +685,29 @@ useEffect(() => {
           await activityParticipationService.remove(part.resident_id, deleteTarget.as_id);
         }
       } catch (err) {
-        // Participations may not exist, continue with schedule deletion
         console.log("No participations to delete or error deleting them:", err);
       }
 
       await activityScheduleService.remove(deleteTarget.as_id);
       showToast({ type: "success", title: "ลบกำหนดการสำเร็จ", message: "", });
+      
+      const deletedDateKey = toDateKey(new Date(deleteTarget.date));
       await loadSchedules(toDateKey(selectedDate));
+      
+      // ลบจุดออกจากปฏิทิน หากไม่มีกิจกรรมเหลือในวันนั้นแล้ว
+      try {
+        const freshSchedules = await activityScheduleService.getByDate(deletedDateKey);
+        setSchedulesByMonth((prev) => ({
+          ...prev,
+          [deletedDateKey]: freshSchedules?.length ?? 0,
+        }));
+      } catch {
+        setSchedulesByMonth((prev) => ({
+          ...prev,
+          [deletedDateKey]: Math.max(0, (prev[deletedDateKey] ?? 1) - 1),
+        }));
+      }
+      
       handleCloseDelete();
     } catch (error: any) {
       showToast({
@@ -780,23 +757,6 @@ useEffect(() => {
     router.push(`/activity/check-in/${schedule.as_id}?${query.toString()}`);
   };
 
-  const handleOpenContact = (userId: string) => {
-    const displayName = staffNames[userId] || userId;
-    const userData = staffData[userId];
-    const nameParts = displayName.split(' ');
-    const firstName = userData?.first_name || nameParts[0] || "-";
-    const lastName = userData?.last_name || nameParts.slice(1).join(' ') || "-";
-    const contact: ContactInfo = {
-      firstName,
-      lastName,
-      nickname: userData?.nickname || "-",
-      email: userData?.email || "-",
-      phone: userData?.phone || "-",
-      avatarUrl: userData?.profile_image || undefined,
-    };
-    setContactInfo(contact);
-  };
-
   return (
     <>
       <div className="flex flex-col gap-6 p-4 sm:p-6 lg:p-8">
@@ -822,8 +782,8 @@ useEffect(() => {
               onCopy={handleCopySchedule}
               onCheckIn={handleCheckIn}
               resolveActivity={resolveActivity}
-              onOpenContact={handleOpenContact}
-              staffNames={staffNames}
+              onOpenContact={setActiveContactName} 
+              staffNames={staffNames || {}}
             />
           )}
         </div>
@@ -883,9 +843,13 @@ useEffect(() => {
         mode={editingSchedule ? "edit" : "create"}
         initialValues={modalInitialValues}
       />
-      {contactInfo && (
-        <ContactInformationModal contact={contactInfo} onClose={() => setContactInfo(null)} />
-      )}
+
+      {activeContactName ? (
+        <ContactInformationModal
+          contact={resolveContactInfo(activeContactName)}
+          onClose={() => setActiveContactName(null)}
+        />
+      ) : null}
     </>
   );
 }
