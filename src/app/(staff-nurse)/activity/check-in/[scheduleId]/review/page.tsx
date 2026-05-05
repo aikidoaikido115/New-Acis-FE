@@ -245,6 +245,24 @@ export default function ActivityCheckInReviewPage() {
     })();
   };
 
+  const [canEdit, setCanEdit] = useState(false);
+  useEffect(() => {
+  const urlParams = new URL(window.location.href).searchParams;
+  const startTimeStr = urlParams.get("start");
+  if (!startTimeStr) {
+    setCanEdit(true);
+    return;
+  }
+  const startDate = new Date(startTimeStr);
+  const now = new Date();
+  const windowStart = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+  const windowEnd = new Date(windowStart);
+  windowEnd.setDate(windowEnd.getDate() + 1);
+  windowEnd.setHours(23, 59, 59, 999);
+
+  setCanEdit(now >= windowStart && now <= windowEnd);
+}, []);
+
   return (
     <div className="flex flex-col bg-slate-50 px-4 py-6 sm:px-6 lg:px-10">
       <BackButton 
@@ -288,7 +306,6 @@ export default function ActivityCheckInReviewPage() {
         ))}
       </div>
 
-      {/* ปุ่มบันทึกภาพทั้งหมด - ปรับ margin ให้อยู่เหนือ footer พอดี */}
       {!isHistory && (
         <div className="mt-8 mb-4">
           <button
@@ -345,7 +362,7 @@ export default function ActivityCheckInReviewPage() {
               <button
                 type="button"
                 onClick={handleRetake}
-                disabled={isHistory}
+                disabled={canEdit}
                 className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold ${
                   isHistory ? "bg-slate-200 text-slate-400" : "bg-[#0093EF] text-white"
                 }`}

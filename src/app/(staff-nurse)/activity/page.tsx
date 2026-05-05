@@ -488,9 +488,10 @@ export default function ActivityPage() {
       setSchedulesByMonth(schedulesMap);
     } catch { /* ignore */ }
 
-    showToast({ 
-      type: "success", 
-      title: editingSchedule ? "แก้ไขสำเร็จ" : "บันทึกสำเร็จ" 
+    showToast({
+      type: "success",
+      title: editingSchedule ? "แก้ไขสำเร็จ" : "บันทึกสำเร็จ",
+      message: editingSchedule ? "แก้ไขตารางกิจกรรมเรียบร้อยแล้ว" : "บันทึกตารางกิจกรรมเรียบร้อยแล้ว",
     });
 
     if (nextDate.getTime() !== selectedDate.getTime()) {
