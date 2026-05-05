@@ -12,7 +12,7 @@ import { ContactInformationModal } from "@/components/shared/contact/ContactInfo
 import { resolveContactInfo } from "@/components/shared/contact/contactDirectory";
 import { woundCareNoteService } from "@/services/wound-care-note.service";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { residentService } from "@/services/resident.service";
+import { isResidentActive, residentService } from "@/services/resident.service";
 import { roomService } from "@/services/room.service";
 import type { WoundCareNote } from "@/types/emr-notes";
 import type { Resident } from "@/types/resident";
@@ -47,7 +47,7 @@ export function WoundCareTable() {
         roomService.getAll(),
       ]);
       setNotes(noteData || []);
-      setResidents(residentData || []);
+      setResidents((residentData || []).filter(isResidentActive));
       setRooms(roomData || []);
     } catch {
       setError("ไม่สามารถโหลดข้อมูลทำแผลได้");
@@ -118,7 +118,7 @@ export function WoundCareTable() {
           if (data.status) form.append('status', data.status);
           if (data.note) form.append('note', data.note);
           form.append('image', data.image);
-          await woundCareNoteService.updateById(editingId, form as any);
+          await woundCareNoteService.updateById(editingId, form);
         } else {
           await woundCareNoteService.updateById(editingId, {
             location: data.location,
@@ -142,8 +142,8 @@ export function WoundCareTable() {
           if (data.supplies) form.append('supplies', data.supplies);
           if (data.status) form.append('status', data.status);
           if (data.note) form.append('note', data.note);
-          form.append('file', data.image);
-          await woundCareNoteService.create(form as any);
+          form.append('image', data.image);
+          await woundCareNoteService.create(form);
         } else {
           await woundCareNoteService.create({
             resident_id: data.residentId,

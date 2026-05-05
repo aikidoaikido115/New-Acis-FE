@@ -452,7 +452,7 @@ export function ResidentFormModal({
                           set({ careLevel: trimmed });
                         }
                       }}
-                      createLabel="เพิ่มฉลาก"
+                      createLabel="เพิ่มประเภทการช่วยเหลือ"
                     />
                   </div>
             </div>

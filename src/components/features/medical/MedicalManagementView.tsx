@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   Search,
-  Download,
+  Printer,
   Plus,
   Sunrise,
   Sun,
@@ -36,11 +36,13 @@ import { useToast } from "@/components/ui/toast";
 import { authService } from "@/services/auth.service";
 import { drugMasterService } from "@/services/drug-master.service";
 import { drugPlanService } from "@/services/drug-plan.service";
+import { intakeService } from "@/services/intake.service";
 import { personalDrugService, type PersonalDrug } from "@/services/personal-drug.service";
-import { residentService } from "@/services/resident.service";
+import { isResidentActive, residentService } from "@/services/resident.service";
 import { roomService } from "@/services/room.service";
 import { drugAllergyService } from "@/services/drug-allergy.service";
 import type { DrugAdministrationStatus, DrugPlan } from "@/types/drug-plan";
+import type { IntakeLabel } from "@/types/intake";
 import type { Resident } from "@/types/resident";
 import type { Room } from "@/types/room";
 import { getBangkokDateKey } from "@/components/features/EMR/note-timeline";
@@ -142,6 +144,9 @@ const formatIsoDate = (date: Date): string => {
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 };
+
+const formatThaiDate = (date: Date): string =>
+  date.toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "2-digit" });
 
 const formatHistoryTime = (dateText?: string | null): string => {
   if (!dateText) {
@@ -333,9 +338,10 @@ export function MedicalManagementView() {
   const [mainSearchTerm, setMainSearchTerm] = useState("");
   const [detailSearchTerm, setDetailSearchTerm] = useState("");
   const [historySearchTerm, setHistorySearchTerm] = useState("");
+  const [printDateTime, setPrintDateTime] = useState<string>("");
   const debouncedHistorySearchTerm = useDebouncedValue(historySearchTerm, 400);
   const [selectedFloor, setSelectedFloor] = useState("ทุกชั้น");
-  const [selectedHelpLevel, setSelectedHelpLevel] = useState("ทั้งหมด");
+  const [selectedLabelId, setSelectedLabelId] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("ทั้งหมด");
   const [historySortOrder, setHistorySortOrder] = useState<"newest" | "oldest">("newest");
   const [historySelectedDate, setHistorySelectedDate] = useState<Date | null>(null);
@@ -346,6 +352,7 @@ export function MedicalManagementView() {
 
   const [residents, setResidents] = useState<Resident[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [intakeLabels, setIntakeLabels] = useState<IntakeLabel[]>([]);
   const [overviewPlans, setOverviewPlans] = useState<DrugPlan[]>([]);
   const [residentMedications, setResidentMedications] = useState<RoutineMedication[]>([]);
   const [historyItems, setHistoryItems] = useState<MedicationHistory[]>([]);
@@ -395,10 +402,16 @@ export function MedicalManagementView() {
 
   const loadReferenceData = useCallback(async () => {
     try {
-      const [residentData, roomData] = await Promise.all([residentService.getAll(), roomService.getAll()]);
-      setResidents(residentData || []);
+      const [residentData, roomData, labelData] = await Promise.all([
+        residentService.getAll(),
+        roomService.getAll(),
+        intakeService.getAllLabels(),
+      ]);
+      setResidents((residentData || []).filter(isResidentActive));
       setRooms(roomData || []);
+      setIntakeLabels(labelData || []);
     } catch (error) {
+      setIntakeLabels([]);
       showToast({
         type: "error",
         title: "โหลดข้อมูลผู้พักไม่สำเร็จ",
@@ -882,6 +895,25 @@ export function MedicalManagementView() {
     };
   }, [selectedPatientId]);
 
+  useEffect(() => {
+    const handleBeforePrint = () => {
+      const now = new Date();
+      const thaiDate = now.toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "2-digit" });
+      const thaiTime = now.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      setPrintDateTime(`${thaiDate} ${thaiTime}`);
+      document.body.classList.add("print-drug-history");
+    };
+    const handleAfterPrint = () => {
+      document.body.classList.remove("print-drug-history");
+    };
+    window.addEventListener("beforeprint", handleBeforePrint);
+    window.addEventListener("afterprint", handleAfterPrint);
+    return () => {
+      window.removeEventListener("beforeprint", handleBeforePrint);
+      window.removeEventListener("afterprint", handleAfterPrint);
+    };
+  }, []);
+
   const allPatientMedications = useMemo<PatientMedication[]>(() => {
     const patientsMap = new Map<string, PatientMedication>();
 
@@ -914,6 +946,10 @@ export function MedicalManagementView() {
       const roomText = room ? `ห้อง ${room.room_number} ชั้น ${room.floor}` : "ไม่ระบุห้อง";
 
       if (!patientsMap.has(residentId)) {
+        const labelIds = (resident?.resident_labels || [])
+          .map((label) => label.label_id || label.intake_label?.label_id)
+          .filter((value): value is string => Boolean(value));
+
         patientsMap.set(residentId, {
           id: residentId,
           name: residentName,
@@ -923,6 +959,7 @@ export function MedicalManagementView() {
           allergies: parseListFromText(resident?.allergies),
           drugAllergies: parseListFromText(resident?.drug_allergies),
           helpLevel: toHelpLevel(resident?.resident_labels),
+          labelIds,
           medications: [],
           pendingCount: 0,
         });
@@ -971,10 +1008,10 @@ export function MedicalManagementView() {
     return allPatientMedications.filter((patient) => {
       const matchesSearch = patient.name.toLowerCase().includes(mainSearchTerm.toLowerCase());
       const matchesFloor = selectedFloor === "ทุกชั้น" || String(patient.floor) === selectedFloor;
-      const matchesHelp = selectedHelpLevel === "ทั้งหมด" || patient.helpLevel === selectedHelpLevel;
+      const matchesHelp = selectedLabelId === "all" || (patient.labelIds || []).includes(selectedLabelId);
       return matchesSearch && matchesFloor && matchesHelp;
     });
-  }, [allPatientMedications, mainSearchTerm, selectedFloor, selectedHelpLevel]);
+  }, [allPatientMedications, mainSearchTerm, selectedFloor, selectedLabelId]);
 
   const visiblePatients = useMemo(() => {
     return filteredPatients.filter((patient) => patient.pendingCount > 0);
@@ -1111,6 +1148,17 @@ export function MedicalManagementView() {
     }
   };
 
+  const handleExport = () => {
+    const now = new Date();
+    const thaiDate = now.toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "2-digit" });
+    const thaiTime = now.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    setPrintDateTime(`${thaiDate} ${thaiTime}`);
+    document.body.classList.add("print-drug-history");
+    setTimeout(() => {
+      window.print();
+    }, 50);
+  };
+
   const renderMainView = () => (
     <div className="space-y-6">
       <div>
@@ -1179,13 +1227,14 @@ export function MedicalManagementView() {
 
           <Dropdown
             options={[
-              { value: "ทั้งหมด", label: "ทั้งหมด" },
-              { value: "ช่วยเหลือตัวเองได้", label: "ช่วยเหลือตัวเองได้" },
-              { value: "ต้องการความช่วยเหลือ", label: "ต้องการความช่วยเหลือ" },
-              { value: "ติดเตียง", label: "ติดเตียง" },
+              { value: "all", label: "ทั้งหมด" },
+              ...intakeLabels.map((label) => ({
+                value: label.label_id,
+                label: label.label_name,
+              })),
             ]}
-            value={selectedHelpLevel}
-            onChange={(value) => setSelectedHelpLevel(value)}
+            value={selectedLabelId}
+            onChange={(value) => setSelectedLabelId(value)}
             className="w-48"
           />
         </div>
@@ -1233,7 +1282,7 @@ export function MedicalManagementView() {
     <div className="space-y-4">
       <button
         onClick={() => setCurrentView("main")}
-        className="flex items-center gap-2 text-blue-500 hover:text-blue-700 transition-colors"
+        className="print-hide flex items-center gap-2 text-blue-500 hover:text-blue-700 transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
         <span className="text-body-small font-medium">ย้อนกลับ</span>
@@ -1434,7 +1483,7 @@ export function MedicalManagementView() {
     <div className="space-y-6">
       <button
         onClick={() => setCurrentView("main")}
-        className="flex items-center gap-2 text-blue-500 hover:text-blue-700 transition-colors"
+        className="print-hide flex items-center gap-2 text-blue-500 hover:text-blue-700 transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
         <span className="text-body-small font-medium">ย้อนกลับ</span>
@@ -1444,7 +1493,21 @@ export function MedicalManagementView() {
         <h1 className="text-headline-5 font-bold text-gray-800">ประวัติการให้ยา</h1>
       </div>
 
-      <div className="flex flex-wrap items-center gap-4">
+      <div className="print-only rounded-lg border border-slate-200 bg-white px-4 py-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-800">รายงานประวัติการให้ยา</h2>
+            <p className="text-xs text-slate-500">พิมพ์เมื่อ: {printDateTime || "-"}</p>
+          </div>
+          <div className="text-xs text-slate-600 text-right">
+            <div>วันที่ข้อมูล: {historySelectedDate ? formatThaiDate(historySelectedDate) : "ทั้งหมด"}</div>
+            <div>ชั้น: {selectedFloor}</div>
+            <div>สถานะ: {selectedStatus}</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="print-hide flex flex-wrap items-center gap-4">
         <div className="relative flex-1 max-w-md min-w-60">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
@@ -1512,16 +1575,10 @@ export function MedicalManagementView() {
         </div>
         <div className="ml-auto flex items-center gap-4">
           <button
-            className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg text-body-small font-medium hover:bg-blue-600 transition-colors whitespace-nowrap"
-            onClick={() => {
-              showToast({
-                type: "info",
-                title: "ยังไม่รองรับ",
-                message: "ฟังก์ชันพิมพ์/Export PDF จะพัฒนาในขั้นถัดไป",
-              });
-            }}
+            className="print-hide flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg text-body-small font-medium hover:bg-blue-600 transition-colors whitespace-nowrap"
+            onClick={handleExport}
           >
-            <Download className="w-4 h-4" />
+            <Printer className="w-4 h-4" />
             <span>พิมพ์ / Export PDF</span>
           </button>
         </div>
@@ -1546,6 +1603,73 @@ export function MedicalManagementView() {
         {currentView === "details" && renderDetailsView()}
         {currentView === "history" && renderHistoryView()}
       </div>
+
+      <style>{`
+        .print-hide {
+        }
+
+        .print-only {
+          display: none;
+        }
+
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 5mm;
+          }
+
+          :global(html, body) {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+            display: block !important;
+          }
+
+          :global(body.print-drug-history *) {
+            visibility: hidden !important;
+          }
+          :global(body.print-drug-history [style*="min-h-screen"]),
+          :global(body.print-drug-history [style*="min-h-screen"] *) {
+            visibility: visible !important;
+          }
+
+          :global(body.print-drug-history header),
+          :global(body.print-drug-history nav),
+          :global(body.print-drug-history footer),
+          :global(body.print-drug-history .site-footer) {
+            display: none !important;
+          }
+
+          .print-hide {
+            display: none !important;
+          }
+
+          .print-only {
+            display: block !important;
+          }
+
+          table {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            border-collapse: collapse !important;
+          }
+
+          th,
+          td {
+            border: 1px solid #d1d5db;
+          }
+
+          .status-pill {
+            border: 1px solid #d1d5db !important;
+            background: #ffffff !important;
+            color: #111827 !important;
+          }
+
+          tr {
+            page-break-inside: avoid;
+          }
+        }
+      `}</style>
     </div>
   );
 }

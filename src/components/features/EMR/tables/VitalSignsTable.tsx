@@ -8,7 +8,7 @@ import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Dropdown } from "@/components/ui/dropdown";
 import { useToast } from "@/components/ui/toast";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { residentService } from "@/services/resident.service";
+import { isResidentActive, residentService } from "@/services/resident.service";
 import { vitalSignService } from "@/services/vital-sign.service";
 import { laboratoryValueService } from "@/services/laboratory-value.service";
 import type { ResidentOverviewItem } from "@/types/resident";
@@ -338,7 +338,7 @@ export function VitalSignsTable({ selectedFloor = "all", selectedStatus = "all",
           page_size: 200,
         });
 
-        let allResidents = residentsResponse.items || [];
+        let allResidents = (residentsResponse.items || []).filter(isResidentActive);
         const residentTotalPages = Math.max(residentsResponse.pagination.total_pages || 1, 1);
 
         if (residentTotalPages > 1) {
@@ -358,7 +358,7 @@ export function VitalSignsTable({ selectedFloor = "all", selectedStatus = "all",
           const remainingResidentPages = await Promise.all(residentPageRequests);
           allResidents = remainingResidentPages.reduce<ResidentOverviewItem[]>((acc, pageResult) => {
             if (pageResult.items?.length) {
-              acc.push(...pageResult.items);
+              acc.push(...pageResult.items.filter(isResidentActive));
             }
             return acc;
           }, [...allResidents]);

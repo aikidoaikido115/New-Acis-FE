@@ -7,7 +7,6 @@ import {
   DashboardHeader,
   DashboardOverviewRow,
   DashboardScheduleRow,
-  DashboardStatCards,
 } from "@/components/features/dashboard/dashboard-sections";
 import { useDashboardData } from "@/components/features/dashboard/use-dashboard-data";
 import { residentService } from "@/services/resident.service";
@@ -88,6 +87,8 @@ export default function Page() {
     inventoryCards,
     refreshResidents,
   } = useDashboardData();
+
+  const totalResidentsCount = statCards.find(card => card.label === "ผู้สูงอายุทั้งหมด")?.value || 0;
 
   useEffect(() => {
     const fetchDrugMasters = async () => {
@@ -440,15 +441,13 @@ export default function Page() {
             onAddResident={() => setIsAddModalOpen(true)}
           />
 
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <DashboardStatCards isLoading={isLoading} statCards={statCards} />
-          </div>
         </div>
 
         <DashboardOverviewRow
           vitalStats={vitalStats}
           medicineStatus={medicineStatus}
           genderStats={genderStats}
+          totalResidents={totalResidentsCount}
           isLoading={isLoading}
         />
 

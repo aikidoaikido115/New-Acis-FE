@@ -19,29 +19,34 @@ type ReviewItem = CheckInResident & { photo?: string; rejected?: boolean };
 
 const buildPhotoFile = async (photoData: string, filename: string) => {
   if (!photoData) return null;
+
+  const createFile = (mime: string, dataBytes: Uint8Array) => {
+    const ext = mime.includes("png") ? "png" : "jpg";
+    return new File([dataBytes.buffer as ArrayBuffer], `${filename}.${ext}`, { type: mime });
+  };
+
+  if (photoData.startsWith("data:")) {
+    const [header, data] = photoData.split(",");
+    if (!header || !data) return null;
+
+    const match = header.match(/data:(.*?);base64/);
+    const mime = match?.[1] || "image/jpeg";
+    const binary = atob(data);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return createFile(mime, bytes as unknown as Uint8Array);
+  }
+
   try {
     const response = await fetch(photoData);
     if (!response.ok) return null;
     const blob = await response.blob();
-    const mime = blob.type || "image/jpeg";
-    const ext = mime.includes("png") ? "png" : "jpg";
-    return new File([blob], `${filename}.${ext}`, { type: mime });
+    const arrayBuffer = await blob.arrayBuffer();
+    return new File([arrayBuffer], `${filename}.${blob.type.includes("png") ? "png" : "jpg"}`, { type: blob.type || "image/jpeg" });
   } catch {
-    if (!photoData.startsWith("data:")) return null;
-    try {
-      const [header, data] = photoData.split(",");
-      if (!header || !data) return null;
-      const match = header.match(/data:(.*?);base64/);
-      const mime = match?.[1] || "image/jpeg";
-      const binary = atob(data);
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i += 1) {
-        bytes[i] = binary.charCodeAt(i);
-      }
-      return new File([bytes], `${filename}.jpg`, { type: mime });
-    } catch {
-      return null;
-    }
+    return null;
   }
 };
 
@@ -73,11 +78,25 @@ export default function ActivityCheckInReviewPage() {
         const participating = residents.filter((resident) => resident.is_participating);
         setIsHistory(mode === "history");
 
-        const photoEntries = await Promise.all(
+       const photoEntries = await Promise.all(
           participating.map(async (resident) => {
             try {
               const participation = await activityParticipationService.getByCompositeKey(resident.resident_id, scheduleId);
-              const firstUrl = participation.img_urls?.[0]?.url;
+              
+              let firstUrl = null;
+              const rawImg = participation.img_urls;
+              
+              if (Array.isArray(rawImg) && rawImg.length > 0) {
+                 firstUrl = rawImg[0]?.url || rawImg[0]; 
+              } else if (typeof rawImg === 'string') {
+                 try {
+                   const parsed = JSON.parse(rawImg);
+                   firstUrl = parsed?.[0]?.url || parsed?.[0];
+                 } catch (e) {
+                   firstUrl = rawImg;
+                 }
+              }
+
               return firstUrl ? [resident.resident_id, firstUrl] : null;
             } catch {
               return null;
@@ -226,10 +245,30 @@ export default function ActivityCheckInReviewPage() {
     })();
   };
 
+  const [canEdit, setCanEdit] = useState(false);
+  useEffect(() => {
+  const urlParams = new URL(window.location.href).searchParams;
+  const startTimeStr = urlParams.get("start");
+  if (!startTimeStr) {
+    setCanEdit(true);
+    return;
+  }
+  const startDate = new Date(startTimeStr);
+  const now = new Date();
+  const windowStart = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+  const windowEnd = new Date(windowStart);
+  windowEnd.setDate(windowEnd.getDate() + 1);
+  windowEnd.setHours(23, 59, 59, 999);
+
+  setCanEdit(now >= windowStart && now <= windowEnd);
+}, []);
+
   return (
     <div className="flex flex-col bg-slate-50 px-4 py-6 sm:px-6 lg:px-10">
-      <BackButton text="ย้อนกลับ" href={`/activity/check-in/${scheduleId}`} />
-
+      <BackButton 
+        text="ย้อนกลับ" 
+        href={`/activity/check-in/${scheduleId}${isHistory ? '?mode=history' : ''}`} 
+      />
       <div className="mb-6">
         <h1 className="text-xl font-semibold text-slate-800">
           ตรวจสอบภาพถ่าย ({reviewItems.length}/{reviewItems.length})
@@ -267,7 +306,6 @@ export default function ActivityCheckInReviewPage() {
         ))}
       </div>
 
-      {/* ปุ่มบันทึกภาพทั้งหมด - ปรับ margin ให้อยู่เหนือ footer พอดี */}
       {!isHistory && (
         <div className="mt-8 mb-4">
           <button
@@ -324,7 +362,7 @@ export default function ActivityCheckInReviewPage() {
               <button
                 type="button"
                 onClick={handleRetake}
-                disabled={isHistory}
+                disabled={canEdit}
                 className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold ${
                   isHistory ? "bg-slate-200 text-slate-400" : "bg-[#0093EF] text-white"
                 }`}

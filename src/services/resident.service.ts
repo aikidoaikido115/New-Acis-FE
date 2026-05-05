@@ -5,6 +5,43 @@ import type {
   ResidentOverviewListResponse,
 } from '@/types/resident';
 
+const parseDateValue = (value?: string | null): Date | null => {
+  if (!value) {
+    return null;
+  }
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+export const isResidentStatusActive = (status?: string | null): boolean => {
+  const normalized = String(status || '').trim().toLowerCase();
+  if (!normalized) {
+    return true;
+  }
+  return normalized === 'active';
+};
+
+type ResidentStatusDates = {
+  status?: string | null;
+  check_in_date?: string | null;
+  expected_check_out_date?: string | null;
+};
+
+export const isResidentActive = (resident: ResidentStatusDates): boolean => {
+  if (!isResidentStatusActive(resident.status)) {
+    return false;
+  }
+
+  const now = new Date();
+  const checkInDate = parseDateValue(resident.check_in_date);
+
+  if (checkInDate && now < checkInDate) {
+    return false;
+  }
+
+  return true;
+};
+
 export interface ResidentOverviewQuery {
   floor?: number;
   label_ids?: string[];

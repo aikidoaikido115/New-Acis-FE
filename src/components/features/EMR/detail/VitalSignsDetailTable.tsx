@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Clock, ArrowUpDown, ArrowUp, ArrowDown, ArrowDownWideNarrow } from "lucide-react";
+import { Clock, ArrowUpDown, ArrowUp, ArrowDown, ArrowDownWideNarrow, Printer } from "lucide-react";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Dropdown } from "@/components/ui/dropdown";
 import { useToast } from "@/components/ui/toast";
@@ -14,9 +14,13 @@ import type { VitalSign } from "@/types/vital-sign";
 interface VitalSignsDetailTableProps {
   patientId: string;
   selectedDate: Date | null;
+  patientName?: string;
+  patientRoom?: string;
+  patientStatus?: string;
 }
 
 const timeSlots = [
+  { id: "all", label: "ทั้งหมด" },
   { id: "06", label: "06:00" },
   { id: "10", label: "10:00" },
   { id: "14", label: "14:00" },
@@ -118,6 +122,9 @@ const formatDateToISO = (date: Date): string => {
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 };
+
+const formatThaiDate = (date: Date): string =>
+  date.toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "2-digit" });
 
 const normalizeDateKey = (raw?: string | null): string | null => {
   if (!raw) return null;
@@ -293,7 +300,13 @@ const isLabAbnormal = (lab: LaboratoryValue | null): boolean => {
   return false;
 };
 
-export function VitalSignsDetailTable({ patientId, selectedDate }: VitalSignsDetailTableProps) {
+export function VitalSignsDetailTable({
+  patientId,
+  selectedDate,
+  patientName,
+  patientRoom,
+  patientStatus,
+}: VitalSignsDetailTableProps) {
   const { showToast } = useToast();
 
   const [selectedTime, setSelectedTime] = useState("06");
@@ -301,6 +314,8 @@ export function VitalSignsDetailTable({ patientId, selectedDate }: VitalSignsDet
   const [sortOrder, setSortOrder] = useState<HistorySortOrder>("newest");
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [printDateTime, setPrintDateTime] = useState<string>("");
+  const [isPrintMode, setIsPrintMode] = useState(false);
 
   const [vitalHistory, setVitalHistory] = useState<VitalSign[]>([]);
   const [labHistory, setLabHistory] = useState<LaboratoryValue[]>([]);
@@ -318,6 +333,7 @@ export function VitalSignsDetailTable({ patientId, selectedDate }: VitalSignsDet
   const effectiveDate = useMemo(() => selectedDate || new Date(), [selectedDate]);
   const selectedDateKey = useMemo(() => formatDateToISO(effectiveDate), [effectiveDate]);
   const currentSlotKey = useMemo(() => `${selectedDateKey}-${selectedTime}`, [selectedDateKey, selectedTime]);
+  const isAllSlots = selectedTime === "all";
 
   const draft = useMemo(() => slotDrafts[currentSlotKey] || emptyDraft, [currentSlotKey, slotDrafts]);
   const initialDraft = useMemo(() => slotInitialDrafts[currentSlotKey] || emptyDraft, [currentSlotKey, slotInitialDrafts]);
@@ -325,6 +341,29 @@ export function VitalSignsDetailTable({ patientId, selectedDate }: VitalSignsDet
   const selectedSlotLab = useMemo(() => slotRecords[currentSlotKey]?.lab || null, [currentSlotKey, slotRecords]);
 
   const hasUnsavedChanges = useMemo(() => !isDraftEqual(draft, initialDraft), [draft, initialDraft]);
+
+  useEffect(() => {
+    const handleBeforePrint = () => {
+      const now = new Date();
+      const thaiDate = formatThaiDate(now);
+      const thaiTime = now.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      setPrintDateTime(`${thaiDate} ${thaiTime}`);
+      setIsPrintMode(true);
+      document.body.classList.add("print-vital-signs");
+    };
+
+    const handleAfterPrint = () => {
+      setIsPrintMode(false);
+      document.body.classList.remove("print-vital-signs");
+    };
+
+    window.addEventListener("beforeprint", handleBeforePrint);
+    window.addEventListener("afterprint", handleAfterPrint);
+    return () => {
+      window.removeEventListener("beforeprint", handleBeforePrint);
+      window.removeEventListener("afterprint", handleAfterPrint);
+    };
+  }, []);
 
   const loadHistory = useCallback(async () => {
     if (!patientId) {
@@ -357,6 +396,10 @@ export function VitalSignsDetailTable({ patientId, selectedDate }: VitalSignsDet
       setSlotRecords({});
       setSlotDrafts({});
       setSlotInitialDrafts({});
+      return;
+    }
+
+    if (isAllSlots) {
       return;
     }
 
@@ -411,7 +454,7 @@ export function VitalSignsDetailTable({ patientId, selectedDate }: VitalSignsDet
     } finally {
       setIsSlotLoading(false);
     }
-  }, [currentSlotKey, patientId, selectedDateKey, selectedTime, showToast]);
+  }, [currentSlotKey, isAllSlots, patientId, selectedDateKey, selectedTime, showToast]);
 
   useEffect(() => {
     void loadHistory();
@@ -420,6 +463,7 @@ export function VitalSignsDetailTable({ patientId, selectedDate }: VitalSignsDet
   useEffect(() => {
     void loadSelectedSlot();
   }, [loadSelectedSlot]);
+
 
   const historyRows = useMemo<HistoryRow[]>(() => {
     const merged = new Map<string, HistoryRow>();
@@ -476,7 +520,9 @@ export function VitalSignsDetailTable({ patientId, selectedDate }: VitalSignsDet
   }, [labHistory, vitalHistory]);
 
   const filteredRows = useMemo(() => {
-    const byContext = historyRows.filter((row) => row.dateKey === selectedDateKey && row.slot === selectedTime);
+    const byContext = isAllSlots
+      ? historyRows.filter((row) => row.dateKey === selectedDateKey)
+      : historyRows.filter((row) => row.dateKey === selectedDateKey && row.slot === selectedTime);
 
     const byStatus = byContext.filter((row) => {
       if (statusFilter === "all") return true;
@@ -485,6 +531,14 @@ export function VitalSignsDetailTable({ patientId, selectedDate }: VitalSignsDet
     });
 
     return [...byStatus].sort((left, right) => {
+      if (isAllSlots) {
+        const leftSlot = Number(left.slot) || 0;
+        const rightSlot = Number(right.slot) || 0;
+        if (leftSlot !== rightSlot) {
+          return leftSlot - rightSlot;
+        }
+      }
+
       if (!sortField) {
         const leftTime = new Date(left.createdAt).getTime();
         const rightTime = new Date(right.createdAt).getTime();
@@ -541,7 +595,27 @@ export function VitalSignsDetailTable({ patientId, selectedDate }: VitalSignsDet
 
       return sortDirection === "asc" ? result : -result;
     });
-  }, [historyRows, selectedDateKey, selectedTime, statusFilter, sortField, sortDirection, sortOrder]);
+  }, [historyRows, isAllSlots, selectedDateKey, selectedTime, statusFilter, sortField, sortDirection, sortOrder]);
+
+  const printRows = useMemo(() => {
+    const byDate = historyRows.filter((row) => row.dateKey === selectedDateKey);
+    const rowMap = new Map(byDate.map((row) => [row.slot, row] as const));
+
+    const baseRows = timeSlots.filter((slot) => slot.id !== "all").map((slot) => {
+      const existing = rowMap.get(slot.id);
+      if (existing) return existing;
+      return {
+        key: `${selectedDateKey}-${slot.id}`,
+        dateKey: selectedDateKey,
+        slot: slot.id,
+        createdAt: `${selectedDateKey}T00:00:00+07:00`,
+        vital: null,
+        lab: null,
+      } as HistoryRow;
+    });
+
+    return baseRows.sort((left, right) => (Number(left.slot) || 0) - (Number(right.slot) || 0));
+  }, [historyRows, selectedDateKey]);
 
   const daySummary = useMemo(() => {
     const dayRows = historyRows.filter((row) => row.dateKey === selectedDateKey);
@@ -785,6 +859,20 @@ export function VitalSignsDetailTable({ patientId, selectedDate }: VitalSignsDet
     return sortDirection === "asc" ? "↑" : "↓";
   };
 
+  const handleExport = () => {
+    const now = new Date();
+    const thaiDate = formatThaiDate(now);
+    const thaiTime = now.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    setPrintDateTime(`${thaiDate} ${thaiTime}`);
+    setIsPrintMode(true);
+    document.body.classList.add("print-vital-signs");
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        window.print();
+      });
+    });
+  };
+
   const renderSortableHeader = (label: string, field: SortField, className: string) => {
     const isActive = sortField === field;
 
@@ -812,89 +900,131 @@ export function VitalSignsDetailTable({ patientId, selectedDate }: VitalSignsDet
     );
   };
 
+  const statusFilterLabel =
+    statusFilter === "normal" ? "ค่าปกติ" : statusFilter === "abnormal" ? "ค่าผิดปกติ" : "ทั้งหมด";
+  const reportDateLabel = formatThaiDate(effectiveDate);
+  const displayRows = isPrintMode ? printRows : filteredRows;
+  const selectedTimeLabel =
+    selectedTime === "all" ? "ทั้งหมด" : timeSlots.find((slot) => slot.id === selectedTime)?.label || "-";
+
   return (
-    <div className="p-6 space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          {timeSlots.map((slot) => (
-            <button
-              key={slot.id}
-              onClick={() => void handleSelectTimeSlot(slot.id)}
-              className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all ${
-                selectedTime === slot.id
-                  ? "bg-blue-500 text-white shadow-sm"
-                  : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-200"
-              }`}
-            >
-              <Clock className="w-3.5 h-3.5" />
-              {slot.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <Dropdown
-            options={[
-              { value: "all", label: "สถานะทั้งหมด" },
-              { value: "normal", label: "ค่าปกติ" },
-              { value: "abnormal", label: "ค่าผิดปกติ" },
-            ]}
-            value={statusFilter}
-            onChange={(value) => setStatusFilter(value as HistoryStatusFilter)}
-            className="w-36"
-          />
-
-          <Dropdown
-            options={[
-              { value: "recordedAt", label: "เวลาบันทึก" },
-              { value: "temperature", label: "อุณหภูมิ" },
-              { value: "heartRate", label: "ชีพจร" },
-              { value: "bloodPressure", label: "ความดัน" },
-              { value: "oxygenSaturation", label: "O2" },
-              { value: "breathingRate", label: "หายใจ" },
-              { value: "bloodGlucose", label: "น้ำตาล" },
-              { value: "fluidIn", label: "น้ำเข้า" },
-              { value: "fluidOut", label: "น้ำออก" },
-              { value: "urineOutput", label: "ปัสสาวะ" },
-              { value: "stool", label: "อุจจาระ" },
-              { value: "diaperChange", label: "ผ้าอ้อม" },
-            ]}
-            value={sortField ?? "recordedAt"}
-            onChange={(next) => {
-              if (next === "recordedAt") {
-                setSortField(null);
-                return;
-              }
-              setSortField(next as SortField);
-              setSortDirection("asc");
-            }}
-            className="w-36"
-          />
-
-          <button
-            type="button"
-            onClick={() => {
-              if (sortField) {
-                setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
-                return;
-              }
-              setSortOrder((prev) => (prev === "newest" ? "oldest" : "newest"));
-            }}
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs text-gray-700 hover:bg-gray-50"
-          >
-            <ArrowDownWideNarrow className="h-3.5 w-3.5" />
-            {sortField ? (sortDirection === "asc" ? "น้อยไปมาก" : "มากไปน้อย") : sortOrder === "newest" ? "ล่าสุดก่อน" : "เก่าก่อน"}
-          </button>
-
-          <div className="flex items-center gap-1 rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-700">
-            <span>กำลังเรียงตาม:</span>
-            <span className="font-semibold text-slate-900">{getSortLabel(sortField)}</span>
-            {sortField ? (sortDirection === "asc" ? <ArrowUp className="h-3.5 w-3.5 text-blue-700" /> : <ArrowDown className="h-3.5 w-3.5 text-blue-700" />) : null}
+    <div className="print-root p-6 space-y-4">
+      <div className="print-only rounded-lg border border-slate-200 bg-white px-4 py-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-800">รายงานสัญญาณชีพรายบุคคล</h2>
+            <p className="text-xs text-slate-500">พิมพ์เมื่อ: {printDateTime || "-"}</p>
+            <p className="text-xs text-slate-600">
+              {patientName ? `ผู้พัก: ${patientName}` : ""}
+              {patientRoom ? ` · ${patientRoom}` : ""}
+              {patientStatus ? ` · ${patientStatus}` : ""}
+            </p>
+          </div>
+          <div className="text-xs text-slate-600 text-right">
+            <div>วันที่ข้อมูล: {reportDateLabel}</div>
+            <div>ช่วงเวลา: {selectedTimeLabel}</div>
+            <div>สถานะ: {statusFilterLabel}</div>
+            <div>เรียงตาม: {isPrintMode ? "ช่วงเวลา" : getSortLabel(sortField)}</div>
           </div>
         </div>
       </div>
 
-      <div className="hidden xl:block overflow-hidden rounded-lg" style={{ border: "1px solid rgba(103, 103, 103, 0.48)" }}>
+      <div className="print-hide space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            {timeSlots.map((slot) => (
+              <button
+                key={slot.id}
+                onClick={() => void handleSelectTimeSlot(slot.id)}
+                className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all ${
+                  selectedTime === slot.id
+                    ? "bg-blue-500 text-white shadow-sm"
+                    : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-200"
+                }`}
+              >
+                <Clock className="w-3.5 h-3.5" />
+                {slot.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Dropdown
+              options={[
+                { value: "all", label: "สถานะทั้งหมด" },
+                { value: "normal", label: "ค่าปกติ" },
+                { value: "abnormal", label: "ค่าผิดปกติ" },
+              ]}
+              value={statusFilter}
+              onChange={(value) => setStatusFilter(value as HistoryStatusFilter)}
+              className="w-36"
+            />
+
+            <Dropdown
+              options={[
+                { value: "recordedAt", label: "เวลาบันทึก" },
+                { value: "temperature", label: "อุณหภูมิ" },
+                { value: "heartRate", label: "ชีพจร" },
+                { value: "bloodPressure", label: "ความดัน" },
+                { value: "oxygenSaturation", label: "O2" },
+                { value: "breathingRate", label: "หายใจ" },
+                { value: "bloodGlucose", label: "น้ำตาล" },
+                { value: "fluidIn", label: "น้ำเข้า" },
+                { value: "fluidOut", label: "น้ำออก" },
+                { value: "urineOutput", label: "ปัสสาวะ" },
+                { value: "stool", label: "อุจจาระ" },
+                { value: "diaperChange", label: "ผ้าอ้อม" },
+              ]}
+              value={sortField ?? "recordedAt"}
+              onChange={(next) => {
+                if (next === "recordedAt") {
+                  setSortField(null);
+                  return;
+                }
+                setSortField(next as SortField);
+                setSortDirection("asc");
+              }}
+              className="w-36"
+            />
+
+            <button
+              type="button"
+              onClick={() => {
+                if (sortField) {
+                  setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+                  return;
+                }
+                setSortOrder((prev) => (prev === "newest" ? "oldest" : "newest"));
+              }}
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs text-gray-700 hover:bg-gray-50"
+            >
+              <ArrowDownWideNarrow className="h-3.5 w-3.5" />
+              {sortField ? (sortDirection === "asc" ? "น้อยไปมาก" : "มากไปน้อย") : sortOrder === "newest" ? "ล่าสุดก่อน" : "เก่าก่อน"}
+            </button>
+
+            <div className="flex items-center gap-1 rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-700">
+              <span>กำลังเรียงตาม:</span>
+              <span className="font-semibold text-slate-900">{isPrintMode ? "ช่วงเวลา" : getSortLabel(sortField)}</span>
+              {sortField ? (
+                sortDirection === "asc" ? <ArrowUp className="h-3.5 w-3.5 text-blue-700" /> : <ArrowDown className="h-3.5 w-3.5 text-blue-700" />
+              ) : null}
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleExport}
+            className="print-hide inline-flex items-center gap-2 rounded-lg bg-[#0093EF] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#0080D0]"
+          >
+            <Printer className="h-4 w-4" />
+            พิมพ์ / Export PDF
+          </button>
+        </div>
+      </div>
+
+      <div className="print-table hidden xl:block overflow-hidden rounded-lg" style={{ border: "1px solid rgba(103, 103, 103, 0.48)" }}>
         <div className="overflow-x-auto">
           <table className="table-fixed w-full">
             <thead>
@@ -916,7 +1046,8 @@ export function VitalSignsDetailTable({ patientId, selectedDate }: VitalSignsDet
             </thead>
 
             <tbody>
-              <tr className="bg-blue-50" style={{ borderBottom: "1px solid rgba(103, 103, 103, 0.48)" }}>
+              {!isAllSlots ? (
+                <tr className="print-hide bg-blue-50" style={{ borderBottom: "1px solid rgba(103, 103, 103, 0.48)" }}>
                 <td className="py-3 px-2 text-[11px] text-gray-900">
                   <p className="font-medium">แถวบันทึก {timeSlots.find((slot) => slot.id === selectedTime)?.label}</p>
                   <div className="mt-0.5 flex items-center gap-1.5">
@@ -958,6 +1089,7 @@ export function VitalSignsDetailTable({ patientId, selectedDate }: VitalSignsDet
                   </button>
                 </td>
               </tr>
+              ) : null}
 
               {isLoading ? (
                 <tr>
@@ -969,7 +1101,7 @@ export function VitalSignsDetailTable({ patientId, selectedDate }: VitalSignsDet
                 <tr>
                   <td colSpan={13} className="py-6 px-4 text-center text-sm text-red-500">{error}</td>
                 </tr>
-              ) : filteredRows.length === 0 ? (
+              ) : displayRows.length === 0 ? (
                 <tr>
                   <td colSpan={13} className="py-12 px-4 text-center">
                     <div className="text-sm text-gray-600">ไม่พบข้อมูลสัญญาณชีพในช่วงเวลานี้</div>
@@ -977,7 +1109,7 @@ export function VitalSignsDetailTable({ patientId, selectedDate }: VitalSignsDet
                   </td>
                 </tr>
               ) : (
-                filteredRows.map((row) => {
+                displayRows.map((row) => {
                   const displayDateText = row.dateKey;
                   const displayTimeText = slotToLabel[row.slot] || row.slot;
 
@@ -1017,7 +1149,7 @@ export function VitalSignsDetailTable({ patientId, selectedDate }: VitalSignsDet
         </div>
       </div>
 
-      <div className="xl:hidden space-y-3">
+      <div className="print-hide xl:hidden space-y-3">
         <div className="rounded-lg border border-gray-300 bg-blue-50 px-3 py-3">
           <div className="mb-2 flex items-center justify-between">
             <p className="text-sm font-medium text-gray-900">แถวบันทึก {timeSlots.find((slot) => slot.id === selectedTime)?.label}</p>
@@ -1059,13 +1191,13 @@ export function VitalSignsDetailTable({ patientId, selectedDate }: VitalSignsDet
           </div>
         ) : error ? (
           <div className="rounded-lg border border-gray-300 bg-white py-6 px-4 text-center text-sm text-red-500">{error}</div>
-        ) : filteredRows.length === 0 ? (
+        ) : displayRows.length === 0 ? (
           <div className="rounded-lg border border-gray-300 bg-white py-6 px-4 text-center">
             <div className="text-sm text-gray-600">ไม่พบข้อมูลสัญญาณชีพในช่วงเวลานี้</div>
             <div className="text-xs text-gray-400 mt-1">สามารถกรอกแถวบันทึกด้านบนได้</div>
           </div>
         ) : (
-          filteredRows.map((row) => {
+          displayRows.map((row) => {
             const displayTimeText = slotToLabel[row.slot] || row.slot;
             return (
               <div key={row.key} className="rounded-lg border border-gray-300 bg-white px-3 py-3">
@@ -1099,6 +1231,71 @@ export function VitalSignsDetailTable({ patientId, selectedDate }: VitalSignsDet
         </div>
         {confirmDialog}
       </div>
+
+      <style>{`
+        .print-hide {
+        }
+
+        .print-only {
+          display: none;
+        }
+
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 5mm;
+          }
+
+          :global(html, body) {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+            display: block !important;
+          }
+
+          :global(body.print-vital-signs *) {
+            visibility: hidden !important;
+          }
+          :global(body.print-vital-signs .print-root),
+          :global(body.print-vital-signs .print-root *) {
+            visibility: visible !important;
+          }
+
+          :global(body.print-vital-signs header),
+          :global(body.print-vital-signs nav),
+          :global(body.print-vital-signs footer),
+          :global(body.print-vital-signs .site-footer) {
+            display: none !important;
+          }
+
+          .print-hide {
+            display: none !important;
+          }
+
+          .print-table {
+            display: block !important;
+          }
+
+          .print-only {
+            display: block !important;
+          }
+
+          table {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            border-collapse: collapse !important;
+          }
+
+          th,
+          td {
+            border: 1px solid #d1d5db;
+          }
+
+          tr {
+            page-break-inside: avoid;
+          }
+        }
+      `}</style>
     </div>
   );
 }

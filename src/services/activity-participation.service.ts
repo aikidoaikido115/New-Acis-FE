@@ -128,10 +128,13 @@ class ActivityParticipationService {
     query?: ResidentsByScheduleQuery
   ): Promise<ResidentByScheduleResponse[]> {
     const queryString = buildResidentsQuery(query);
-    const response = await apiClient.get<ApiResponse<ResidentByScheduleResponse[]>>(
+    const response = await apiClient.get<ApiResponse<ResidentByScheduleResponse[] | { items?: ResidentByScheduleResponse[] }>>(
       `/api/activity-schedules/${scheduleId}/residents${queryString}`
     );
-    return response.data.result || [];
+    const result = response.data.result;
+    if (Array.isArray(result)) return result;
+    if (result && Array.isArray(result.items)) return result.items;
+    return [];
   }
 }
 
