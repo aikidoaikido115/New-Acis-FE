@@ -1232,7 +1232,12 @@ export function VitalSignsDetailTable({
         {confirmDialog}
       </div>
 
-      <style>{`
+  <style>{`
+        @page {
+          size: A4 landscape;
+          margin: 5mm;
+        }
+
         .print-hide {
         }
 
@@ -1241,31 +1246,50 @@ export function VitalSignsDetailTable({
         }
 
         @media print {
-          @page {
-            size: A4 portrait;
-            margin: 5mm;
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
 
-          :global(html, body) {
+          html, body {
             margin: 0 !important;
             padding: 0 !important;
             background: #ffffff !important;
-            display: block !important;
+            width: 100% !important;
           }
 
-          :global(body.print-vital-signs *) {
-            visibility: hidden !important;
-          }
-          :global(body.print-vital-signs .print-root),
-          :global(body.print-vital-signs .print-root *) {
-            visibility: visible !important;
+          body > div, main, section, .container, [class*="max-w-"] {
+            max-width: 100% !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
           }
 
-          :global(body.print-vital-signs header),
-          :global(body.print-vital-signs nav),
-          :global(body.print-vital-signs footer),
-          :global(body.print-vital-signs .site-footer) {
+          body.print-vital-signs header,
+          body.print-vital-signs nav,
+          body.print-vital-signs aside,
+          body.print-vital-signs footer,
+          body.print-vital-signs .sidebar,
+          body.print-vital-signs .navbar,
+          body.print-vital-signs #sidebar,
+          body.print-vital-signs #navbar {
             display: none !important;
+          }
+
+          .print-root {
+            width: 100% !important;
+            max-width: 100% !important;
+            margin-top: 0px !important; 
+            padding: 0 !important;
+          }
+
+          .print-root > .space-y-4 > * + * {
+            margin-top: 8px !important; 
+          }
+
+          .print-only {
+            display: block !important;
+            padding: 8px 16px !important; /* ลด padding ของการ์ดหัวกระดาษ */
           }
 
           .print-hide {
@@ -1274,21 +1298,25 @@ export function VitalSignsDetailTable({
 
           .print-table {
             display: block !important;
-          }
-
-          .print-only {
-            display: block !important;
+            width: 100% !important;
           }
 
           table {
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
             border-collapse: collapse !important;
+            width: 100% !important;
+            table-layout: auto !important;
           }
 
-          th,
-          td {
-            border: 1px solid #d1d5db;
+          th, td {
+            border: 1px solid #d1d5db !important;
+            padding: 6px 4px !important; 
+            font-size: 10px !important; 
+            line-height: 1.2 !important;
+            word-wrap: break-word !important;
+          }
+          
+          th, th button, th span {
+            font-size: 10px !important;
           }
 
           tr {
