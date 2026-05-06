@@ -350,8 +350,7 @@ export default function Page() {
           (resident.care && resident.care.includes(selectedCareType)) || 
           (selectedCareType && selectedCareType.includes(resident.care));
 
-        // 🌟 แก้ไขจุดที่ 2: ถ้า showActive เป็น false ให้โชว์ทุกคน (ไม่กรองออก)
-        const matchesActive = showActive ? resident.active === true : true;
+        const matchesActive = showActive ? resident.active === true : resident.active === false;
 
         return matchesSearch && matchesFloor && matchesCareType && matchesActive;
       });
