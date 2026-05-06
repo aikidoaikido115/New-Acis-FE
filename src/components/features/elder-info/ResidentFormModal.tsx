@@ -228,6 +228,35 @@ export function ResidentFormModal({
     set({ roomId: created.value });
   };
 
+  const handleLocalSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!formData.emergencyHospital || formData.emergencyHospital.trim() === "") {
+      alert("กรุณาระบุ โรงพยาบาลกรณีฉุกเฉิน");
+      return;
+    }
+    if (!formData.careLevel || formData.careLevel.trim() === "") {
+      alert("กรุณาระบุ การประเมินการช่วยเหลือตัวเอง (ADL)");
+      return;
+    }
+    if (!formData.cprStatus || formData.cprStatus.trim() === "") {
+      alert("กรุณาระบุ การกู้ชีพกรณีหยุดหายใจ (CPR / DNR)");
+      return;
+    }
+    const hasValidContact = formData.emergencyContacts && formData.emergencyContacts.some(
+      (contact: any) => 
+        contact.name && contact.name.trim() !== "" &&
+        contact.relation && contact.relation.trim() !== "" &&
+        contact.phone && contact.phone.trim() !== ""
+    );
+    
+    if (!hasValidContact) {
+      alert("กรุณาระบุผู้ติดต่อฉุกเฉินอย่างน้อย 1 รายการ (ต้องกรอก ชื่อ, ความสัมพันธ์ และเบอร์โทร ให้ครบถ้วน)");
+      return;
+    }
+    form.handleSubmit(e);
+  };
+
   return (
     <Modal
       isOpen={isOpen}
@@ -237,7 +266,7 @@ export function ResidentFormModal({
       scrollable
       disableBackdropClose
     >
-      <form onSubmit={form.handleSubmit} className="space-y-6">
+      <form onSubmit={handleLocalSubmit} className="space-y-6">
 
         {/* ══ Section 1: ข้อมูลพื้นฐาน ══════════════════════════════ */}
         <section className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5 md:p-6">
