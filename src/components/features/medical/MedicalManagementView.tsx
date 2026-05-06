@@ -1613,6 +1613,11 @@ export function MedicalManagementView() {
       </div>
 
       <style>{`
+        @page {
+          size: A4 landscape;
+          margin: 0mm !important;
+        }
+
         .print-hide {
         }
 
@@ -1621,60 +1626,91 @@ export function MedicalManagementView() {
         }
 
         @media print {
-          @page {
-            size: A4 portrait;
-            margin: 5mm;
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            box-sizing: border-box !important;
           }
 
-          :global(html, body) {
+          html, body {
+            width: 100% !important;
+            height: 100vh !important;
+            max-height: 100vh !important;
+            margin: 0 !important;
+            padding: 2mm 5mm 5mm 5mm !important; 
+            background: #ffffff !important;
+            overflow: hidden !important;
+          }
+
+          body > div, main, section, .container, [class*="max-w-"], .min-h-screen, .p-6 {
+            max-width: 100% !important;
+            width: 100% !important;
             margin: 0 !important;
             padding: 0 !important;
-            background: #ffffff !important;
-            display: block !important;
+            box-shadow: none !important;
           }
 
-          :global(body.print-drug-history *) {
-            visibility: hidden !important;
-          }
-          :global(body.print-drug-history [style*="min-h-screen"]),
-          :global(body.print-drug-history [style*="min-h-screen"] *) {
-            visibility: visible !important;
-          }
-
-          :global(body.print-drug-history header),
-          :global(body.print-drug-history nav),
-          :global(body.print-drug-history footer),
-          :global(body.print-drug-history .site-footer) {
+          body.print-drug-history header,
+          body.print-drug-history nav,
+          body.print-drug-history aside,
+          body.print-drug-history footer,
+          body.print-drug-history .sidebar,
+          body.print-drug-history .navbar,
+          body.print-drug-history #sidebar,
+          body.print-drug-history #navbar {
             display: none !important;
+          }
+
+          .print-root {
+            width: 100% !important;
+            max-width: 100% !important;
+            margin-top: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+          }
+
+          .print-root > .space-y-4 > * + *,
+          .space-y-6 > * + * {
+            margin-top: 4px !important; 
+          }
+
+          .print-only {
+            display: block !important;
+            padding: 0 !important; 
+            margin-bottom: 0 !important;
           }
 
           .print-hide {
             display: none !important;
           }
 
-          .print-only {
+          .print-table {
             display: block !important;
+            width: 100% !important;
+            margin-bottom: 0 !important;
           }
 
           table {
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
             border-collapse: collapse !important;
+            width: 100% !important;
+            table-layout: auto !important;
+            margin-bottom: 0 !important;
           }
 
-          th,
-          td {
-            border: 1px solid #d1d5db;
-          }
-
-          .status-pill {
+          th, td {
             border: 1px solid #d1d5db !important;
-            background: #ffffff !important;
-            color: #111827 !important;
+            padding: 4px 2px !important; 
+            font-size: 10px !important; 
+            line-height: 1.1 !important;
+            word-wrap: break-word !important;
+          }
+          
+          th, th button, th span {
+            font-size: 10px !important;
           }
 
           tr {
-            page-break-inside: avoid;
+            page-break-inside: avoid !important;
           }
         }
       `}</style>

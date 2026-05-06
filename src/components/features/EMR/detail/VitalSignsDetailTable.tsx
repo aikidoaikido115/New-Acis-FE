@@ -1235,7 +1235,7 @@ export function VitalSignsDetailTable({
   <style>{`
         @page {
           size: A4 landscape;
-          margin: 5mm;
+          margin: 0mm !important; /* จัดการ Margin ใน CSS แทนเพื่อความแม่นยำ */
         }
 
         .print-hide {
@@ -1249,13 +1249,18 @@ export function VitalSignsDetailTable({
           * {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
+            box-sizing: border-box !important;
           }
 
+          /* ล็อคความสูงหน้ากระดาษไว้ที่ 1 หน้า และเว้นขอบกระดาษ 8mm */
           html, body {
-            margin: 0 !important;
-            padding: 0 !important;
-            background: #ffffff !important;
             width: 100% !important;
+            height: 100vh !important;
+            max-height: 100vh !important;
+            margin: 0 !important;
+            padding: 8mm !important;
+            background: #ffffff !important;
+            overflow: hidden !important; /* ตัดหน้า 2 ทิ้งเด็ดขาด */
           }
 
           body > div, main, section, .container, [class*="max-w-"] {
@@ -1263,8 +1268,10 @@ export function VitalSignsDetailTable({
             width: 100% !important;
             margin: 0 !important;
             padding: 0 !important;
+            box-shadow: none !important;
           }
 
+          /* 🌟 ซ่อน Navbar, Sidebar, Footer แบบเจาะจง */
           body.print-vital-signs header,
           body.print-vital-signs nav,
           body.print-vital-signs aside,
@@ -1276,20 +1283,23 @@ export function VitalSignsDetailTable({
             display: none !important;
           }
 
+          /* ตัวตาราง */
           .print-root {
             width: 100% !important;
             max-width: 100% !important;
-            margin-top: 0px !important; 
+            margin: 0 !important;
             padding: 0 !important;
+            background: #ffffff !important;
           }
 
           .print-root > .space-y-4 > * + * {
-            margin-top: 8px !important; 
+            margin-top: 6px !important; 
           }
 
           .print-only {
             display: block !important;
-            padding: 8px 16px !important; /* ลด padding ของการ์ดหัวกระดาษ */
+            padding: 0 !important; 
+            margin-bottom: 0 !important;
           }
 
           .print-hide {
@@ -1299,19 +1309,21 @@ export function VitalSignsDetailTable({
           .print-table {
             display: block !important;
             width: 100% !important;
+            margin-bottom: 0 !important;
           }
 
           table {
             border-collapse: collapse !important;
             width: 100% !important;
             table-layout: auto !important;
+            margin-bottom: 0 !important;
           }
 
           th, td {
             border: 1px solid #d1d5db !important;
-            padding: 6px 4px !important; 
+            padding: 4px 2px !important; 
             font-size: 10px !important; 
-            line-height: 1.2 !important;
+            line-height: 1.1 !important;
             word-wrap: break-word !important;
           }
           
@@ -1320,7 +1332,7 @@ export function VitalSignsDetailTable({
           }
 
           tr {
-            page-break-inside: avoid;
+            page-break-inside: avoid !important;
           }
         }
       `}</style>
