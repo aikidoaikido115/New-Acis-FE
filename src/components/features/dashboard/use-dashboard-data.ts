@@ -1,7 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { roomService } from "@/services/room.service";
-// ✨ 1. นำเข้า isResidentActive เพิ่มเข้ามา
 import { isResidentActive, residentService } from "@/services/resident.service";
 import { warehouseService } from "@/services/warehouse.service";
 import { vitalSignService } from "@/services/vital-sign.service";
@@ -243,8 +242,6 @@ export function useDashboardData() {
       }));
 
       setRooms(roomsRes || []);
-      // ✨ 2. ครอบ filter(isResidentActive) ตรงนี้เหมือนที่เพื่อนทำ!
-      // จะทำให้ residents มีเฉพาะคนที่ active เท่านั้น
       setResidents(normalizedOverview.filter(isResidentActive));
     } catch (error) {
       logApiError("Failed to fetch resident overview:", error);

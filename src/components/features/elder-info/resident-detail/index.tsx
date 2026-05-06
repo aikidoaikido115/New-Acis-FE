@@ -112,16 +112,27 @@ export function ResidentDetailModal({ isOpen, onClose, residentId }: ResidentDet
 
   const handleCopyRelativeMagicLink = async () => {
     if (!residentId) return;
+
+    const fetchLinkPromise = residentService.getRelativeMagicLink(residentId)
+      .then(linkData => new URL(linkData.magic_link, window.location.origin).toString());
+
     try {
-      const linkData = await residentService.getRelativeMagicLink(residentId);
-      const absoluteLink = new URL(linkData.magic_link, window.location.origin).toString();
-      await navigator.clipboard.writeText(absoluteLink);
+      if (typeof ClipboardItem !== "undefined") {
+        const blobPromise = fetchLinkPromise.then(text => new Blob([text], { type: "text/plain" }));
+        const item = new ClipboardItem({ "text/plain": blobPromise });
+        await navigator.clipboard.write([item]);
+      } else {
+        const absoluteLink = await fetchLinkPromise;
+        await navigator.clipboard.writeText(absoluteLink);
+      }
+      
       showToast({
         type: "success",
         title: "คัดลอกลิงก์สำเร็จ",
         message: "ลิงก์สำหรับญาติถูกคัดลอกไปยังคลิปบอร์ดแล้ว",
       });
-    } catch {
+    } catch (error) {
+      console.error("Copy to clipboard failed:", error);
       showToast({
         type: "error",
         title: "คัดลอกไม่สำเร็จ",

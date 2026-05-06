@@ -264,10 +264,10 @@ export default function RelativePatientInfoPage() {
         </button>
 
         {/* Content */}
-        <div className="flex-1 p-2 pt-20 lg:pt-8">
+        <div className="flex-1 px-4 py-6 pt-20 sm:px-6 lg:px-8 lg:py-8">
           <BackButton />
 
-          <div className="max-w-2xl mx-auto space-y-6">
+          <div className="max-w-full space-y-6">
             <h1 className="text-2xl font-bold text-gray-800">ข้อมูลผู้สูงอายุ</h1>
 
             {isInitialLoading && <PatientInfoSkeleton />}

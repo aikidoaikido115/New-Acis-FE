@@ -37,7 +37,7 @@ export default function RelativeDashboard() {
   const isInitialLoading = isLoading && !dashboardData;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-gray-50 flex w-full">
       {/* Sidebar - Desktop */}
       <div className="hidden lg:block fixed top-0 left-0 h-full w-80 z-50 pointer-events-auto">
         <RelativeSidebar isOpen={true} />

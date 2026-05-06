@@ -1176,7 +1176,7 @@ export function MedicalManagementView() {
   };
 
   const renderMainView = () => (
-    <div className="space-y-6">
+    <div className="space-y-6 ">
       <div>
         <h1 className="text-headline-5 font-bold text-gray-800">จัดการยา</h1>
       </div>
@@ -1622,7 +1622,7 @@ export function MedicalManagementView() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-[1400px] mx-auto">
+      <div className="max-w-full">
         {currentView === "main" && renderMainView()}
         {currentView === "details" && renderDetailsView()}
         {currentView === "history" && renderHistoryView()}
