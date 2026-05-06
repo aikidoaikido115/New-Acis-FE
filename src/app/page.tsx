@@ -6,7 +6,7 @@ export default async function Home() {
   const token = cookieStore.get("auth_token");
   const role = cookieStore.get("user_role")?.value?.toLowerCase();
 
-  if (token) {
+  if (token?.value) {
     if (role === "kitchen") {
       redirect("/manage-meal");
     }

@@ -20,7 +20,7 @@ import { HistoryTable } from "./tables/HistoryTable";
 import { Pagination } from "@/components/ui/pagination";
 import { Dropdown } from "@/components/ui/dropdown";
 import { AddMedicationModal } from "./modals";
-import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { SkeletonCard, SkeletonTable } from "@/components/ui/skeleton";
 import type { AddMedicationFormData, EditMedicationFormData } from "./modals";
 import type { GiveAllFormData } from "./modals/GiveAllMedicationsModal";
 import type { WithholdFormData } from "./modals/WithholdMedicationModal";
@@ -1252,8 +1252,15 @@ export function MedicalManagementView() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {isLoadingMain ? (
-          <div className="md:col-span-2 rounded-lg border border-gray-200 bg-white py-12 px-4 text-center">
-            <LoadingSpinner />
+          <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <SkeletonCard
+                key={index}
+                showAvatar
+                titleWidth={index % 2 === 0 ? "52%" : "38%"}
+                lines={3}
+              />
+            ))}
           </div>
         ) : visiblePatients.length === 0 ? (
           <div className="md:col-span-2 rounded-lg border border-gray-200 bg-white py-12 px-4 text-center">
@@ -1389,8 +1396,9 @@ export function MedicalManagementView() {
           </div>
 
           {isLoadingDetails ? (
-            <div className="rounded-lg border border-gray-200 bg-white py-10 px-4 text-center">
-              <LoadingSpinner />
+            <div className="space-y-6">
+              <SkeletonCard showAvatar titleWidth="42%" lines={2} />
+              <SkeletonTable columns={5} rows={4} />
             </div>
           ) : medsDisplayMode === "split" ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1472,7 +1480,7 @@ export function MedicalManagementView() {
               }}
             />
           </div>
-          {isLoadingHistory ? <div className="py-6 text-center"><LoadingSpinner /></div> : null}
+          {isLoadingHistory ? <div className="mb-4"><SkeletonTable columns={6} rows={5} /></div> : null}
           <HistoryTable history={historyBySelectedPatient} />
         </div>
       )}
@@ -1586,8 +1594,8 @@ export function MedicalManagementView() {
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         {isLoadingHistory ? (
-          <div className="py-6 text-center">
-            <LoadingSpinner />
+          <div className="mb-4">
+            <SkeletonTable columns={6} rows={5} />
           </div>
         ) : null}
         <HistoryTable history={visibleHistory} />

@@ -1065,7 +1065,7 @@ export function VitalSignsTable({ selectedFloor = "all", selectedStatus = "all",
               ) : pagedResidents.length === 0 ? (
                 <tr>
                   <td colSpan={13} className="py-12 px-4 text-center">
-                    <div className="text-sm text-gray-600">ไม่พบข้อมูลผู้พักที่ Active</div>
+                    <div className="text-sm text-gray-600">ไม่พบข้อมูลผู้พักที่อยู่ในศูนย์</div>
                     <div className="text-xs text-gray-400 mt-1">ลองเปลี่ยนเงื่อนไขการกรองอีกครั้ง</div>
                   </td>
                 </tr>
@@ -1178,7 +1178,7 @@ export function VitalSignsTable({ selectedFloor = "all", selectedStatus = "all",
           <div className="rounded-lg border border-gray-300 bg-white py-6 px-4 text-center text-sm text-red-500">{error}</div>
         ) : pagedResidents.length === 0 ? (
           <div className="rounded-lg border border-gray-300 bg-white py-6 px-4 text-center">
-            <div className="text-sm text-gray-600">ไม่พบข้อมูลผู้พักที่ Active</div>
+            <div className="text-sm text-gray-600">ไม่พบข้อมูลผู้พักที่อยู่ในศูนย์</div>
             <div className="mt-1 text-xs text-gray-400">ลองเปลี่ยนเงื่อนไขการกรองอีกครั้ง</div>
           </div>
         ) : (

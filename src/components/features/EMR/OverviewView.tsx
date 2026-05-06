@@ -10,6 +10,7 @@ import { DoctorOrderTable } from "./tables/DoctorOrderTable";
 import { NurseNoteTable } from "./tables/NurseNoteTable";
 import { WoundCareTable } from "./tables/WoundCareTable";
 import { RelativeNoteTable } from "./tables/RelativeNoteTable";
+import { Skeleton, SkeletonTable } from "@/components/ui/skeleton";
 import type { Room } from "@/types/room";
 import type { IntakeLabel } from "@/types/intake";
 
@@ -24,9 +25,11 @@ export function OverviewView() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [rooms, setRooms] = useState<Room[]>([]);
   const [intakeLabels, setIntakeLabels] = useState<IntakeLabel[]>([]);
+  const [isLoadingFilters, setIsLoadingFilters] = useState(true);
 
   useEffect(() => {
     const loadFilterData = async () => {
+      setIsLoadingFilters(true);
       try {
         const [roomData, labelData] = await Promise.all([roomService.getAll(), intakeService.getAllLabels()]);
         setRooms(roomData || []);
@@ -34,6 +37,8 @@ export function OverviewView() {
       } catch {
         setRooms([]);
         setIntakeLabels([]);
+      } finally {
+        setIsLoadingFilters(false);
       }
     };
 
@@ -65,6 +70,30 @@ export function OverviewView() {
 
   return (
     <div className="space-y-4">
+      {isLoadingFilters ? (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4 flex-wrap">
+              <Skeleton className="h-4 w-12" />
+              <Skeleton className="h-10 w-28" />
+              <Skeleton className="h-4 w-14" />
+              <Skeleton className="h-10 w-28" />
+              <Skeleton className="h-4 w-14" />
+              <Skeleton className="h-10 w-28" />
+            </div>
+            <Skeleton className="h-10 w-[200px]" />
+          </div>
+
+          <div className="flex gap-2 rounded-full p-1 bg-gray-100 border border-gray-200">
+            {Array.from({ length: 5 }).map((_, index) => (
+              <Skeleton key={index} className="h-10 flex-1 rounded-full" />
+            ))}
+          </div>
+
+          <SkeletonTable columns={4} rows={6} />
+        </div>
+      ) : (
+        <>
       {/* Filters Row */}
       <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -158,6 +187,8 @@ export function OverviewView() {
         {activeTab === "wound_care" && <WoundCareTable />}
         {activeTab === "relative_note" && <RelativeNoteTable />}
       </div>
+        </>
+      )}
     </div>
   );
 }

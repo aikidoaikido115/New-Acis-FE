@@ -4,21 +4,21 @@ import { Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Dropdown } from "@/components/ui/dropdown";
+import { SkeletonTable } from "@/components/ui/skeleton";
 import { isResidentActive, residentService } from "@/services/resident.service";
 import { intakeService } from "@/services/intake.service";
 import { roomService } from "@/services/room.service";
-import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import type { Resident } from "@/types/resident";
 import type { Room } from "@/types/room";
 import type { IntakeLabel } from "@/types/intake";
 
-type StatusFilter = "all" | "active" | "inactive";
+
 
 export function IndividualView() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedFloor, setSelectedFloor] = useState<string>("all");
-  const [selectedStatus, setSelectedStatus] = useState<StatusFilter>("all");
+  
   const [selectedLabelId, setSelectedLabelId] = useState("all");
   const [residents, setResidents] = useState<Resident[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -89,9 +89,6 @@ export function IndividualView() {
       const room = roomId ? roomById.get(roomId) : undefined;
       const matchesFloor = selectedFloor === "all" || String(room?.floor ?? "") === selectedFloor;
 
-      const residentStatus = String(resident.status || "").toLowerCase();
-      const matchesStatus = selectedStatus === "all" || residentStatus === selectedStatus;
-
       const matchesCareLevel =
         selectedLabelId === "all" ||
         (resident.resident_labels || []).some((label) => {
@@ -99,9 +96,9 @@ export function IndividualView() {
           return labelId === selectedLabelId;
         });
 
-      return matchesSearch && matchesFloor && matchesStatus && matchesCareLevel;
+      return matchesSearch && matchesFloor && matchesCareLevel;
     });
-  }, [residents, roomById, searchTerm, selectedFloor, selectedStatus, selectedLabelId]);
+  }, [residents, roomById, searchTerm, selectedFloor, selectedLabelId]);
 
   const getCareLevelText = (resident: Resident) => {
     const labelName = resident.resident_labels
@@ -160,79 +157,65 @@ export function IndividualView() {
           placeholder="เลือก"
         />
 
-        <span className="text-body-small text-gray-600">สถานะ</span>
-
-        {/* Status Dropdown */}
-        <Dropdown
-          options={[
-            { value: "all", label: "ทุกสถานะ" },
-            { value: "active", label: "ใช้งาน" },
-            { value: "inactive", label: "ไม่ใช้งาน" },
-          ]}
-          value={selectedStatus}
-          onChange={(value) => setSelectedStatus(value as StatusFilter)}
-          placeholder="เลือก"
-        />
+        
       </div>
 
       {/* Data Table */}
-      <div className="overflow-hidden rounded-lg" style={{ border: '1px solid rgba(103, 103, 103, 0.48)' }}>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr style={{ backgroundColor: 'rgba(239, 242, 247, 1)', borderBottom: '1px solid rgba(103, 103, 103, 0.48)' }}>
-                <th className="text-left py-3 px-4 text-xs font-semibold" style={{ color: '#000' }}>ชื่อ-นามสกุล</th>
-                <th className="text-left py-3 px-4 text-xs font-semibold" style={{ color: '#000' }}>ชื่อเล่น</th>
-                <th className="text-left py-3 px-4 text-xs font-semibold" style={{ color: '#000' }}>ห้อง</th>
-                <th className="text-left py-3 px-4 text-xs font-semibold" style={{ color: '#000' }}>ประเภท</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                <tr>
-                  <td colSpan={4} className="py-6 px-4 text-center">
-                    <LoadingSpinner />
-                  </td>
+      {isLoading ? (
+        <SkeletonTable columns={4} rows={6} />
+      ) : (
+        <div className="overflow-hidden rounded-lg" style={{ border: '1px solid rgba(103, 103, 103, 0.48)' }}>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr style={{ backgroundColor: 'rgba(239, 242, 247, 1)', borderBottom: '1px solid rgba(103, 103, 103, 0.48)' }}>
+                  <th className="text-left py-3 px-4 text-xs font-semibold" style={{ color: '#000' }}>ชื่อ-นามสกุล</th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold" style={{ color: '#000' }}>ชื่อเล่น</th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold" style={{ color: '#000' }}>ห้อง</th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold" style={{ color: '#000' }}>ประเภท</th>
                 </tr>
-              ) : error ? (
-                <tr>
-                  <td colSpan={4} className="py-6 px-4 text-center text-sm text-red-500">
-                    {error}
-                  </td>
-                </tr>
-              ) : filteredResidents.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="py-12 px-4 text-center">
-                    <div className="text-sm text-gray-600">ไม่พบข้อมูลผู้พัก</div>
-                    <div className="text-xs text-gray-400 mt-1">ลองเปลี่ยนคำค้นหา หรือปรับตัวกรองชั้นและสถานะ</div>
-                  </td>
-                </tr>
-              ) : (
-                filteredResidents.map((resident) => {
-                  const residentId = resident.resident_id || resident.id;
-                  const room = resident.room_id ? roomById.get(resident.room_id) : undefined;
-                  const roomDisplay = room ? `${room.room_number} (ชั้น ${room.floor})` : "-";
-                  const fullName = `${resident.first_name || ""} ${resident.last_name || ""}`.trim() || "-";
-
-                  return (
-                  <tr
-                    key={residentId}
-                    onClick={() => handleRowClick(residentId)}
-                    className="bg-white hover:bg-gray-50 transition-colors cursor-pointer"
-                    style={{ borderBottom: '1px solid rgba(103, 103, 103, 0.48)' }}
-                  >
-                    <td className="py-3 px-4 text-xs sm:text-sm" style={{ color: '#000' }}>{fullName}</td>
-                    <td className="py-3 px-4 text-xs sm:text-sm" style={{ color: '#000' }}>{resident.nickname || "-"}</td>
-                    <td className="py-3 px-4 text-xs sm:text-sm" style={{ color: '#000' }}>{roomDisplay}</td>
-                    <td className="py-3 px-4 text-xs sm:text-sm" style={{ color: '#000' }}>{getCareLevelText(resident)}</td>
+              </thead>
+              <tbody>
+                {error ? (
+                  <tr>
+                    <td colSpan={4} className="py-6 px-4 text-center text-sm text-red-500">
+                      {error}
+                    </td>
                   </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                ) : filteredResidents.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="py-12 px-4 text-center">
+                      <div className="text-sm text-gray-600">ไม่พบข้อมูลผู้พักที่อยู่ในศูนย์</div>
+                      <div className="text-xs text-gray-400 mt-1">ลองเปลี่ยนคำค้นหา หรือปรับตัวกรองชั้น</div>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredResidents.map((resident) => {
+                    const residentId = resident.resident_id || resident.id;
+                    const room = resident.room_id ? roomById.get(resident.room_id) : undefined;
+                    const roomDisplay = room ? `${room.room_number} (ชั้น ${room.floor})` : "-";
+                    const fullName = `${resident.first_name || ""} ${resident.last_name || ""}`.trim() || "-";
+
+                    return (
+                      <tr
+                        key={residentId}
+                        onClick={() => handleRowClick(residentId)}
+                        className="bg-white hover:bg-gray-50 transition-colors cursor-pointer"
+                        style={{ borderBottom: '1px solid rgba(103, 103, 103, 0.48)' }}
+                      >
+                        <td className="py-3 px-4 text-xs sm:text-sm" style={{ color: '#000' }}>{fullName}</td>
+                        <td className="py-3 px-4 text-xs sm:text-sm" style={{ color: '#000' }}>{resident.nickname || "-"}</td>
+                        <td className="py-3 px-4 text-xs sm:text-sm" style={{ color: '#000' }}>{roomDisplay}</td>
+                        <td className="py-3 px-4 text-xs sm:text-sm" style={{ color: '#000' }}>{getCareLevelText(resident)}</td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
