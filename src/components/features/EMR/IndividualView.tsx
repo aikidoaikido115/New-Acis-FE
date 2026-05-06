@@ -10,7 +10,7 @@ import { intakeService } from "@/services/intake.service";
 import { roomService } from "@/services/room.service";
 import type { Resident } from "@/types/resident";
 import type { Room } from "@/types/room";
-import type { IntakeLabel } from "@/types/intake";
+import type { IntakeLabel, ResidentLabel } from "@/types/intake";
 
 
 
@@ -23,6 +23,7 @@ export function IndividualView() {
   const [residents, setResidents] = useState<Resident[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [intakeLabels, setIntakeLabels] = useState<IntakeLabel[]>([]);
+  const [residentLabelsById, setResidentLabelsById] = useState<Record<string, ResidentLabel[]>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,12 +38,28 @@ export function IndividualView() {
           roomService.getAll(),
           intakeService.getAllLabels(),
         ]);
-        setResidents((residentData || []).filter(isResidentActive));
+        const activeResidents = (residentData || []).filter(isResidentActive);
+        setResidents(activeResidents);
         setRooms(roomData || []);
         setIntakeLabels(labelData || []);
+
+        const residentLabelEntries = await Promise.all(
+          activeResidents.map(async (resident) => {
+            const residentId = resident.resident_id || resident.id;
+            if (!residentId) return [residentId, []] as const;
+            try {
+              const labels = await intakeService.getLabelsByResident(residentId);
+              return [residentId, labels || []] as const;
+            } catch {
+              return [residentId, resident.resident_labels || []] as const;
+            }
+          })
+        );
+        setResidentLabelsById(Object.fromEntries(residentLabelEntries.filter(([id]) => Boolean(id))));
       } catch {
         setError("ไม่สามารถโหลดข้อมูลผู้พักได้");
         setIntakeLabels([]);
+        setResidentLabelsById({});
       } finally {
         setIsLoading(false);
       }
@@ -69,7 +86,7 @@ export function IndividualView() {
     () => [
       { value: "all", label: "ทั้งหมด" },
       ...intakeLabels.map((label) => ({
-        value: label.label_id,
+        value: String(label.label_id),
         label: label.label_name,
       })),
     ],
@@ -89,26 +106,40 @@ export function IndividualView() {
       const room = roomId ? roomById.get(roomId) : undefined;
       const matchesFloor = selectedFloor === "all" || String(room?.floor ?? "") === selectedFloor;
 
+      const residentId = resident.resident_id || resident.id;
+      const residentLabels = residentId ? residentLabelsById[residentId] : resident.resident_labels;
+
       const matchesCareLevel =
         selectedLabelId === "all" ||
-        (resident.resident_labels || []).some((label) => {
+        (residentLabels || []).some((label) => {
           const labelId = label.label_id || label.intake_label?.label_id;
-          return labelId === selectedLabelId;
+          return String(labelId) === selectedLabelId;
         });
 
       return matchesSearch && matchesFloor && matchesCareLevel;
     });
-  }, [residents, roomById, searchTerm, selectedFloor, selectedLabelId]);
+  }, [residents, roomById, searchTerm, selectedFloor, selectedLabelId, residentLabelsById]);
 
   const getCareLevelText = (resident: Resident) => {
-    const labelName = resident.resident_labels
-      ?.map((label) => label.intake_label?.label_name || "")
-      .find((name) => name.includes("ช่วยเหลือตัวเอง") || name === "ติดเตียง")
-      ?.trim();
-    if (labelName === "ช่วยเหลือตัวเองได้ทั้งหมด") return "ช่วยเหลือตัวเองได้";
-    if (labelName === "ช่วยเหลือตัวเองได้บางส่วน") return "ต้องการความช่วยเหลือ";
-    if (labelName === "ติดเตียง") return "ติดเตียง";
-    return "-";
+    const intakeById = new Map(intakeLabels.map((l) => [String(l.label_id), l.label_name] as const));
+    const residentId = resident.resident_id || resident.id;
+    const residentLabels = residentId ? residentLabelsById[residentId] : resident.resident_labels;
+
+    const labelNames = (residentLabels || [])
+        .map((label) => {
+          const id = label.label_id || label.intake_label?.label_id;
+          return id ? intakeById.get(String(id)) || label.intake_label?.label_name : undefined;
+        })
+        .filter(Boolean) as string[];
+
+      if (labelNames.some((n) => n.includes("ติดเตียง"))) return "ติดเตียง";
+
+    const selfLabels = labelNames.filter((n) => n.includes("ช่วยเหลือตัวเอง"));
+    if (selfLabels.some((n) => n.includes("ทั้งหมด"))) return "ช่วยเหลือตัวเองได้";
+    if (selfLabels.some((n) => n.includes("บางส่วน"))) return "ต้องการความช่วยเหลือ";
+    if (selfLabels.length > 0) return "ช่วยเหลือตัวเองได้";
+
+    return labelNames[0] || "-";
   };
 
   const handleRowClick = (residentId: string) => {

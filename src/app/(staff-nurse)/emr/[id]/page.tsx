@@ -13,10 +13,12 @@ import { RelativeNoteDetailTable } from "@/components/features/EMR/detail/Relati
 import { DatePicker } from "@/components/ui/date-picker";
 import { residentService } from "@/services/resident.service";
 import { roomService } from "@/services/room.service";
+import { intakeService } from "@/services/intake.service";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import apiClient, { ApiResponse } from "@/lib/axios.ts/api-client";
 import type { Resident } from "@/types/resident";
 import type { Room } from "@/types/room";
+import type { IntakeLabel, ResidentLabel } from "@/types/intake";
 
 interface AllergyItem {
   allergy_id?: string;
@@ -45,6 +47,8 @@ export default function PatientDetailPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<SubTab>("vital_signs");
   const [resident, setResident] = useState<Resident | null>(null);
+  const [residentLabels, setResidentLabels] = useState<ResidentLabel[]>([]);
+  const [intakeLabels, setIntakeLabels] = useState<IntakeLabel[]>([]);
   const [room, setRoom] = useState<Room | null>(null);
   const [allergies, setAllergies] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -63,8 +67,16 @@ export default function PatientDetailPage() {
       setError(null);
 
       try {
-        const residentData = await residentService.getById(residentId);
+        const [residentData, labelMaster] = await Promise.all([
+          residentService.getById(residentId),
+          intakeService.getAllLabels().catch(() => []),
+        ]);
         setResident(residentData);
+        setIntakeLabels(labelMaster || []);
+        const latestLabels = await intakeService.getLabelsByResident(residentId).catch(
+          () => residentData.resident_labels || []
+        );
+        setResidentLabels(latestLabels);
 
         const roomId = residentData.room_id;
         if (roomId) {
@@ -83,6 +95,8 @@ export default function PatientDetailPage() {
         setAllergies(Array.from(new Set(drugOnly)));
       } catch {
         setError("ไม่สามารถโหลดข้อมูลผู้พักได้");
+        setResidentLabels([]);
+        setIntakeLabels([]);
       } finally {
         setIsLoading(false);
       }
@@ -110,15 +124,23 @@ export default function PatientDetailPage() {
   }, [resident]);
 
   const statusText = useMemo(() => {
-    const labelName = resident?.resident_labels
-      ?.map((label) => label.intake_label?.label_name || "")
-      .find((name) => name.includes("ช่วยเหลือตัวเอง") || name === "ติดเตียง")
-      ?.trim();
-    if (labelName === "ช่วยเหลือตัวเองได้ทั้งหมด") return "ช่วยเหลือตัวเองได้";
-    if (labelName === "ช่วยเหลือตัวเองได้บางส่วน") return "ต้องการความช่วยเหลือ";
-    if (labelName === "ติดเตียง") return "ติดเตียง";
+    const intakeById = new Map((intakeLabels || []).map((label) => [String(label.label_id), label.label_name] as const));
+    const labelNames = (residentLabels || [])
+      .map((label) => {
+        const labelId = label.label_id || label.intake_label?.label_id;
+        return labelId ? intakeById.get(String(labelId)) || label.intake_label?.label_name : undefined;
+      })
+      .filter(Boolean) as string[];
+
+    if (labelNames.some((name) => name.includes("ติดเตียง"))) return "ติดเตียง";
+    const selfLabels = labelNames.filter((name) => name.includes("ช่วยเหลือตัวเอง"));
+    if (selfLabels.some((name) => name.includes("ทั้งหมด"))) return "ช่วยเหลือตัวเองได้";
+    if (selfLabels.some((name) => name.includes("บางส่วน"))) return "ต้องการความช่วยเหลือ";
+    if (selfLabels.length > 0) return "ช่วยเหลือตัวเองได้";
+    if (labelNames[0]) return labelNames[0];
+
     return resident?.status || "-";
-  }, [resident]);
+  }, [resident, residentLabels, intakeLabels]);
 
   const tabs = [
     { id: "vital_signs" as SubTab, label: "สัญญาณชีพ" },

@@ -56,16 +56,24 @@ const MAX_FREQUENCY_PER_DAY = 4;
 const getResidentPrimaryId = (resident: Resident): string => resident.resident_id || resident.id;
 const getRoomPrimaryId = (room: Room): string => room.room_id || room.id;
 
-const toHelpLevel = (labels?: Resident["resident_labels"]): string => {
-  const labelName = labels
-    ?.map((label) => label.intake_label?.label_name || "")
-    .find((name) => name.includes("ช่วยเหลือตัวเอง") || name === "ติดเตียง")
-    ?.trim();
+const toHelpLevel = (labels?: Resident["resident_labels"], intakeLabels?: IntakeLabel[]): string => {
+  const intakeById = new Map((intakeLabels || []).map((l) => [String(l.label_id), l.label_name] as const));
 
-  if (labelName === "ช่วยเหลือตัวเองได้ทั้งหมด") return "ช่วยเหลือตัวเองได้";
-  if (labelName === "ช่วยเหลือตัวเองได้บางส่วน") return "ต้องการความช่วยเหลือ";
-  if (labelName === "ติดเตียง") return "ติดเตียง";
-  return "-";
+  const labelNames = (labels || [])
+    .map((label) => {
+      const id = label.label_id || label.intake_label?.label_id;
+      return id ? intakeById.get(String(id)) || label.intake_label?.label_name : undefined;
+    })
+    .filter(Boolean) as string[];
+
+  if (labelNames.some((n) => n.includes("ติดเตียง"))) return "ติดเตียง";
+
+  const selfLabels = labelNames.filter((n) => n.includes("ช่วยเหลือตัวเอง"));
+  if (selfLabels.some((n) => n.includes("ทั้งหมด"))) return "ช่วยเหลือตัวเองได้";
+  if (selfLabels.some((n) => n.includes("บางส่วน"))) return "ต้องการความช่วยเหลือ";
+  if (selfLabels.length > 0) return "ช่วยเหลือตัวเองได้";
+
+  return labelNames[0] || "-";
 };
 
 const toThaiStatus = (isTaken: boolean, isOmitted?: boolean | null): Medication["status"] => {
@@ -90,16 +98,23 @@ const parseListFromTextMulti = (value?: string | null): string[] => {
     .filter(Boolean);
 };
 
-const toStatusBadge = (labels?: Resident["resident_labels"]): string => {
-  const labelName = labels
-    ?.map((label) => label.intake_label?.label_name || "")
-    .find((name) => name.includes("ช่วยเหลือตัวเอง") || name === "ติดเตียง")
-    ?.trim();
+const toStatusBadge = (labels?: Resident["resident_labels"], intakeLabels?: IntakeLabel[]): string => {
+  const intakeById = new Map((intakeLabels || []).map((l) => [String(l.label_id), l.label_name] as const));
 
-  if (labelName === "ช่วยเหลือตัวเองได้ทั้งหมด") return "ช่วยเหลือตัวเองได้";
-  if (labelName === "ช่วยเหลือตัวเองได้บางส่วน") return "ต้องการความช่วยเหลือ";
-  if (labelName === "ติดเตียง") return "ติดเตียง";
-  return "-";
+  const labelNames = (labels || [])
+    .map((label) => {
+      const id = label.label_id || label.intake_label?.label_id;
+      return id ? intakeById.get(String(id)) || label.intake_label?.label_name : undefined;
+    })
+    .filter(Boolean) as string[];
+
+  if (labelNames.some((n) => n.includes("ติดเตียง"))) return "ติดเตียง";
+  const selfLabels = labelNames.filter((n) => n.includes("ช่วยเหลือตัวเอง"));
+  if (selfLabels.some((n) => n.includes("ทั้งหมด"))) return "ช่วยเหลือตัวเองได้";
+  if (selfLabels.some((n) => n.includes("บางส่วน"))) return "ต้องการความช่วยเหลือ";
+  if (selfLabels.length > 0) return "ช่วยเหลือตัวเองได้";
+
+  return labelNames[0] || "-";
 };
 
 const toHistoryStatus = (status: DrugAdministrationStatus): MedicationHistory["status"] => {
@@ -948,7 +963,8 @@ export function MedicalManagementView() {
       if (!patientsMap.has(residentId)) {
         const labelIds = (resident?.resident_labels || [])
           .map((label) => label.label_id || label.intake_label?.label_id)
-          .filter((value): value is string => Boolean(value));
+          .filter((value) => value !== undefined && value !== null)
+          .map(String);
 
         patientsMap.set(residentId, {
           id: residentId,
@@ -958,7 +974,7 @@ export function MedicalManagementView() {
           profileImage: resident?.profile_image,
           allergies: parseListFromText(resident?.allergies),
           drugAllergies: parseListFromText(resident?.drug_allergies),
-          helpLevel: toHelpLevel(resident?.resident_labels),
+          helpLevel: toHelpLevel(resident?.resident_labels, intakeLabels),
           labelIds,
           medications: [],
           pendingCount: 0,
@@ -1041,7 +1057,7 @@ export function MedicalManagementView() {
       chronicDiseases: parseListFromTextMulti(resident.pre_existing_conditions),
       surgicalHistory: parseListFromTextMulti(resident.surgical_history),
       drugAllergies: patient.drugAllergies || [],
-      status: toStatusBadge(resident.resident_labels),
+      status: toStatusBadge(resident.resident_labels, intakeLabels),
     };
   }, [allPatientMedications, selectedPatientId, residentById]);
 
