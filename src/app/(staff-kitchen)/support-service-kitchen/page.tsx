@@ -161,7 +161,7 @@ export default function SupportPage() {
   };
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-6 py-8">
+    <div className="w-full max-w-full px-6 py-8">
       <div className="mb-6">
         <h1 className="text-headline-5 font-semibold text-gray-800">แจ้งปัญหาการใช้งาน</h1>
         <p className="text-[16px] font-light text-gray-600">กรอกข้อมูลด้านล่างเพื่อแจ้งปัญหาที่พบ</p>

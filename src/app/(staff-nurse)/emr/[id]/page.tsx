@@ -131,7 +131,7 @@ export default function PatientDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-screen-2xl mx-auto space-y-4">
+      <div className="max-w-full space-y-6">
         <button
           onClick={() => router.back()}
           className="print-hide flex items-center gap-2 text-blue-500 hover:text-blue-700 transition-colors"
