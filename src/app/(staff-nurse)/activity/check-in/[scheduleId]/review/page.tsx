@@ -232,13 +232,12 @@ export default function ActivityCheckInReviewPage() {
         throw error;
       }
     };
-    
+
     const updateToNotParticipating = async (residentId: string) => {
       try {
-        // 🌟 ใส่ any เข้าไปเพื่อปิดเส้นแดง TypeScript
         const payload: any = {
           is_participating: false,
-          clear_image: true // 🌟 ใช้คำสั่ง clear_image ที่เราเพิ่งทำแทน img_urls
+          clear_image: true 
         };
 
         await activityParticipationService.update(residentId, scheduleId, payload);
