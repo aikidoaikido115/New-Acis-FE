@@ -3,6 +3,23 @@ export interface LoginRequest {
   username?: string;
   email?: string;
   password: string;
+  remember?: boolean;
+}
+
+export interface RelativePortalLoginRequest {
+  resident_id?: string;
+  token?: string;
+  password: string;
+  remember?: boolean;
+}
+
+export interface RelativePortalLoginResponse {
+  token: string;
+  user_id: string;
+  username: string;
+  email: string;
+  role_name: string;
+  resident_id: string;
 }
 
 export interface RegisterRequest {
@@ -46,6 +63,7 @@ export interface LoginResponse {
   last_name: string;
   profile_image: string;
   role_name: string;
+  resident_id?: string;
 }
 
 export interface Role {
@@ -60,6 +78,7 @@ export interface User {
   first_name: string;
   last_name: string;
   nickname?: string;
+  phone?: string;
   gender?: string;
   profile_image?: string;
   role_id?: string;

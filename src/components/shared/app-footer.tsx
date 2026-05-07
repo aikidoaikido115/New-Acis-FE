@@ -1,11 +1,10 @@
-// src/components/shared/app-footer.tsx
 import Link from "next/link";
 
 export function AppFooter() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="w-full bg-slate-50 border-t border-slate-200 py-6 mt-auto">
+    <footer className="site-footer w-full bg-slate-50 border-t border-slate-200 py-6 mt-auto">
       <div className="container mx-auto px-6">
         <div className="flex flex-col md:flex-row items-center gap-2 text-sm text-slate-500">
 

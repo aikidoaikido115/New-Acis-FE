@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -13,7 +14,9 @@ interface ProtectedRouteProps {
 
 const DEFAULT_ROLE_ROUTES: Record<string, string> = {
   nurse: '/dashboard',
+  superuser: '/dashboard',
   kitchen: '/manage-meal',
+  admin: '/admin/users',
   relative: '/relative/dashboard',
 };
 
@@ -45,8 +48,7 @@ export function ProtectedRoute({ children, redirectTo = '/login', allowedRoles =
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto"></div>
-          <p className="mt-4 text-white text-bold">กำลังโหลดข้อมูล...</p>
+          <LoadingSpinner />
         </div>
       </div>
     );

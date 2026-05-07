@@ -1,5 +1,6 @@
 "use client";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -41,7 +42,9 @@ export function DatePicker({ value, onChange, placeholder = "เลือกว�
   const [isOpen, setIsOpen] = useState(false);
   const [viewDate, setViewDate] = useState(value || new Date());
   const [viewMode, setViewMode] = useState<ViewMode>("days");
+  const [popupStyle, setPopupStyle] = useState<CSSProperties>({});
   const containerRef = useRef<HTMLDivElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (value) {
@@ -49,10 +52,47 @@ export function DatePicker({ value, onChange, placeholder = "เลือกว�
     }
   }, [value]);
 
+  const updatePopupPosition = useCallback(() => {
+    if (!containerRef.current) {
+      return;
+    }
+
+    const rect = containerRef.current.getBoundingClientRect();
+    const viewportPadding = 12;
+    const popupWidth = 288;
+    const popupHeight = 356;
+
+    let left = rect.right - popupWidth;
+    if (left < viewportPadding) {
+      left = viewportPadding;
+    }
+    if (left + popupWidth > window.innerWidth - viewportPadding) {
+      left = Math.max(viewportPadding, window.innerWidth - popupWidth - viewportPadding);
+    }
+
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const shouldOpenUp = spaceBelow < popupHeight && rect.top > spaceBelow;
+    const top = shouldOpenUp
+      ? Math.max(viewportPadding, rect.top - popupHeight - 8)
+      : Math.min(window.innerHeight - popupHeight - viewportPadding, rect.bottom + 8);
+
+    setPopupStyle({
+      position: "fixed",
+      top,
+      left,
+      width: popupWidth,
+      zIndex: 9999,
+    });
+  }, []);
+
   // Close on click outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      const targetNode = e.target as Node;
+      const clickedInsideContainer = !!containerRef.current?.contains(targetNode);
+      const clickedInsidePopup = !!popupRef.current?.contains(targetNode);
+
+      if (!clickedInsideContainer && !clickedInsidePopup) {
         setIsOpen(false);
         setViewMode("days");
       }
@@ -60,6 +100,23 @@ export function DatePicker({ value, onChange, placeholder = "เลือกว�
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    updatePopupPosition();
+    const handleReposition = () => updatePopupPosition();
+
+    window.addEventListener("resize", handleReposition);
+    window.addEventListener("scroll", handleReposition, true);
+
+    return () => {
+      window.removeEventListener("resize", handleReposition);
+      window.removeEventListener("scroll", handleReposition, true);
+    };
+  }, [isOpen, updatePopupPosition]);
 
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();
@@ -153,15 +210,23 @@ export function DatePicker({ value, onChange, placeholder = "เลือกว�
     <div className={cn("relative", className)} ref={containerRef}>
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          setIsOpen((prev) => {
+            const next = !prev;
+            if (next) {
+              requestAnimationFrame(() => updatePopupPosition());
+            }
+            return next;
+          });
+        }}
         className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 hover:bg-slate-50"
       >
         <Calendar className="h-4 w-4" />
-        {value ? formatThaiDate(value) : placeholder}
+        <span className={value ? "text-black" : "text-slate-400"}>{value ? formatThaiDate(value) : placeholder}</span>
       </button>
-
-      {isOpen && (
-        <div className="absolute right-0 top-full z-20 mt-2 w-72 rounded-xl border border-slate-200 bg-white p-4 shadow-lg">
+      
+      {isOpen && typeof document !== "undefined" && createPortal(
+        <div  ref={popupRef} style={popupStyle} className="absolute left-0 right-auto sm:right-0 sm:left-auto top-full z-20 mt-2 w-72 rounded-xl border border-slate-200 bg-white p-4 shadow-lg">
           {/* Days View */}
           {viewMode === "days" && (
             <>
@@ -316,7 +381,8 @@ export function DatePicker({ value, onChange, placeholder = "เลือกว�
               </div>
             </>
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -1,37 +1,39 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, AlertCircle, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { authService } from "@/services/auth.service";
+import { getAuthErrorMessage } from "@/lib/error-messages";
 
 export function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string>("");
+  const [error, setError] = useState<{ title?: string; message: string } | null>(null);
 
   const [formData, setFormData] = useState({
     usernameOrEmail: "",
-    password: "",
-  });
+    password: "" });
+  const registeredQuery = searchParams.get("registered");
+  const isRegisteredFlow = registeredQuery === "pending_approval" || registeredQuery === "true";
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
-    });
-    if (error) setError("");
+      [e.target.name]: e.target.value });
+    if (error) setError(null);
   };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setError(null);
     setIsLoading(true);
 
     try {
@@ -42,7 +44,7 @@ export function LoginForm() {
           ? { email: formData.usernameOrEmail }
           : { username: formData.usernameOrEmail }),
         password: formData.password,
-      };
+        remember: rememberMe };
 
       const userData = await authService.login(credentials);
       
@@ -56,6 +58,12 @@ export function LoginForm() {
         case "kitchen":
           router.push("/manage-meal");
           break;
+        case "admin":
+          router.push("/admin/users");
+          break;
+        case "superuser":
+          router.push("/dashboard");
+          break;
         case "relative":
           router.push("/relative/dashboard");
           break;
@@ -64,8 +72,8 @@ export function LoginForm() {
           break;
       }
     } catch (err) {
-      const error = err as { message?: string };
-      setError(error.message || "เข้าสู่ระบบไม่สำเร็จ กรุณาลองอีกครั้ง");
+      const friendlyError = getAuthErrorMessage(err);
+      setError(friendlyError);
     } finally {
       setIsLoading(false);
     }
@@ -73,17 +81,39 @@ export function LoginForm() {
 
   return (
     <div className="bg-white rounded-2xl shadow-lg p-10 w-full max-w-[440px] mx-auto">
-      <h2 className="text-2xl font-bold mb-8 text-gray-800">เข้าสู่ระบบ</h2>
+      <h2 className="text-headline-5 font-bold mb-8 text-gray-800">เข้าสู่ระบบ</h2>
 
       <form onSubmit={onSubmit} className="space-y-5">
+        {isRegisteredFlow && !error && (
+          <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg">
+            <div className="flex items-start gap-2">
+              <Info className="w-5 h-5 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="font-semibold text-body-small mb-1">สมัครใช้งานสำเร็จแล้ว</p>
+                <p className="text-body-small">
+                  บัญชีของคุณกำลังรอการอนุมัติจากผู้ดูแลระบบ กรุณารอการยืนยันก่อนเข้าสู่ระบบ
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-            {error}
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                {error.title && (
+                  <p className="font-semibold text-body-small mb-1">{error.title}</p>
+                )}
+                <p className="text-body-small">{error.message}</p>
+              </div>
+            </div>
           </div>
         )}
 
         <div className="space-y-2.5">
-          <label className="text-sm font-normal text-gray-700">
+          <label className="text-body-small font-normal text-gray-700">
             ชื่อผู้ใช้หรืออีเมล<span className="text-red-500">*</span>
           </label>
           <Input
@@ -92,14 +122,14 @@ export function LoginForm() {
             onChange={handleChange}
             placeholder="ชื่อผู้ใช้หรืออีเมล"
             type="text"
-            className="h-11 border-gray-300 bg-[rgba(245,245,245,1)] text-xs text-[rgba(103,103,103,1)] placeholder:text-[rgba(103,103,103,1)]"
+            className="h-11 border-gray-300 bg-[rgba(245,245,245,1)] text-overline text-[rgba(103,103,103,1)] placeholder:text-[rgba(103,103,103,1)]"
             required
             disabled={isLoading}
           />
         </div>
 
         <div className="space-y-2.5">
-          <label className="text-sm font-normal text-gray-700">
+          <label className="text-body-small font-normal text-gray-700">
             รหัสผ่าน<span className="text-red-500">*</span>
           </label>
           <div className="relative">
@@ -109,7 +139,7 @@ export function LoginForm() {
               onChange={handleChange}
               placeholder="รหัสผ่าน"
               type={showPassword ? "text" : "password"}
-              className="h-11 border-gray-300 pr-10 bg-[rgba(245,245,245,1)] text-xs text-[rgba(103,103,103,1)] placeholder:text-[rgba(103,103,103,1)]"
+              className="h-11 border-gray-300 pr-10 bg-[rgba(245,245,245,1)] text-overline text-[rgba(103,103,103,1)] placeholder:text-[rgba(103,103,103,1)]"
               required
               disabled={isLoading}
             />
@@ -134,7 +164,7 @@ export function LoginForm() {
           />
           <label
             htmlFor="remember"
-            className="text-xs text-[rgba(103,103,103,1)] cursor-pointer select-none"
+            className="text-overline text-[rgba(103,103,103,1)] cursor-pointer select-none"
           >
             จดจำฉันไว้
           </label>
@@ -143,7 +173,7 @@ export function LoginForm() {
         <div className="flex justify-center">
           <Button
             type="submit"
-            className="w-full bg-[#4A8B6A] hover:bg-[#3d7357] text-white h-12 text-base font-medium transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-[#4A8B6A] hover:bg-[#3d7357] text-white h-12 text-body-large font-medium transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={isLoading}
           >
             {isLoading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
@@ -154,12 +184,12 @@ export function LoginForm() {
           <div className="w-full text-right">
             <Link
               href="/forgot-password"
-              className="text-sm text-[#4A90E2] hover:text-[#3a7bc8] hover:underline transition-colors"
+              className="text-body-small text-[#4A90E2] hover:text-[#3a7bc8] hover:underline transition-colors"
             >
               ลืมรหัสผ่าน?
             </Link>
           </div>
-          <div className="text-sm text-gray-600">
+          <div className="text-body-small text-gray-600">
             ยังไม่มีบัญชี?{" "}
             <Link
               href="/register"

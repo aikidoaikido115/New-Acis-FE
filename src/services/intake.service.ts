@@ -1,5 +1,9 @@
 import apiClient, { ApiResponse } from '@/lib/axios.ts/api-client';
-import type { IntakeLabel, CreateIntakeLabelRequest } from '@/types/intake';
+import type {
+  IntakeLabel,
+  ResidentLabel,
+  CreateResidentIntakeLabelsRequest,
+} from '@/types/intake';
 
 class IntakeService {
   /**
@@ -15,8 +19,8 @@ class IntakeService {
    * Get intake labels by resident ID
    * GET /api/emr/intake-labels?resident_id={id}
    */
-  async getLabelsByResident(residentId: string): Promise<IntakeLabel[]> {
-    const response = await apiClient.get<ApiResponse<IntakeLabel[]>>(
+  async getLabelsByResident(residentId: string): Promise<ResidentLabel[]> {
+    const response = await apiClient.get<ApiResponse<ResidentLabel[]>>(
       `/api/emr/intake-labels?resident_id=${residentId}`
     );
     return response.data.result;
@@ -26,9 +30,23 @@ class IntakeService {
    * Create intake labels for resident
    * POST /api/emr/intake-labels
    */
-  async createLabel(data: CreateIntakeLabelRequest): Promise<IntakeLabel> {
-    const response = await apiClient.post<ApiResponse<IntakeLabel>>('/api/emr/intake-labels', data);
+  async createResidentLabels(data: CreateResidentIntakeLabelsRequest): Promise<ResidentLabel[]> {
+    const response = await apiClient.post<ApiResponse<ResidentLabel[]>>('/api/emr/intake-labels', data);
     return response.data.result;
+  }
+
+  /**
+   * Create intake label master
+   * POST /api/emr/intake-labels/master
+   */
+  async createMaster(labelName: string): Promise<IntakeLabel> {
+    const response = await apiClient.post<ApiResponse<IntakeLabel>>('/api/emr/intake-labels/master', { label_name: labelName });
+    return response.data.result;
+  }
+
+  // Backward-compatible alias
+  async createLabel(data: CreateResidentIntakeLabelsRequest): Promise<ResidentLabel[]> {
+    return this.createResidentLabels(data);
   }
 }
 

@@ -4,13 +4,16 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
 	BookOpen,
+  CheckCircle2,
 	Calendar,
 	ClipboardList,
+  FileText,
 	HelpCircle,
 	LayoutGrid,
 	PanelLeftClose,
 	PanelLeftOpen,
 	Pill,
+  Shield,
 	ShoppingBag,
 	Users,
 	UtensilsCrossed,
@@ -19,7 +22,7 @@ import {
 import { cn } from "@/lib/utils";
 
 // Types
-type UserRole = "nurse" | "kitchen";
+type UserRole = "nurse" | "kitchen" | "superuser" | "admin";
 
 interface SidebarItem {
 	label: string;
@@ -49,11 +52,12 @@ const MENU_ITEMS: Record<UserRole, { main: SidebarItem[]; support: SidebarItem[]
       { label: "เวชระเบียน", href: "/emr", icon: ClipboardList },
       { label: "จัดการยา", href: "/medicine", icon: Pill },
       { label: "ตารางกิจกรรม", href: "/activity", icon: Calendar },
-      { label: "สินค้าคงคลัง", href: "/warehouse", icon: ShoppingBag },
+      { label: "ยาและเวชภัณฑ์", href: "/warehouse", icon: ShoppingBag },
     ],
     support: [
       { label: "คู่มือการใช้งาน", href: "/user-manual", icon: BookOpen },
       { label: "แจ้งปัญหาการใช้งาน", href: "/support-service", icon: HelpCircle },
+      { label: "จัดการ Ticket", href: "/support-tickets", icon: FileText },
     ],
   },
   kitchen: {
@@ -61,7 +65,32 @@ const MENU_ITEMS: Record<UserRole, { main: SidebarItem[]; support: SidebarItem[]
     support: [
       { label: "คู่มือการใช้งาน", href: "/user-manual-kitchen", icon: BookOpen },
       { label: "แจ้งปัญหาการใช้งาน", href: "/support-service-kitchen", icon: HelpCircle },
+      { label: "จัดการ Ticket", href: "/support-tickets", icon: FileText },
     ],
+  },
+  superuser: {
+    main: [
+      { label: "แดชบอร์ด", href: "/dashboard", icon: LayoutGrid },
+      { label: "แฟ้มข้อมูลผู้สูงอายุ", href: "/elder-info", icon: Users },
+      { label: "เวชระเบียน", href: "/emr", icon: ClipboardList },
+      { label: "จัดการยา", href: "/medicine", icon: Pill },
+      { label: "ตารางกิจกรรม", href: "/activity", icon: Calendar },
+      { label: "ยาและเวชภัณฑ์", href: "/warehouse", icon: ShoppingBag },
+    ],
+    support: [
+      { label: "คู่มือการใช้งาน", href: "/user-manual", icon: BookOpen },
+      { label: "แจ้งปัญหาการใช้งาน", href: "/support-service", icon: HelpCircle },
+      { label: "จัดการ Ticket", href: "/support-tickets", icon: FileText },
+    ],
+  },
+  admin: {
+    main: [
+      { label: "จัดการผู้ใช้งาน", href: "/admin/users", icon: Shield },
+      { label: "จัดการบัญชีญาติ", href: "/admin/relative-users", icon: Users },
+      { label: "อนุมัติการสมัคร", href: "/admin/register-approvals", icon: CheckCircle2 },
+      { label: "Audit Log", href: "/admin/audit-logs", icon: FileText },
+    ],
+    support: [],
   },
 };
 
@@ -120,13 +149,16 @@ function SidebarNav({
 	pathname: string;
 	isCollapsed: boolean;
 }) {
+  const isPathActive = (currentPath: string, targetPath: string) =>
+    currentPath === targetPath || currentPath.startsWith(`${targetPath}/`);
+
 	return (
 		<nav className="space-y-1">
 			{items.map((item) => (
 				<SidebarNavItem
 					key={item.href}
 					item={item}
-					isActive={pathname === item.href}
+          isActive={isPathActive(pathname, item.href)}
 					isCollapsed={isCollapsed}
 				/>
 			))}
@@ -151,6 +183,7 @@ export function AppSidebar({
   }, [pathname]);
 
   const { main: mainItems, support: supportItems } = MENU_ITEMS[role];
+  const hasSupportItems = supportItems.length > 0;
   const sidebarWidth = isCollapsed ? "w-16" : "w-72";
 
   return (
@@ -177,9 +210,12 @@ export function AppSidebar({
 
         <SidebarNav items={mainItems} pathname={currentPath} isCollapsed={isCollapsed} />
 
-        <div className={cn("my-6 h-px bg-white/30", isCollapsed && "mx-2")} />
-
-        <SidebarNav items={supportItems} pathname={currentPath} isCollapsed={isCollapsed} />
+        {hasSupportItems && (
+          <>
+            <div className={cn("my-6 h-px bg-white/30", isCollapsed && "mx-2")} />
+            <SidebarNav items={supportItems} pathname={currentPath} isCollapsed={isCollapsed} />
+          </>
+        )}
       </aside>
     </>
   );

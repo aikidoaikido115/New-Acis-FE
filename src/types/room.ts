@@ -14,5 +14,6 @@ export interface Room {
 export interface CreateRoomRequest {
   room_number: string;
   floor: number;
-  capacity: number;
+  staff_id?: string;
+  capacity?: number;
 }

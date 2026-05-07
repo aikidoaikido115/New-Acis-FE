@@ -8,6 +8,9 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      spacing: {
+        180: "720px",
+      },
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",

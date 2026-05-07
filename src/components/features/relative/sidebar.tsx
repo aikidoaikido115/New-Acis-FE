@@ -1,37 +1,80 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, LogOut, User } from 'lucide-react';
 import { authService } from '@/services/auth.service';
+import { relativePortalService } from '@/services/relative-portal.service';
 
 interface RelativeSidebarProps {
   isOpen?: boolean;
   onClose?: () => void;
 }
 
+function mapResidentStatusToThai(status?: string): string {
+  const normalized = (status || '').trim().toLowerCase();
+  if (normalized === 'active' || normalized === 'in_house') return 'พักอยู่ในศูนย์';
+  if (normalized === 'inactive' || normalized === 'discharged' || normalized === 'checked_out') return 'ออกจากศูนย์แล้ว';
+  return status || '-';
+}
+
 export function RelativeSidebar({ isOpen = true, onClose }: RelativeSidebarProps) {
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+  const [elderInfo, setElderInfo] = useState({
+    name: '-',
+    gender: '-',
+    age: 0,
+    status: '-',
+  });
+
+  useEffect(() => {
+    const loadSidebarInfo = async () => {
+      setIsLoading(true);
+      try {
+        const data = await relativePortalService.getPatientInfo();
+        const normalizedGender = data.gender?.toLowerCase?.() || '';
+        const genderText = normalizedGender === 'male' ? 'ชาย' : normalizedGender === 'female' ? 'หญิง' : data.gender || '-';
+
+        setElderInfo({
+          name: `${data.first_name || ''} ${data.last_name || ''}`.trim() || '-',
+          gender: genderText,
+          age: Math.max(data.age || 0, 0),
+          status: mapResidentStatusToThai(data.status),
+        });
+      } catch {
+        setElderInfo({
+          name: '-',
+          gender: '-',
+          age: 0,
+          status: '-',
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void loadSidebarInfo();
+  }, []);
 
   const handleLogout = async () => {
+    const residentId = localStorage.getItem('relative_portal_resident_id') || '';
+    const token = localStorage.getItem('relative_portal_token') || '';
+
+    const query = new URLSearchParams();
+    if (residentId) query.set('resident_id', residentId);
+    if (token) query.set('token', token);
+    const backToMagicLogin = query.toString() ? `/relative/login?${query.toString()}` : '/relative/login';
+
     try {
       await authService.logout();
-      router.push('/relative/login');
-    } catch (error) {
-      console.error('Logout error:', error);
+      router.push(backToMagicLogin);
+    } catch {
       // Force navigate even if API fails
-      router.push('/relative/login');
+      router.push(backToMagicLogin);
     }
-  };
-
-  // TODO: ดึงข้อมูลจริงจาก API
-  const elderInfo = {
-    name: 'สมชาย ศรีบุญเมือง',
-    gender: 'ชาย',
-    age: 65,
-    status: 'พักอยู่ในศูนย์',
   };
 
   return (
@@ -89,17 +132,25 @@ export function RelativeSidebar({ isOpen = true, onClose }: RelativeSidebarProps
         <div className="flex-1 px-6 py-8 flex flex-col items-center">
           {/* Profile Avatar - Mock */}
           <div className="relative w-40 h-40 rounded-full bg-linear-to-br from-blue-300 to-blue-500 mb-6 overflow-hidden ring-4 ring-white/30 flex items-center justify-center">
-            <User size={80} className="text-white" />
+            {isLoading ? (
+              <div className="h-28 w-28 rounded-full bg-white/30 animate-pulse" />
+            ) : (
+              <User size={80} className="text-white" />
+            )}
           </div>
 
           {/* Name */}
           <h2 className="text-2xl font-bold text-white mb-2 text-center">
-            {elderInfo.name}
+            {isLoading ? <span className="inline-block h-8 w-44 rounded bg-white/30 animate-pulse" /> : elderInfo.name}
           </h2>
 
           {/* Gender & Age */}
           <p className="text-white/90 text-sm mb-8">
-            เพศ {elderInfo.gender} | อายุ {elderInfo.age} ปี
+            {isLoading ? (
+              <span className="inline-block h-5 w-36 rounded bg-white/30 animate-pulse" />
+            ) : (
+              <>เพศ {elderInfo.gender} | อายุ {elderInfo.age} ปี</>
+            )}
           </p>
 
           {/* Link to Profile */}
@@ -107,12 +158,12 @@ export function RelativeSidebar({ isOpen = true, onClose }: RelativeSidebarProps
             href="/relative/patient-info"
             className="text-white underline text-sm mb-6 hover:text-white/80 transition-colors"
           >
-            ประวัติผู้สูงอายุ
+            {isLoading ? <span className="inline-block h-4 w-28 rounded bg-white/30 animate-pulse" /> : 'ประวัติผู้สูงอายุ'}
           </Link>
 
           {/* Status Button */}
           <button className="bg-[#D4FDE7] text-green-700 font-light px-2 py-1 rounded-full transition-colors shadow-lg text-xs">
-            {elderInfo.status}
+            {isLoading ? <span className="inline-block h-4 w-24 rounded bg-green-200 animate-pulse" /> : elderInfo.status}
           </button>
         </div>
 

@@ -99,14 +99,14 @@ export function StepOTP({ email, onNext, onBack }: StepOTPProps) {
 
   return (
     <div className="bg-white rounded-2xl shadow-lg p-10 w-full max-w-[440px] mx-auto">
-      <h2 className="text-2xl font-bold mb-2 text-gray-800">ยืนยันรหัส OTP</h2>
-      <p className="text-sm text-gray-600 mb-6">
+      <h2 className="text-headline-5 font-bold mb-2 text-gray-800">ยืนยันรหัส OTP</h2>
+      <p className="text-body-small text-gray-600 mb-6">
         กรุณากรอกรหัส 6 หลัก ที่ส่งไปยังอีเมล <strong>{email}</strong>
       </p>
       
       <form onSubmit={handleSubmit} className="space-y-6">
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-body-small">
             {error}
           </div>
         )}
@@ -123,7 +123,7 @@ export function StepOTP({ email, onNext, onBack }: StepOTPProps) {
               onChange={(e) => handleChange(index, e.target.value)}
               onKeyDown={(e) => handleKeyDown(index, e)}
               onPaste={handlePaste}
-              className="w-12 h-14 text-center text-xl font-semibold border-2 text-black border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4A8B6A] focus:border-[#4A8B6A] transition-all"
+              className="w-12 h-14 text-center text-headline-6 font-semibold border-2 text-black border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4A8B6A] focus:border-[#4A8B6A] transition-all"
               disabled={isLoading}
             />
           ))}
@@ -133,14 +133,14 @@ export function StepOTP({ email, onNext, onBack }: StepOTPProps) {
           <Button 
             type="submit"
             disabled={isLoading || otp.some(d => !d)}
-            className="w-full bg-[#4A8B6A] hover:bg-[#3d7357] text-white h-12 text-base font-medium transition-colors shadow-sm disabled:opacity-50"
+            className="w-full bg-[#4A8B6A] hover:bg-[#3d7357] text-white h-12 text-body-large font-medium transition-colors shadow-sm disabled:opacity-50"
           >
             {isLoading ? "กำลังยืนยัน..." : "ยืนยัน"}
           </Button>
         </div>
 
         <div className="text-center space-y-2">
-          <p className="text-sm text-gray-600">
+          <p className="text-body-small text-gray-600">
             ไม่ได้รับรหัส?{" "}
             <button
               type="button"
@@ -155,7 +155,7 @@ export function StepOTP({ email, onNext, onBack }: StepOTPProps) {
             type="button"
             onClick={onBack}
             disabled={isLoading}
-            className="text-sm text-[#4A90E2] hover:text-[#3a7bc8] hover:underline transition-colors disabled:opacity-50"
+            className="text-body-small text-[#4A90E2] hover:text-[#3a7bc8] hover:underline transition-colors disabled:opacity-50"
           >
             กลับไปแก้ไขอีเมล
           </button>

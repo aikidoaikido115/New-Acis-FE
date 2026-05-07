@@ -1,0 +1,76 @@
+"use client";
+import React, { useEffect, useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { useNurseNotifications } from "@/components/shared/notifications/notifications";
+import {
+  getKitchenNotificationItems,
+  markAllKitchenNotificationsRead,
+} from "@/components/features/kitchen/notificetions";
+import { NOTIFICATION_ICON_MAP, type NotificationItemData } from "@/components/shared/notifications/notification-types";
+
+function isKitchenRole(role?: string): boolean {
+  if (!role) return false;
+  const lowerRole = role.toLowerCase();
+  return lowerRole.includes("kitchen") || lowerRole.includes("ครัว") || lowerRole.includes("โภชนา");
+}
+
+function NotificationCard({ notification }: { notification: NotificationItemData }) {
+  const Icon = NOTIFICATION_ICON_MAP[notification.icon];
+
+  return (
+    <div className="flex items-center gap-4 p-4 border border-gray-200 rounded-xl bg-white transition hover:bg-gray-100">
+      <div className="flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 text-blue-600">
+        {Icon && <Icon className="h-6 w-6" />}
+      </div>
+      <div className="flex-1">
+        <div className="font-medium text-gray-800">{notification.title}</div>
+        {notification.detail && (
+          <div className="text-sm text-gray-500">{notification.detail}</div>
+        )}
+        <div className="text-xs text-blue-500 mt-1">{notification.timeAgo}</div>
+      </div>
+    </div>
+  );
+}
+
+export default function NotificationPage() {
+  const { user, isAuthenticated } = useAuth();
+  const roleName = user?.role_name;
+  const kitchenRole = isKitchenRole(roleName);
+  const [kitchenNotifications, setKitchenNotifications] = useState<NotificationItemData[]>([]);
+  const { notifications: nurseNotifications, isLoading: isLoadingNurse } = useNurseNotifications(
+    !kitchenRole && isAuthenticated
+  );
+
+  useEffect(() => {
+    if (!kitchenRole) return;
+    const loadNotifications = () => {
+      setKitchenNotifications(getKitchenNotificationItems());
+    };
+    markAllKitchenNotificationsRead();
+    loadNotifications();
+    const intervalId = window.setInterval(loadNotifications, 60 * 1000);
+    return () => window.clearInterval(intervalId);
+  }, [kitchenRole]);
+
+  const notifications = kitchenRole ? kitchenNotifications : nurseNotifications;
+
+  return (
+    <div className="min-h-screen bg-[#F5F7FA] flex flex-col items-center pt-10 px-4">
+      <div className="w-full max-w-4xl bg-white rounded-2xl shadow-lg p-8">
+        <h1 className="text-2xl font-bold text-gray-800 mb-6">การแจ้งเตือน</h1>
+        <div className="space-y-5">
+          {notifications.length === 0 && !kitchenRole && isLoadingNurse ? (
+            <div className="text-center text-sm text-gray-500">กำลังโหลดการแจ้งเตือน...</div>
+          ) : notifications.length === 0 ? (
+            <div className="text-center text-sm text-gray-500">ไม่มีการแจ้งเตือน</div>
+          ) : (
+            notifications.map((notification) => (
+              <NotificationCard key={notification.id} notification={notification} />
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

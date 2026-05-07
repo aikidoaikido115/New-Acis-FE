@@ -1,0 +1,34 @@
+import { PRIVACY_CONTENT } from "@/constants/legal/privacy-policy";
+
+export default function PrivacyPolicyPage() {
+  return (
+    <div className="w-full max-w-5xl mx-auto px-6 py-12">
+      {/* Content Card */}
+      <div className="bg-white rounded-2xl shadow-md p-8 md:p-12">
+        {/* Header */}
+        <div className="border-b border-gray-200 pb-6 mb-8">
+          <h1 className="text-headline-4 font-bold text-gray-800 mb-2">
+            {PRIVACY_CONTENT.title}
+          </h1>
+          <p className="text-body-small text-gray-500">
+            แก้ไขล่าสุดเมื่อ: {PRIVACY_CONTENT.latest_update}
+          </p>
+        </div>
+
+        {/* Content Sections */}
+        <div className="space-y-8">
+          {PRIVACY_CONTENT.sections.map((section, index) => (
+            <div key={index} className="space-y-3">
+              <h2 className="text-headline-7 font-semibold text-gray-800">
+                {section.title}
+              </h2>
+              <div className="text-body-small text-gray-700 leading-relaxed whitespace-pre-line pl-4">
+                {section.content}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}

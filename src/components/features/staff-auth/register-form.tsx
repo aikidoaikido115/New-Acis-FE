@@ -1,61 +1,96 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import Image from "next/image";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Camera, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dropdown } from "@/components/ui/dropdown";
 import { Input } from "@/components/ui/input";
+
+type RegisterFormData = {
+  username: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  nickname: string;
+  password: string;
+  confirmPassword: string;
+  gender: string;
+  role_name: string;
+};
+
+const DEFAULT_FORM_DATA: RegisterFormData = {
+  username: "",
+  email: "",
+  first_name: "",
+  last_name: "",
+  nickname: "",
+  password: "",
+  confirmPassword: "",
+  gender: "",
+  role_name: "",
+};
+
+const ROLE_OPTIONS: Array<{ value: RegisterFormData["role_name"]; label: string }> = [
+  { value: "Medical Staff", label: "แพทย์ / พยาบาล" },
+  { value: "Kitchen Staff", label: "โภชนา / ห้องครัว" },
+];
+
+function getInitialFormData(): RegisterFormData {
+  if (typeof window === "undefined") {
+    return DEFAULT_FORM_DATA;
+  }
+
+  const savedData = sessionStorage.getItem("registrationData");
+  if (!savedData) {
+    return DEFAULT_FORM_DATA;
+  }
+
+  try {
+    const parsedData = JSON.parse(savedData) as Partial<RegisterFormData>;
+    const password = parsedData.password ?? "";
+
+    return {
+      username: parsedData.username ?? "",
+      email: parsedData.email ?? "",
+      first_name: parsedData.first_name ?? "",
+      last_name: parsedData.last_name ?? "",
+      nickname: parsedData.nickname ?? "",
+      password,
+      confirmPassword: password,
+      gender: parsedData.gender ?? "",
+      role_name: parsedData.role_name ?? "",
+    };
+  } catch {
+    sessionStorage.removeItem("registrationData");
+    return DEFAULT_FORM_DATA;
+  }
+}
+
+function getInitialProfileImage(): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  return sessionStorage.getItem("profileImageData");
+}
 
 export function RegisterForm() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [profileImage, setProfileImage] = useState<string | null>(getInitialProfileImage);
   const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
   const [error, setError] = useState<string>("");
 
-  const [formData, setFormData] = useState({
-    username: "",
-    email: "",
-    first_name: "",
-    last_name: "",
-    nickname: "",
-    password: "",
-    confirmPassword: "",
-    gender: "",
-    role_name: "",
-  });
+  const [formData, setFormData] = useState<RegisterFormData>(getInitialFormData);
 
-  useEffect(() => {
-    const savedData = sessionStorage.getItem('registrationData');
-    const savedImage = sessionStorage.getItem('profileImageData');
-    
-    if (savedData) {
-      const parsedData = JSON.parse(savedData);
-      setFormData({
-        username: parsedData.username || "",
-        email: parsedData.email || "",
-        first_name: parsedData.first_name || "",
-        last_name: parsedData.last_name || "",
-        nickname: parsedData.nickname || "",
-        password: parsedData.password || "",
-        confirmPassword: parsedData.password || "",
-        gender: parsedData.gender || "",
-        role_name: parsedData.role_name || "",
-      });
-    }
-    
-    if (savedImage) {
-      setProfileImage(savedImage);
-    }
-  }, []);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
-    });
+      [e.target.name]: e.target.value });
     if (error) setError("");
   };
 
@@ -100,6 +135,11 @@ export function RegisterForm() {
       return;
     }
 
+    if (!formData.role_name) {
+      setError("กรุณาเลือกตำแหน่ง");
+      return;
+    }
+
     const registrationData = {
       username: formData.username,
       email: formData.email,
@@ -108,8 +148,7 @@ export function RegisterForm() {
       last_name: formData.last_name,
       nickname: formData.nickname,
       role_name: formData.role_name,
-      gender: formData.gender,
-    };
+      gender: formData.gender };
 
     sessionStorage.setItem('registrationData', JSON.stringify(registrationData));
     
@@ -130,11 +169,11 @@ export function RegisterForm() {
 
   return (
     <div className="bg-white rounded-2xl shadow-lg p-20 w-full max-w-[1000px] mx-auto">
-      <h2 className="text-2xl font-bold mb-6 text-gray-800">สร้างบัญชีผู้ใช้ใหม่</h2>
+      <h2 className="text-headline-5 font-bold mb-6 text-gray-800">สร้างบัญชีผู้ใช้ใหม่</h2>
       
       <form onSubmit={onSubmit} className="space-y-4">
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm col-span-2">
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-body-small col-span-2">
             {error}
           </div>
         )}
@@ -143,7 +182,7 @@ export function RegisterForm() {
           {/* Left Column */}
           <div className="space-y-3.5">
             <div className="space-y-1.5">
-              <label className="text-sm font-normal text-gray-700">
+              <label className="text-body-small font-normal text-gray-700">
                 ชื่อผู้ใช้<span className="text-red-500">*</span>
               </label>
               <Input 
@@ -152,13 +191,13 @@ export function RegisterForm() {
                 onChange={handleChange}
                 placeholder="ชื่อผู้ใช้" 
                 type="text"
-                className="h-10 border-gray-300 bg-[rgba(245,245,245,1)] text-xs text-[rgba(103,103,103,1)] placeholder:text-[rgba(103,103,103,1)]"
+                className="h-10 border-gray-300 bg-[rgba(245,245,245,1)] text-overline text-[rgba(103,103,103,1)] placeholder:text-[rgba(103,103,103,1)]"
                 required
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-normal text-gray-700">
+              <label className="text-body-small font-normal text-gray-700">
                 ชื่อจริง<span className="text-red-500">*</span>
               </label>
               <Input 
@@ -167,13 +206,13 @@ export function RegisterForm() {
                 onChange={handleChange}
                 placeholder="ชื่อจริง" 
                 type="text"
-                className="h-10 border-gray-300 bg-[rgba(245,245,245,1)] text-xs text-[rgba(103,103,103,1)] placeholder:text-[rgba(103,103,103,1)]"
+                className="h-10 border-gray-300 bg-[rgba(245,245,245,1)] text-overline text-[rgba(103,103,103,1)] placeholder:text-[rgba(103,103,103,1)]"
                 required
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-normal text-gray-700">
+              <label className="text-body-small font-normal text-gray-700">
                 ชื่อเล่น
               </label>
               <Input 
@@ -182,28 +221,31 @@ export function RegisterForm() {
                 onChange={handleChange}
                 placeholder="ชื่อเล่น" 
                 type="text"
-                className="h-10 border-gray-300 bg-[rgba(245,245,245,1)] text-xs text-[rgba(103,103,103,1)] placeholder:text-[rgba(103,103,103,1)]"
+                className="h-10 border-gray-300 bg-[rgba(245,245,245,1)] text-overline text-[rgba(103,103,103,1)] placeholder:text-[rgba(103,103,103,1)]"
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-normal text-gray-700 block mb-1.5">
+              <label className="text-body-small font-normal text-gray-700 block mb-1.5">
                 รูปโปรไฟล์
               </label>
               <label 
                 htmlFor="profile-upload"
-                className="inline-flex flex-col items-center justify-center w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-gray-400 transition-colors bg-[rgba(245,245,245,1)]"
+                className="relative inline-flex flex-col items-center justify-center w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-gray-400 transition-colors bg-[rgba(245,245,245,1)] overflow-hidden"
               >
                 {profileImage ? (
-                  <img 
+                  <Image
                     src={profileImage} 
                     alt="Profile preview" 
-                    className="w-full h-full object-cover rounded-lg"
+                    fill
+                    sizes="80px"
+                    className="object-cover"
+                    unoptimized
                   />
                 ) : (
                   <>
                     <Camera className="w-7 h-7 text-gray-400 mb-0.5" />
-                    <span className="text-[9px] text-gray-500">อัปโหลดรูปภาพ</span>
+                    <span className="text-xs text-gray-500">อัปโหลดรูปภาพ</span>
                   </>
                 )}
               </label>
@@ -217,7 +259,7 @@ export function RegisterForm() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-normal text-gray-700">
+              <label className="text-body-small font-normal text-gray-700">
                 รหัสผ่าน<span className="text-red-500">*</span>
               </label>
               <div className="relative">
@@ -227,7 +269,7 @@ export function RegisterForm() {
                   onChange={handleChange}
                   placeholder="รหัสผ่าน" 
                   type={showPassword ? "text" : "password"}
-                  className="h-10 border-gray-300 pr-10 bg-[rgba(245,245,245,1)] text-xs text-[rgba(103,103,103,1)] placeholder:text-[rgba(103,103,103,1)]"
+                  className="h-10 border-gray-300 pr-10 bg-[rgba(245,245,245,1)] text-overline text-[rgba(103,103,103,1)] placeholder:text-[rgba(103,103,103,1)]"
                   required
                 />
                 <button
@@ -239,33 +281,31 @@ export function RegisterForm() {
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
-              <p className="text-[10px] text-gray-500">
+              <p className="text-overline text-gray-500">
                 รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร
               </p>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-normal text-gray-700">
+              <label className="text-body-small font-normal text-gray-700">
                 ตำแหน่ง<span className="text-red-500">*</span>
               </label>
-              <select 
-                name="role_name"
+              <Dropdown
                 value={formData.role_name}
-                onChange={handleChange}
-                className="w-full h-10 border border-gray-300 rounded-md px-3 bg-[rgba(245,245,245,1)] text-xs text-[rgba(103,103,103,1)] focus:outline-none focus:ring-2 focus:ring-[#4A8B6A] focus:border-transparent"
-                required
-              >
-                <option value="">เลือกตำแหน่ง</option>
-                <option value="Medical Staff">แพทย์ / พยาบาล</option>
-                <option value="Kitchen Staff">โภชนา / ห้องครัว</option>
-              </select>
+                onChange={(value) => {
+                  setFormData((prev) => ({ ...prev, role_name: value }));
+                  if (error) setError("");
+                }}
+                options={ROLE_OPTIONS}
+                placeholder="เลือกตำแหน่ง"
+              />
             </div>
           </div>
 
           {/* Right Column */}
           <div className="space-y-3.5">
             <div className="space-y-1.5">
-              <label className="text-sm font-normal text-gray-700">
+              <label className="text-body-small font-normal text-gray-700">
                 อีเมล<span className="text-red-500">*</span>
               </label>
               <Input 
@@ -274,13 +314,13 @@ export function RegisterForm() {
                 onChange={handleChange}
                 placeholder="อีเมล" 
                 type="email"
-                className="h-10 border-gray-300 bg-[rgba(245,245,245,1)] text-xs text-[rgba(103,103,103,1)] placeholder:text-[rgba(103,103,103,1)]"
+                className="h-10 border-gray-300 bg-[rgba(245,245,245,1)] text-overline text-[rgba(103,103,103,1)] placeholder:text-[rgba(103,103,103,1)]"
                 required
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-normal text-gray-700">
+              <label className="text-body-small font-normal text-gray-700">
                 นามสกุล<span className="text-red-500">*</span>
               </label>
               <Input 
@@ -289,13 +329,13 @@ export function RegisterForm() {
                 onChange={handleChange}
                 placeholder="นามสกุล" 
                 type="text"
-                className="h-10 border-gray-300 bg-[rgba(245,245,245,1)] text-xs text-[rgba(103,103,103,1)] placeholder:text-[rgba(103,103,103,1)]"
+                className="h-10 border-gray-300 bg-[rgba(245,245,245,1)] text-overline text-[rgba(103,103,103,1)] placeholder:text-[rgba(103,103,103,1)]"
                 required
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-normal text-gray-700">
+              <label className="text-body-small font-normal text-gray-700">
                 เพศ<span className="text-red-500">*</span>
               </label>
               <div className="flex gap-6 pt-1">
@@ -310,7 +350,7 @@ export function RegisterForm() {
                     className="w-4 h-4 text-[#4A8B6A] focus:ring-[#4A8B6A] cursor-pointer"
                     required
                   />
-                  <label htmlFor="male" className="text-sm text-gray-700 cursor-pointer font-normal">
+                  <label htmlFor="male" className="text-body-small text-gray-700 cursor-pointer font-normal">
                     ชาย
                   </label>
                 </div>
@@ -324,7 +364,7 @@ export function RegisterForm() {
                     onChange={handleChange}
                     className="w-4 h-4 text-[#4A8B6A] focus:ring-[#4A8B6A] cursor-pointer"
                   />
-                  <label htmlFor="female" className="text-sm text-gray-700 cursor-pointer font-normal">
+                  <label htmlFor="female" className="text-body-small text-gray-700 cursor-pointer font-normal">
                     หญิง
                   </label>
                 </div>
@@ -338,7 +378,7 @@ export function RegisterForm() {
                     onChange={handleChange}
                     className="w-4 h-4 text-[#4A8B6A] focus:ring-[#4A8B6A] cursor-pointer"
                   />
-                  <label htmlFor="other" className="text-sm text-gray-700 cursor-pointer font-normal">
+                  <label htmlFor="other" className="text-body-small text-gray-700 cursor-pointer font-normal">
                     อื่นๆ
                   </label>
                 </div>
@@ -351,7 +391,7 @@ export function RegisterForm() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-normal text-gray-700">
+              <label className="text-body-small font-normal text-gray-700">
                 ยืนยันรหัสผ่าน<span className="text-red-500">*</span>
               </label>
               <div className="relative">
@@ -361,7 +401,7 @@ export function RegisterForm() {
                   onChange={handleChange}
                   placeholder="รหัสผ่าน" 
                   type={showConfirmPassword ? "text" : "password"}
-                  className="h-10 border-gray-300 pr-10 bg-[rgba(245,245,245,1)] text-xs text-[rgba(103,103,103,1)] placeholder:text-[rgba(103,103,103,1)]"
+                  className="h-10 border-gray-300 pr-10 bg-[rgba(245,245,245,1)] text-overline text-[rgba(103,103,103,1)] placeholder:text-[rgba(103,103,103,1)]"
                   required
                 />
                 <button
@@ -380,14 +420,14 @@ export function RegisterForm() {
         <div className="pt-4 flex justify-center">
           <Button 
             type="submit"
-            className="bg-[#4A8B6A] hover:bg-[#3d7357] text-white text-base font-medium transition-colors shadow-sm"
+            className="bg-[#4A8B6A] hover:bg-[#3d7357] text-white text-body-large font-medium transition-colors shadow-sm"
           >
             ถัดไป
           </Button>
         </div>
 
         <div className="text-center pt-1">
-          <div className="text-sm text-gray-600">
+          <div className="text-body-small text-gray-600">
             มีบัญชีอยู่แล้ว?{" "}
             <Link 
               href="/login" 
