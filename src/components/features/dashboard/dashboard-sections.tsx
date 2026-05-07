@@ -143,6 +143,12 @@ export function DashboardScheduleRow({
   schedulesByMonth,
   inventoryCards,
 }: DashboardScheduleRowProps) {
+
+  const year = activityDate.getFullYear();
+  const month = String(activityDate.getMonth() + 1).padStart(2, "0");
+  const day = String(activityDate.getDate()).padStart(2, "0");
+  const dateStr = `${year}-${month}-${day}`;
+
   return (
     <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
       <DashboardCard
@@ -158,9 +164,8 @@ export function DashboardScheduleRow({
           <div className="space-y-4 max-h-[35vh] overflow-y-auto pr-2 custom-scrollbar">
             {scheduleItems.length > 0 ? (
               scheduleItems.map((item) => (
-                // 2. ครอบ ScheduleItem ด้วย Link และย้าย key มาไว้ที่นี่
                 <Link 
-                  href="/activity" 
+                  href={`/activity?date=${dateStr}`}
                   key={item.time} 
                   className="block transition-all hover:shadow-md rounded-xl"
                 >
