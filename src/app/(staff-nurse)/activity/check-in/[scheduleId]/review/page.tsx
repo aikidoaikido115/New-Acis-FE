@@ -6,6 +6,7 @@ import { Camera, Trash2, X } from "lucide-react";
 import { BackButton } from "@/components/features/relative/back-button";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
+import axios from "axios";
 import {
   clearCheckInSession,
   loadCheckInSession,
@@ -199,22 +200,31 @@ export default function ActivityCheckInReviewPage() {
     const upsertParticipation = async (residentId: string, isParticipating: boolean, photoData?: string) => {
       const file = photoData ? await buildPhotoFile(photoData, `activity-${residentId}`) : null;
       const files = file ? [file] : undefined;
+      
+      const createPayload: any = {
+        resident_id: residentId,
+        as_id: scheduleId,
+        is_participating: isParticipating,
+      };
+
+      if (!photoData) {
+        createPayload.clear_image = true;
+      }
+
       try {
-        await activityParticipationService.create(
-          {
-            resident_id: residentId,
-            as_id: scheduleId,
-            is_participating: isParticipating,
-          },
-          files
-        );
+        await activityParticipationService.create(createPayload, files);
       } catch (error: any) {
         const status = getErrorStatus(error);
         if (status === 409) {
+          const updatePayload: any = {
+            is_participating: isParticipating,
+            clear_image: !photoData 
+          };
+          
           await activityParticipationService.update(
             residentId,
             scheduleId,
-            { is_participating: isParticipating },
+            updatePayload,
             files
           );
           return;
@@ -222,15 +232,22 @@ export default function ActivityCheckInReviewPage() {
         throw error;
       }
     };
-
+    
     const updateToNotParticipating = async (residentId: string) => {
       try {
-        await activityParticipationService.update(residentId, scheduleId, { is_participating: false });
+        // 🌟 ใส่ any เข้าไปเพื่อปิดเส้นแดง TypeScript
+        const payload: any = {
+          is_participating: false,
+          clear_image: true // 🌟 ใช้คำสั่ง clear_image ที่เราเพิ่งทำแทน img_urls
+        };
+
+        await activityParticipationService.update(residentId, scheduleId, payload);
       } catch (error: any) {
         const status = getErrorStatus(error);
         if (status !== 404) throw error;
       }
     };
+
     (async () => {
       try {
         await Promise.all(
@@ -242,30 +259,21 @@ export default function ActivityCheckInReviewPage() {
         clearCheckInSession(scheduleId);
         showToast({ type: "success", title: "บันทึกภาพถ่ายสำเร็จ" , message: ""});
         router.push("/activity");
-      } catch (err) {
-        showToast({ type: "error", title: "บันทึกไม่สำเร็จ", message: String(err) });
+      } catch (err: any) {
+        let errorMessage = "เกิดข้อผิดพลาด";
+        if (err?.response?.data) {
+          errorMessage = typeof err.response.data === 'object' 
+            ? JSON.stringify(err.response.data) 
+            : String(err.response.data);
+        } else if (err?.message) {
+          errorMessage = err.message;
+        }
+
+        showToast({ type: "error", title: "บันทึกไม่สำเร็จ", message: errorMessage });
         setIsSaving(false);
       }
     })();
   };
-
-  const [canEdit, setCanEdit] = useState(false);
-  useEffect(() => {
-    const urlParams = new URL(window.location.href).searchParams;
-    const startTimeStr = urlParams.get("start");
-    if (!startTimeStr) {
-      setCanEdit(true);
-      return;
-    }
-    const startDate = new Date(startTimeStr);
-    const now = new Date();
-    const windowStart = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
-    const windowEnd = new Date(windowStart);
-    windowEnd.setDate(windowEnd.getDate() + 1);
-    windowEnd.setHours(23, 59, 59, 999);
-
-    setCanEdit(now >= windowStart && now <= windowEnd);
-  }, []);
 
   return (
     <div className="flex flex-col bg-slate-50 px-4 py-6 sm:px-6 lg:px-10">
@@ -354,32 +362,32 @@ export default function ActivityCheckInReviewPage() {
               </div>
             )}
 
-            <div className="flex items-center justify-between gap-3">
-              <button
-                type="button"
-                onClick={handleDeletePhoto}
-                disabled={!selected.photo || isHistory}
-                className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold ${
-                  selected.photo && !isHistory
-                    ? "bg-red-500 text-white"
-                    : "bg-slate-200 text-slate-400"
-                }`}
-              >
-                <Trash2 className="h-4 w-4" />
-                ลบรูป
-              </button>
-              <button
-                type="button"
-                onClick={handleRetake}
-                disabled={canEdit}
-                className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold ${
-                  isHistory ? "bg-slate-200 text-slate-400" : "bg-[#0093EF] text-white"
-                }`}
-              >
-                <Camera className="h-4 w-4" />
-                ถ่ายใหม่
-              </button>
-            </div>
+            {/* ถ้าไม่ได้เข้ามาจากโหมดประวัติ ถึงจะเปิดให้ลบ/ถ่ายใหม่ได้ */}
+            {!isHistory && (
+              <div className="flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={handleDeletePhoto}
+                  disabled={!selected.photo}
+                  className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold ${
+                    selected.photo
+                      ? "bg-red-500 text-white hover:bg-red-600"
+                      : "bg-slate-200 text-slate-400 cursor-not-allowed"
+                  }`}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  ลบรูป
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRetake}
+                  className="inline-flex items-center gap-2 rounded-lg bg-[#0093EF] px-4 py-2 text-sm font-semibold text-white hover:bg-blue-600"
+                >
+                  <Camera className="h-4 w-4" />
+                  ถ่ายใหม่
+                </button>
+              </div>
+            )}
           </div>
         )}
       </Modal>

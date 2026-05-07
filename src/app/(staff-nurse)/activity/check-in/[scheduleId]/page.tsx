@@ -144,13 +144,30 @@ export default function ActivityCheckInPage() {
     return () => { mounted = false; };
   }, []);
 
-  // Load photos for this schedule
   useEffect(() => {
     const loadPhotos = async () => {
       try {
         const participations = await activityParticipationService.getAll();
         const scheduleParticipations = participations.filter(p => p.as_id === scheduleId);
-        const hasAnyPhotos = scheduleParticipations.some(p => (p.img_urls?.length ?? 0) > 0);
+        const hasAnyPhotos = scheduleParticipations.some(p => {
+          const rawImg = p.img_urls;
+          if (!rawImg) return false;
+          if (Array.isArray(rawImg)) return rawImg.length > 0;
+          
+          if (typeof rawImg === 'string') {
+            // 🌟 แก้ตรงนี้: จับมันแปลงเป็น String ชัวร์ๆ ให้ TypeScript เลิกบ่น
+            const imgStr = String(rawImg); 
+            
+            if (imgStr === "[]" || imgStr.trim() === "" || imgStr === "null") return false;
+            try {
+              const parsed = JSON.parse(imgStr);
+              return Array.isArray(parsed) && parsed.length > 0;
+            } catch {
+              return imgStr.length > 0; 
+            }
+          }
+          return false;
+        });
         setHasPhotos(hasAnyPhotos);
       } catch {
         setHasPhotos(false);
@@ -260,7 +277,7 @@ export default function ActivityCheckInPage() {
 
   const handleViewPhotos = () => {
     clearCheckInSession(scheduleId);
-    router.push(`/activity/check-in/${scheduleId}/review?mode=history`);
+    router.push(`/activity/check-in/${scheduleId}/review`);
   };
 
   const toggleResident = (residentId: string) => {
