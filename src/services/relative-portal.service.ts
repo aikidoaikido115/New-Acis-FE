@@ -1,4 +1,5 @@
 import apiClient, { ApiResponse } from '@/lib/axios.ts/api-client';
+import type { ActivityParticipation } from '@/types/activity-participation';
 
 export interface RelativeDashboardNote {
   id: string;
@@ -12,6 +13,7 @@ export interface RelativeDashboardData {
   date: string;
   last_updated_at?: string;
   notes: RelativeDashboardNote[];
+  participations?: ActivityParticipation[];
 }
 
 export interface RelativeEmergencyContact {

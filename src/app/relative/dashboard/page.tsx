@@ -59,6 +59,7 @@ export default function RelativeDashboard() {
             residentName={dashboardData?.resident_name}
             lastUpdatedAt={dashboardData?.last_updated_at}
             notes={dashboardData?.notes || []}
+            participations={dashboardData?.participations || []}
             isLoading={isLoading}
             isInitialLoading={isInitialLoading}
             error={error}
