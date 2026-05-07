@@ -427,8 +427,12 @@ export default function ActivityCheckInPage() {
     <div className=" bg-slate-50 px-4 py-6 sm:px-6 lg:px-10">
       <button
         type="button"
-        onClick={() => router.back()}
-        className="mb-4 inline-flex w-fit items-center gap-2 text-sm font-medium text-[#0093EF] hover:text-[#0082D4] transition-colors"
+        onClick={() => {
+          const d = searchParams.get("date");
+          const dateOnly = d ? d.split("T")[0] : null;
+          router.push(dateOnly ? `/activity?date=${dateOnly}` : "/activity");
+        }}
+        className="mb-4 inline-flex w-fit items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors"
       >
         <ChevronLeft className="h-4 w-4" />
         <span>ย้อนกลับ</span>

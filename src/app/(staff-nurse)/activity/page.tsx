@@ -298,7 +298,32 @@ export default function ActivityPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { showToast } = useToast();
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+
+  const urlDate = searchParams.get("date");
+
+  const [selectedDate, setSelectedDate] = useState<Date>(() => {
+    if (urlDate) {
+      const parsed = new Date(urlDate);
+      if (!Number.isNaN(parsed.getTime())) return parsed;
+    }
+    return new Date();
+  });
+
+  useEffect(() => {
+    const dateStr = toDateKey(selectedDate);
+    if (urlDate !== dateStr) {
+      router.replace(`/activity?date=${dateStr}`);
+    }
+  }, [selectedDate, router, urlDate]);
+
+  useEffect(() => {
+    if (urlDate) {
+      const parsed = new Date(urlDate);
+      if (!Number.isNaN(parsed.getTime()) && toDateKey(parsed) !== toDateKey(selectedDate)) {
+        setSelectedDate(parsed);
+      }
+    }
+  }, [urlDate]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [scheduleItems, setScheduleItems] = useState<ActivitySchedule[]>([]);
