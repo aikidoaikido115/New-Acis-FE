@@ -2,12 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { Camera, Search } from "lucide-react";
-import { BackButton } from "@/components/features/relative/back-button";
 import { useToast } from "@/components/ui/toast";
 import { activityParticipationService } from "@/services/activity-participation.service";
 import { roomService } from "@/services/room.service";
 import { intakeService } from "@/services/intake.service";
+import { Camera, Search, ChevronLeft } from "lucide-react";
 import type { ResidentByScheduleResponse } from "@/types/activity-participation";
 import {
   clearCheckInSession,
@@ -284,7 +283,7 @@ export default function ActivityCheckInPage() {
 
   const handleViewPhotos = () => {
     clearCheckInSession(scheduleId);
-    router.push(`/activity/check-in/${scheduleId}/review`);
+    router.push(`/activity/check-in/${scheduleId}/review?${searchParams.toString()}`);
   };
 
   const toggleResident = (residentId: string) => {
@@ -381,7 +380,8 @@ export default function ActivityCheckInPage() {
       const session = buildSession();
       saveCheckInRecord(session);
       showToast({ type: "success", title: "บันทึกรายชื่อสำเร็จ",message: ""  });
-      router.push("/activity");
+      const dateStr = searchParams.get("date");
+      router.push(dateStr ? `/activity?date=${dateStr}` : "/activity");
     } catch (error: any) {
       showToast({
         type: "error",
@@ -412,20 +412,27 @@ export default function ActivityCheckInPage() {
     const allHavePhotos = session.selectedIds.every(id => session.photos[id]);
     
     if (allHavePhotos) {
-       router.push(`/activity/check-in/${scheduleId}/review`);
+       router.push(`/activity/check-in/${scheduleId}/review?${searchParams.toString()}`);
     } else {
-       router.push(`/activity/check-in/${scheduleId}/camera`);
+       router.push(`/activity/check-in/${scheduleId}/camera?${searchParams.toString()}`);
     }
   };
 
   const handleViewHistory = () => {
     clearCheckInSession(scheduleId);
-    router.push(`/activity/check-in/${scheduleId}/review?mode=history`);
+    router.push(`/activity/check-in/${scheduleId}/review?${searchParams.toString()}`);
   };
 
   return (
     <div className=" bg-slate-50 px-4 py-6 sm:px-6 lg:px-10">
-      <BackButton text="ย้อนกลับ" href="/activity" />
+      <button
+        type="button"
+        onClick={() => router.back()}
+        className="mb-4 inline-flex w-fit items-center gap-2 text-sm font-medium text-[#0093EF] hover:text-[#0082D4] transition-colors"
+      >
+        <ChevronLeft className="h-4 w-4" />
+        <span>ย้อนกลับ</span>
+      </button>
 
       <div className="mb-6">
         <h1 className="text-lg font-semibold text-slate-800">

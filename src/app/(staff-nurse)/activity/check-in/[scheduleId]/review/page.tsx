@@ -2,11 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Camera, Trash2, X } from "lucide-react";
-import { BackButton } from "@/components/features/relative/back-button";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
-import axios from "axios";
+import { Camera, Trash2, X, ChevronLeft } from "lucide-react";
 import {
   clearCheckInSession,
   loadCheckInSession,
@@ -276,10 +274,14 @@ export default function ActivityCheckInReviewPage() {
 
   return (
     <div className="flex flex-col bg-slate-50 px-4 py-6 sm:px-6 lg:px-10">
-      <BackButton 
-        text="ย้อนกลับ" 
-        href={`/activity/check-in/${scheduleId}${isHistory ? '?mode=history' : ''}`} 
-      />
+      <button
+        type="button"
+        onClick={() => router.back()}
+        className="mb-6 inline-flex w-fit items-center gap-2 text-sm font-medium text-[#0093EF] hover:text-[#0082D4] transition-colors"
+      >
+        <ChevronLeft className="h-4 w-4" />
+        <span>ย้อนกลับ</span>
+      </button>
       <div className="mb-6">
         <h1 className="text-xl font-semibold text-slate-800">
           ตรวจสอบภาพถ่าย ({reviewItems.length}/{reviewItems.length})

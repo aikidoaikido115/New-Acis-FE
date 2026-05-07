@@ -41,6 +41,7 @@ export default function ActivityCheckInCameraPage() {
     }
 
     const rejectedSet = new Set(stored.rejectedIds || []);
+    
     const pendingIds = stored.selectedIds.filter(
       (id) => !stored.photos[id] && !rejectedSet.has(id)
     );
@@ -50,11 +51,16 @@ export default function ActivityCheckInCameraPage() {
       ? [retakeId, ...pendingIds.filter((id) => id !== retakeId)]
       : pendingIds;
 
+    if (orderedQueue.length === 0) {
+      router.push(`/activity/check-in/${scheduleId}/review?${searchParams.toString()}`);
+      return;
+    }
+
     setSession(stored);
     setPhotos(stored.photos || {});
     setRejectedIds(rejectedSet);
     setQueue(orderedQueue);
-  }, [scheduleId, searchParams]);
+  }, [scheduleId, searchParams, router]);
 
   useEffect(() => {
     if (!navigator?.mediaDevices?.getUserMedia) return;
@@ -98,12 +104,13 @@ export default function ActivityCheckInCameraPage() {
 
   useEffect(() => {
     if (session && queue.length === 0) {
-      router.push(`/activity/check-in/${scheduleId}/review`);
+      router.push(`/activity/check-in/${scheduleId}/review?${searchParams.toString()}`);
     }
-  }, [queue, session, router, scheduleId]);
+  }, [queue, session, router, scheduleId, searchParams]);
 
   const currentId = queue[0] || null;
   const total = session?.selectedIds.length || 0;
+  
   const completed = Object.keys(photos).length + rejectedIds.size;
   const currentIndex = Math.min(completed + 1, total || 1);
   const nextId = queue.length > 1 ? queue[1] : null;
@@ -159,10 +166,6 @@ export default function ActivityCheckInCameraPage() {
     reader.readAsDataURL(file);
   };
 
-  const handleUploadClick = () => {
-    fileInputRef.current?.click();
-  };
-
   const currentName = formatName(session, currentId);
   const nextName = formatName(session, nextId);
 
@@ -173,8 +176,8 @@ export default function ActivityCheckInCameraPage() {
         <div className="grid grid-cols-3 items-center">
           <button
             type="button"
-            onClick={() => router.push(`/activity/check-in/${scheduleId}`)}
-            className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700 justify-self-start"
+            onClick={() => router.back()}
+            className="inline-flex items-center gap-2 text-sm font-semibold text-[#0093EF] hover:text-[#0082D4] justify-self-start"
           >
             <ChevronLeft className="h-4 w-4" />
             ย้อนกลับ
