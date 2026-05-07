@@ -145,7 +145,7 @@ export default function ActivityCheckInPage() {
         const participations = await activityParticipationService.getAll();
         const scheduleParticipations = participations.filter(p => p.as_id === scheduleId);
         
-        const photoMap: Record<string, string> = {};
+        const photoMap: Record<string, string> = {}; 
         let hasAnyPhotos = false;
 
         scheduleParticipations.forEach(p => {
@@ -175,7 +175,7 @@ export default function ActivityCheckInPage() {
           }
         });
 
-        setExistingPhotos(photoMap);
+        setExistingPhotos(photoMap); 
         setHasPhotos(hasAnyPhotos);
       } catch {
         setHasPhotos(false);
@@ -557,6 +557,7 @@ export default function ActivityCheckInPage() {
                     checked={filteredResidents.length > 0 && selectedCount === filteredResidents.length}
                     onChange={toggleAll}
                     disabled={isReadOnly}
+                    className={!isReadOnly ? 'cursor-pointer' : ''}
                   />
                 </th>
                 <th className="px-4 py-3">ชื่อ-นามสกุล</th>
@@ -580,13 +581,18 @@ export default function ActivityCheckInPage() {
                 </tr>
               ) : (
                 filteredResidents.map((resident) => (
-                  <tr key={resident.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-3">
+                  <tr 
+                    key={resident.id} 
+                    className={`hover:bg-slate-100 transition-colors ${!isReadOnly ? 'cursor-pointer' : ''}`}
+                    onClick={() => toggleResident(resident.id)}
+                  >
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       <input
                         type="checkbox"
                         checked={selectedIds.has(resident.id)}
                         onChange={() => toggleResident(resident.id)}
                         disabled={isReadOnly}
+                        className={!isReadOnly ? 'cursor-pointer' : ''}
                       />
                     </td>
                     <td className="px-4 py-3 text-slate-800">{resident.name}</td>
