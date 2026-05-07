@@ -18,13 +18,23 @@ interface DailyActivitiesProps {
 }
 
 export function DailyActivities({ activities, participations, lastUpdatedAt }: DailyActivitiesProps) {
+  const formatTime = (value?: string): string => {
+    if (!value) return '-';
+
+    // Handles both "HH:mm:ss" and full datetime strings like "2026-05-07T09:30:00+07:00"
+    const match = value.match(/(\d{2}):(\d{2})(?::\d{2})?/);
+    if (match) return `${match[1]}:${match[2]}`;
+
+    return '-';
+  };
+
   // Use participations if provided, otherwise use activities
   let displayItems: any[] = [];
 
   if (participations && participations.length > 0) {
     displayItems = participations.map((p) => ({
       id: `${p.resident_id}-${p.as_id}`,
-      time: `${p.activity_schedule?.start_time?.substring(0, 5) || '-'}-${p.activity_schedule?.end_time?.substring(0, 5) || '-'}`,
+      time: `${formatTime(p.activity_schedule?.start_time)}-${formatTime(p.activity_schedule?.end_time)}`,
       title: p.activity_schedule?.activity?.activity_name || 'กิจกรรม',
       description: p.activity_schedule?.activity?.description,
       location: p.activity_schedule?.activity?.location,
