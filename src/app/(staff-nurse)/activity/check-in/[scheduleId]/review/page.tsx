@@ -61,6 +61,7 @@ export default function ActivityCheckInReviewPage() {
   const [session, setSession] = useState<CheckInSession | null>(null);
   const [selected, setSelected] = useState<ReviewItem | null>(null);
   const [isHistory, setIsHistory] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const stored = loadCheckInSession(scheduleId);
@@ -188,7 +189,9 @@ export default function ActivityCheckInReviewPage() {
   };
 
   const handleSaveAll = () => {
-    if (!session) return;
+    if (!session || isSaving) return;
+    setIsSaving(true);
+
     const selectedSet = new Set(session.selectedIds || []);
     const initialSelectedSet = new Set(session.initialSelectedIds || session.selectedIds || []);
     const deselectedIds = Array.from(initialSelectedSet).filter((id) => !selectedSet.has(id));
@@ -241,27 +244,28 @@ export default function ActivityCheckInReviewPage() {
         router.push("/activity");
       } catch (err) {
         showToast({ type: "error", title: "บันทึกไม่สำเร็จ", message: String(err) });
+        setIsSaving(false);
       }
     })();
   };
 
   const [canEdit, setCanEdit] = useState(false);
   useEffect(() => {
-  const urlParams = new URL(window.location.href).searchParams;
-  const startTimeStr = urlParams.get("start");
-  if (!startTimeStr) {
-    setCanEdit(true);
-    return;
-  }
-  const startDate = new Date(startTimeStr);
-  const now = new Date();
-  const windowStart = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
-  const windowEnd = new Date(windowStart);
-  windowEnd.setDate(windowEnd.getDate() + 1);
-  windowEnd.setHours(23, 59, 59, 999);
+    const urlParams = new URL(window.location.href).searchParams;
+    const startTimeStr = urlParams.get("start");
+    if (!startTimeStr) {
+      setCanEdit(true);
+      return;
+    }
+    const startDate = new Date(startTimeStr);
+    const now = new Date();
+    const windowStart = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+    const windowEnd = new Date(windowStart);
+    windowEnd.setDate(windowEnd.getDate() + 1);
+    windowEnd.setHours(23, 59, 59, 999);
 
-  setCanEdit(now >= windowStart && now <= windowEnd);
-}, []);
+    setCanEdit(now >= windowStart && now <= windowEnd);
+  }, []);
 
   return (
     <div className="flex flex-col bg-slate-50 px-4 py-6 sm:px-6 lg:px-10">
@@ -311,9 +315,14 @@ export default function ActivityCheckInReviewPage() {
           <button
             type="button"
             onClick={handleSaveAll}
-            className="w-full rounded-lg bg-emerald-600 px-6 py-4 text-base font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+            disabled={isSaving}
+            className={`w-full rounded-lg px-6 py-4 text-base font-semibold text-white shadow-sm transition ${
+              isSaving
+                ? "bg-slate-400 cursor-not-allowed opacity-80"
+                : "bg-emerald-600 hover:bg-emerald-700"
+            }`}
           >
-            บันทึกภาพทั้งหมด
+            {isSaving ? "กำลังบันทึกภาพ..." : "บันทึกภาพทั้งหมด"}
           </button>
         </div>
       )}
