@@ -344,7 +344,6 @@ export default function Page() {
 
         const matchesFloor = selectedFloor === "all" || resident.floor.toString() === selectedFloor;
         
-        // 🌟 แก้ไขจุดที่ 3: ค้นหาระดับการดูแลแบบยืดหยุ่น (ใช้ includes แทน ===)
         const matchesCareType = 
           selectedCareType === "all" || 
           (resident.care && resident.care.includes(selectedCareType)) || 
