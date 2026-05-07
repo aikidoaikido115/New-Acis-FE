@@ -273,7 +273,7 @@ export default function ActivityCheckInReviewPage() {
   };
 
   return (
-    <div className="flex flex-col bg-slate-50 px-4 py-6 sm:px-6 lg:px-10">
+    <div className="flex flex-col flex-1 min-h-screen bg-slate-50 px-4 pt-6 pb-0 sm:px-6 lg:px-10 relative">
       <button
         type="button"
         onClick={() => router.back()}
@@ -282,13 +282,14 @@ export default function ActivityCheckInReviewPage() {
         <ChevronLeft className="h-4 w-4" />
         <span>ย้อนกลับ</span>
       </button>
+
       <div className="mb-6">
         <h1 className="text-xl font-semibold text-slate-800">
           ตรวจสอบภาพถ่าย ({reviewItems.length}/{reviewItems.length})
         </h1>
       </div>
 
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 pb-8">
         {reviewItems.map((item) => (
           <button
             key={item.id}
@@ -320,7 +321,7 @@ export default function ActivityCheckInReviewPage() {
       </div>
 
       {!isHistory && (
-        <div className="mt-8 mb-4">
+        <div className="mt-auto sticky bottom-0 z-10 w-full bg-slate-50 py-12 border-t border-slate-200/60 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.05)]">
           <button
             type="button"
             onClick={handleSaveAll}
@@ -363,7 +364,6 @@ export default function ActivityCheckInReviewPage() {
               </div>
             )}
 
-            {/* ถ้าไม่ได้เข้ามาจากโหมดประวัติ ถึงจะเปิดให้ลบ/ถ่ายใหม่ได้ */}
             {!isHistory && (
               <div className="flex items-center justify-between gap-3">
                 <button
