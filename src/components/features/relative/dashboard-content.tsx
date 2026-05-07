@@ -1,10 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { DailySummaryHeader } from './daily-summary-header';
 import { DailyActivities } from './daily-activities';
 import { AdditionalNotes } from './additional-notes';
-import { activityParticipationService } from '@/services/activity-participation.service';
 import type { RelativeDashboardNote } from '@/services/relative-portal.service';
 import type { ActivityParticipation } from '@/types/activity-participation';
 
@@ -13,6 +12,7 @@ interface RelativeDashboardContentProps {
   residentName?: string;
   lastUpdatedAt?: string;
   notes?: RelativeDashboardNote[];
+  participations?: ActivityParticipation[];
   isLoading?: boolean;
   isInitialLoading?: boolean;
   error?: string | null;
@@ -21,10 +21,10 @@ interface RelativeDashboardContentProps {
 }
 
 export function RelativeDashboardContent({ 
-  residentId,
   residentName,
   lastUpdatedAt,
   notes = [],
+  participations = [],
   isLoading = false,
   isInitialLoading = false,
   error = null,
@@ -32,9 +32,6 @@ export function RelativeDashboardContent({
   showPreviewBanner = false 
 }: RelativeDashboardContentProps) {
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
-  const [participations, setParticipations] = useState<ActivityParticipation[]>([]);
-  const [participationsLoading, setParticipationsLoading] = useState(false);
-  const [refreshTrigger, setRefreshTrigger] = useState(0); // Trigger for manual refresh
 
   const formatDateKey = (date: Date): string => {
     const yyyy = date.getFullYear();
@@ -42,48 +39,6 @@ export function RelativeDashboardContent({
     const dd = String(date.getDate()).padStart(2, '0');
     return `${yyyy}-${mm}-${dd}`;
   };
-
-  // Fetch participations for the selected date
-  const fetchParticipations = async () => {
-    if (!residentId || !selectedDate) {
-      setParticipations([]);
-      return;
-    }
-
-    setParticipationsLoading(true);
-    try {
-      const allParticipations = await activityParticipationService.getAll();
-      const dateKey = formatDateKey(selectedDate);
-      
-      // Filter participations for this resident on the selected date
-      const filtered = (allParticipations || []).filter(p => {
-        const scheduleDate = p.activity_schedule?.date;
-        const scheduleKey = scheduleDate ? formatDateKey(new Date(scheduleDate)) : "";
-        return p.resident_id === residentId && scheduleKey === dateKey;
-      });
-      
-      setParticipations(filtered);
-    } catch (err) {
-      console.error('Failed to fetch participations:', err);
-      setParticipations([]);
-    } finally {
-      setParticipationsLoading(false);
-    }
-  };
-
-  // Auto-refresh participations on date change
-  useEffect(() => {
-    void fetchParticipations();
-  }, [residentId, selectedDate, refreshTrigger]);
-
-  // Auto-poll for participation updates every 10 seconds
-  useEffect(() => {
-    const pollInterval = setInterval(() => {
-      void fetchParticipations();
-    }, 10000); // Poll every 10 seconds
-
-    return () => clearInterval(pollInterval);
-  }, [residentId, selectedDate]);
 
   const handleDateChange = (date: Date | null) => {
     setSelectedDate(date);

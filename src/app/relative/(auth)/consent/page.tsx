@@ -95,7 +95,7 @@ export default function ConsentPage() {
               type="button"
               onClick={handleBack}
               disabled={isLoading}
-              className="bg-white border-2 border-gray-300 text-gray-700 hover:bg-gray-50 px-8 disabled:opacity-50"
+              className="bg-white border-2 border-gray-300 text-[#0093EF] hover:text-[#0082D4] hover:bg-gray-50 px-8 disabled:opacity-50"
             >
               ย้อนกลับ
             </Button>

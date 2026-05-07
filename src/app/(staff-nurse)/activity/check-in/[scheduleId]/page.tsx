@@ -2,12 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { Camera, Search } from "lucide-react";
-import { BackButton } from "@/components/features/relative/back-button";
 import { useToast } from "@/components/ui/toast";
 import { activityParticipationService } from "@/services/activity-participation.service";
 import { roomService } from "@/services/room.service";
 import { intakeService } from "@/services/intake.service";
+import { Camera, Search, ChevronLeft } from "lucide-react";
 import type { ResidentByScheduleResponse } from "@/types/activity-participation";
 import {
   clearCheckInSession,
@@ -66,9 +65,10 @@ export default function ActivityCheckInPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [cameraSupported, setCameraSupported] = useState(false);
   const [showDeviceWarning, setShowDeviceWarning] = useState(false);
+  
   const [hasPhotos, setHasPhotos] = useState(false);
+  const [existingPhotos, setExistingPhotos] = useState<Record<string, string>>({});
 
-  // State สำหรับเก็บ Options ที่ดึงจาก DB
   const [floorOptions, setFloorOptions] = useState<Array<{ value: string; label: string }>>([
     { value: "all", label: "ทุกชั้น" }
   ]);
@@ -80,12 +80,10 @@ export default function ActivityCheckInPage() {
     setCameraSupported(Boolean(navigator?.mediaDevices?.getUserMedia));
   }, []);
 
-  // ดึงข้อมูล Filter "ชั้น" และ "ประเภท" จาก DB
   useEffect(() => {
     let mounted = true;
 
     const loadFilters = async () => {
-      // 1. โหลดข้อมูลประเภท (Intake Labels)
       try {
         const labels = await intakeService.getAllLabels();
         if (mounted && labels) {
@@ -96,7 +94,6 @@ export default function ActivityCheckInPage() {
           setCareTypeOptions(opts);
         }
       } catch (err) {
-        // Fallback กรณี API มีปัญหา
         if (mounted) {
           setCareTypeOptions([
             { value: "all", label: "ทุกประเภท" },
@@ -107,7 +104,6 @@ export default function ActivityCheckInPage() {
         }
       }
 
-      // 2. โหลดข้อมูลชั้น (Rooms)
       try {
         const rooms = await roomService.getAll();
         if (mounted && rooms) {
@@ -126,7 +122,6 @@ export default function ActivityCheckInPage() {
           setFloorOptions(opts);
         }
       } catch (err) {
-        // Fallback กรณี API มีปัญหา
         if (mounted) {
           setFloorOptions([
             { value: "all", label: "ทุกชั้น" },
@@ -140,20 +135,50 @@ export default function ActivityCheckInPage() {
     };
 
     void loadFilters();
-
     return () => { mounted = false; };
   }, []);
 
-  // Load photos for this schedule
   useEffect(() => {
     const loadPhotos = async () => {
       try {
         const participations = await activityParticipationService.getAll();
         const scheduleParticipations = participations.filter(p => p.as_id === scheduleId);
-        const hasAnyPhotos = scheduleParticipations.some(p => (p.img_urls?.length ?? 0) > 0);
+        
+        const photoMap: Record<string, string> = {}; 
+        let hasAnyPhotos = false;
+
+        scheduleParticipations.forEach(p => {
+          const rawImg = p.img_urls;
+          if (!rawImg) return;
+          
+          let firstUrl = null;
+          if (Array.isArray(rawImg) && rawImg.length > 0) {
+            firstUrl = rawImg[0]?.url || rawImg[0];
+          } else if (typeof rawImg === 'string') {
+            const imgStr = String(rawImg); 
+            if (imgStr !== "[]" && imgStr.trim() !== "" && imgStr !== "null") {
+              try {
+                const parsed = JSON.parse(imgStr);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                  firstUrl = parsed[0]?.url || parsed[0];
+                }
+              } catch {
+                firstUrl = imgStr; 
+              }
+            }
+          }
+
+          if (firstUrl) {
+             photoMap[p.resident_id] = firstUrl;
+             hasAnyPhotos = true;
+          }
+        });
+
+        setExistingPhotos(photoMap); 
         setHasPhotos(hasAnyPhotos);
       } catch {
         setHasPhotos(false);
+        setExistingPhotos({});
       }
     };
     void loadPhotos();
@@ -223,7 +248,6 @@ export default function ActivityCheckInPage() {
 
   const selectedCount = selectedIds.size;
 
-  // Calculate check-in time window
   const calculateTimeWindow = () => {
     const startTimeStr = searchParams.get("start");
     if (!startTimeStr) return { isWithinWindow: true, hasExpired: false, isUpcoming: false };
@@ -240,7 +264,6 @@ export default function ActivityCheckInPage() {
         startDate.getMonth(),
         startDate.getDate()
       );
-      // Calculate window end: next day at 12:00 (noon)
       const windowEnd = new Date(windowStart);
       windowEnd.setDate(windowEnd.getDate() + 1);
       windowEnd.setHours(23, 59, 59, 999);
@@ -260,7 +283,7 @@ export default function ActivityCheckInPage() {
 
   const handleViewPhotos = () => {
     clearCheckInSession(scheduleId);
-    router.push(`/activity/check-in/${scheduleId}/review?mode=history`);
+    router.push(`/activity/check-in/${scheduleId}/review?${searchParams.toString()}`);
   };
 
   const toggleResident = (residentId: string) => {
@@ -323,6 +346,14 @@ export default function ActivityCheckInPage() {
 
   const buildSession = (): CheckInSession => {
     const selectedResidents = residentOptions.filter((resident) => selectedIds.has(resident.id));
+    
+    const sessionPhotos: Record<string, string> = {};
+    selectedResidents.forEach(res => {
+      if (existingPhotos[res.id]) {
+        sessionPhotos[res.id] = existingPhotos[res.id];
+      }
+    });
+
     return {
       scheduleId,
       activityTitle,
@@ -332,7 +363,7 @@ export default function ActivityCheckInPage() {
       residents: selectedResidents,
       selectedIds: selectedResidents.map((resident) => resident.id),
       initialSelectedIds: Array.from(initialSelectedIds),
-      photos: {},
+      photos: sessionPhotos, 
       rejectedIds: [],
       updatedAt: new Date().toISOString(),
     };
@@ -349,7 +380,8 @@ export default function ActivityCheckInPage() {
       const session = buildSession();
       saveCheckInRecord(session);
       showToast({ type: "success", title: "บันทึกรายชื่อสำเร็จ",message: ""  });
-      router.push("/activity");
+      const dateStr = searchParams.get("date");
+      router.push(dateStr ? `/activity?date=${dateStr}` : "/activity");
     } catch (error: any) {
       showToast({
         type: "error",
@@ -376,17 +408,35 @@ export default function ActivityCheckInPage() {
     }
     const session = buildSession();
     saveCheckInSession(session);
-    router.push(`/activity/check-in/${scheduleId}/camera`);
+    
+    const allHavePhotos = session.selectedIds.every(id => session.photos[id]);
+    
+    if (allHavePhotos) {
+       router.push(`/activity/check-in/${scheduleId}/review?${searchParams.toString()}`);
+    } else {
+       router.push(`/activity/check-in/${scheduleId}/camera?${searchParams.toString()}`);
+    }
   };
 
   const handleViewHistory = () => {
     clearCheckInSession(scheduleId);
-    router.push(`/activity/check-in/${scheduleId}/review?mode=history`);
+    router.push(`/activity/check-in/${scheduleId}/review?${searchParams.toString()}`);
   };
 
   return (
     <div className=" bg-slate-50 px-4 py-6 sm:px-6 lg:px-10">
-      <BackButton text="ย้อนกลับ" href="/activity" />
+      <button
+        type="button"
+        onClick={() => {
+          const d = searchParams.get("date");
+          const dateOnly = d ? d.split("T")[0] : null;
+          router.push(dateOnly ? `/activity?date=${dateOnly}` : "/activity");
+        }}
+        className="mb-4 inline-flex w-fit items-center gap-2 text-sm font-medium text-[#0093EF] hover:text-[#0082D4] transition-colors"
+      >
+        <ChevronLeft className="h-4 w-4" />
+        <span>ย้อนกลับ</span>
+      </button>
 
       <div className="mb-6">
         <h1 className="text-lg font-semibold text-slate-800">
@@ -401,9 +451,7 @@ export default function ActivityCheckInPage() {
       )}
 
       <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-        {/* Filter bar - ปรับใช้ Dropdown และ responsive */}
         <div className="border-b border-slate-200 px-3 py-3">
-          {/* Mobile layout */}
           <div className="flex flex-col gap-2 md:hidden">
             <div className="relative flex items-center">
               <Search className="absolute left-2.5 h-3.5 w-3.5 text-slate-400" />
@@ -437,7 +485,6 @@ export default function ActivityCheckInPage() {
             </div>
           </div>
 
-          {/* Tablet layout */}
           <div className="hidden md:flex lg:hidden md:flex-col md:gap-3">
             <div className="relative flex items-center">
               <Search className="absolute left-3 h-4 w-4 text-slate-400" />
@@ -474,7 +521,6 @@ export default function ActivityCheckInPage() {
             </div>
           </div>
 
-          {/* Desktop layout */}
           <div className="hidden lg:flex lg:items-center lg:justify-between lg:gap-4">
             <div className="flex items-center gap-4">
               <div className="relative flex items-center w-80">
@@ -512,7 +558,6 @@ export default function ActivityCheckInPage() {
           </div>
         </div>
 
-        {/* ตารางข้อมูล (ไม่เปลี่ยนแปลง) */}
         <div className="max-h-[53vh] overflow-auto">
           <table className="w-full text-left text-sm">
             <thead className="sticky top-0 bg-slate-50 text-xs font-semibold text-slate-600">
@@ -523,6 +568,7 @@ export default function ActivityCheckInPage() {
                     checked={filteredResidents.length > 0 && selectedCount === filteredResidents.length}
                     onChange={toggleAll}
                     disabled={isReadOnly}
+                    className={!isReadOnly ? 'cursor-pointer' : ''}
                   />
                 </th>
                 <th className="px-4 py-3">ชื่อ-นามสกุล</th>
@@ -546,13 +592,18 @@ export default function ActivityCheckInPage() {
                 </tr>
               ) : (
                 filteredResidents.map((resident) => (
-                  <tr key={resident.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-3">
+                  <tr 
+                    key={resident.id} 
+                    className={`hover:bg-slate-100 transition-colors ${!isReadOnly ? 'cursor-pointer' : ''}`}
+                    onClick={() => toggleResident(resident.id)}
+                  >
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       <input
                         type="checkbox"
                         checked={selectedIds.has(resident.id)}
                         onChange={() => toggleResident(resident.id)}
                         disabled={isReadOnly}
+                        className={!isReadOnly ? 'cursor-pointer' : ''}
                       />
                     </td>
                     <td className="px-4 py-3 text-slate-800">{resident.name}</td>
@@ -578,7 +629,6 @@ export default function ActivityCheckInPage() {
           </button>
         )}
         
-        {/* Time-window check-in button */}
         {isWithinWindow && !isHistoryMode ? (
           <div className="inline-flex items-center gap-2">
             <button
