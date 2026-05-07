@@ -350,8 +350,7 @@ export default function Page() {
           (resident.care && resident.care.includes(selectedCareType)) || 
           (selectedCareType && selectedCareType.includes(resident.care));
 
-        // 🌟 แก้ไขจุดที่ 2: ถ้า showActive เป็น false ให้โชว์ทุกคน (ไม่กรองออก)
-        const matchesActive = showActive ? resident.active === true : true;
+        const matchesActive = showActive ? resident.active === true : resident.active === false;
 
         return matchesSearch && matchesFloor && matchesCareType && matchesActive;
       });
@@ -845,9 +844,19 @@ export default function Page() {
     try {
       const resident = allResidents.find((r) => r.id === id);
       const resolvedId = (resident as { resident_id?: string; id?: string } | undefined)?.resident_id || resident?.id || id;
-      const linkData = await residentService.getRelativeMagicLink(resolvedId);
-      const absoluteLink = new URL(linkData.magic_link, window.location.origin).toString();
-      await navigator.clipboard.writeText(absoluteLink);
+      
+      const fetchLinkPromise = residentService.getRelativeMagicLink(resolvedId)
+        .then(linkData => new URL(linkData.magic_link, window.location.origin).toString());
+
+      if (typeof ClipboardItem !== "undefined") {
+        const blobPromise = fetchLinkPromise.then(text => new Blob([text], { type: "text/plain" }));
+        const item = new ClipboardItem({ "text/plain": blobPromise });
+        await navigator.clipboard.write([item]);
+      } else {
+        const absoluteLink = await fetchLinkPromise;
+        await navigator.clipboard.writeText(absoluteLink);
+      }
+
       showToast({
         type: "success",
         title: "คัดลอกลิงก์สำเร็จ",

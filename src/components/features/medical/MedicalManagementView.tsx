@@ -20,7 +20,7 @@ import { HistoryTable } from "./tables/HistoryTable";
 import { Pagination } from "@/components/ui/pagination";
 import { Dropdown } from "@/components/ui/dropdown";
 import { AddMedicationModal } from "./modals";
-import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { SkeletonCard, SkeletonTable } from "@/components/ui/skeleton";
 import type { AddMedicationFormData, EditMedicationFormData } from "./modals";
 import type { GiveAllFormData } from "./modals/GiveAllMedicationsModal";
 import type { WithholdFormData } from "./modals/WithholdMedicationModal";
@@ -56,16 +56,24 @@ const MAX_FREQUENCY_PER_DAY = 4;
 const getResidentPrimaryId = (resident: Resident): string => resident.resident_id || resident.id;
 const getRoomPrimaryId = (room: Room): string => room.room_id || room.id;
 
-const toHelpLevel = (labels?: Resident["resident_labels"]): string => {
-  const labelName = labels
-    ?.map((label) => label.intake_label?.label_name || "")
-    .find((name) => name.includes("ช่วยเหลือตัวเอง") || name === "ติดเตียง")
-    ?.trim();
+const toHelpLevel = (labels?: Resident["resident_labels"], intakeLabels?: IntakeLabel[]): string => {
+  const intakeById = new Map((intakeLabels || []).map((l) => [String(l.label_id), l.label_name] as const));
 
-  if (labelName === "ช่วยเหลือตัวเองได้ทั้งหมด") return "ช่วยเหลือตัวเองได้";
-  if (labelName === "ช่วยเหลือตัวเองได้บางส่วน") return "ต้องการความช่วยเหลือ";
-  if (labelName === "ติดเตียง") return "ติดเตียง";
-  return "-";
+  const labelNames = (labels || [])
+    .map((label) => {
+      const id = label.label_id || label.intake_label?.label_id;
+      return id ? intakeById.get(String(id)) || label.intake_label?.label_name : undefined;
+    })
+    .filter(Boolean) as string[];
+
+  if (labelNames.some((n) => n.includes("ติดเตียง"))) return "ติดเตียง";
+
+  const selfLabels = labelNames.filter((n) => n.includes("ช่วยเหลือตัวเอง"));
+  if (selfLabels.some((n) => n.includes("ทั้งหมด"))) return "ช่วยเหลือตัวเองได้";
+  if (selfLabels.some((n) => n.includes("บางส่วน"))) return "ต้องการความช่วยเหลือ";
+  if (selfLabels.length > 0) return "ช่วยเหลือตัวเองได้";
+
+  return labelNames[0] || "-";
 };
 
 const toThaiStatus = (isTaken: boolean, isOmitted?: boolean | null): Medication["status"] => {
@@ -90,16 +98,23 @@ const parseListFromTextMulti = (value?: string | null): string[] => {
     .filter(Boolean);
 };
 
-const toStatusBadge = (labels?: Resident["resident_labels"]): string => {
-  const labelName = labels
-    ?.map((label) => label.intake_label?.label_name || "")
-    .find((name) => name.includes("ช่วยเหลือตัวเอง") || name === "ติดเตียง")
-    ?.trim();
+const toStatusBadge = (labels?: Resident["resident_labels"], intakeLabels?: IntakeLabel[]): string => {
+  const intakeById = new Map((intakeLabels || []).map((l) => [String(l.label_id), l.label_name] as const));
 
-  if (labelName === "ช่วยเหลือตัวเองได้ทั้งหมด") return "ช่วยเหลือตัวเองได้";
-  if (labelName === "ช่วยเหลือตัวเองได้บางส่วน") return "ต้องการความช่วยเหลือ";
-  if (labelName === "ติดเตียง") return "ติดเตียง";
-  return "-";
+  const labelNames = (labels || [])
+    .map((label) => {
+      const id = label.label_id || label.intake_label?.label_id;
+      return id ? intakeById.get(String(id)) || label.intake_label?.label_name : undefined;
+    })
+    .filter(Boolean) as string[];
+
+  if (labelNames.some((n) => n.includes("ติดเตียง"))) return "ติดเตียง";
+  const selfLabels = labelNames.filter((n) => n.includes("ช่วยเหลือตัวเอง"));
+  if (selfLabels.some((n) => n.includes("ทั้งหมด"))) return "ช่วยเหลือตัวเองได้";
+  if (selfLabels.some((n) => n.includes("บางส่วน"))) return "ต้องการความช่วยเหลือ";
+  if (selfLabels.length > 0) return "ช่วยเหลือตัวเองได้";
+
+  return labelNames[0] || "-";
 };
 
 const toHistoryStatus = (status: DrugAdministrationStatus): MedicationHistory["status"] => {
@@ -948,7 +963,8 @@ export function MedicalManagementView() {
       if (!patientsMap.has(residentId)) {
         const labelIds = (resident?.resident_labels || [])
           .map((label) => label.label_id || label.intake_label?.label_id)
-          .filter((value): value is string => Boolean(value));
+          .filter((value) => value !== undefined && value !== null)
+          .map(String);
 
         patientsMap.set(residentId, {
           id: residentId,
@@ -958,7 +974,7 @@ export function MedicalManagementView() {
           profileImage: resident?.profile_image,
           allergies: parseListFromText(resident?.allergies),
           drugAllergies: parseListFromText(resident?.drug_allergies),
-          helpLevel: toHelpLevel(resident?.resident_labels),
+          helpLevel: toHelpLevel(resident?.resident_labels, intakeLabels),
           labelIds,
           medications: [],
           pendingCount: 0,
@@ -1041,7 +1057,7 @@ export function MedicalManagementView() {
       chronicDiseases: parseListFromTextMulti(resident.pre_existing_conditions),
       surgicalHistory: parseListFromTextMulti(resident.surgical_history),
       drugAllergies: patient.drugAllergies || [],
-      status: toStatusBadge(resident.resident_labels),
+      status: toStatusBadge(resident.resident_labels, intakeLabels),
     };
   }, [allPatientMedications, selectedPatientId, residentById]);
 
@@ -1160,7 +1176,7 @@ export function MedicalManagementView() {
   };
 
   const renderMainView = () => (
-    <div className="space-y-6">
+    <div className="space-y-6 ">
       <div>
         <h1 className="text-headline-5 font-bold text-gray-800">จัดการยา</h1>
       </div>
@@ -1252,8 +1268,15 @@ export function MedicalManagementView() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {isLoadingMain ? (
-          <div className="md:col-span-2 rounded-lg border border-gray-200 bg-white py-12 px-4 text-center">
-            <LoadingSpinner />
+          <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <SkeletonCard
+                key={index}
+                showAvatar
+                titleWidth={index % 2 === 0 ? "52%" : "38%"}
+                lines={3}
+              />
+            ))}
           </div>
         ) : visiblePatients.length === 0 ? (
           <div className="md:col-span-2 rounded-lg border border-gray-200 bg-white py-12 px-4 text-center">
@@ -1389,8 +1412,9 @@ export function MedicalManagementView() {
           </div>
 
           {isLoadingDetails ? (
-            <div className="rounded-lg border border-gray-200 bg-white py-10 px-4 text-center">
-              <LoadingSpinner />
+            <div className="space-y-6">
+              <SkeletonCard showAvatar titleWidth="42%" lines={2} />
+              <SkeletonTable columns={5} rows={4} />
             </div>
           ) : medsDisplayMode === "split" ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1472,7 +1496,7 @@ export function MedicalManagementView() {
               }}
             />
           </div>
-          {isLoadingHistory ? <div className="py-6 text-center"><LoadingSpinner /></div> : null}
+          {isLoadingHistory ? <div className="mb-4"><SkeletonTable columns={6} rows={5} /></div> : null}
           <HistoryTable history={historyBySelectedPatient} />
         </div>
       )}
@@ -1586,8 +1610,8 @@ export function MedicalManagementView() {
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         {isLoadingHistory ? (
-          <div className="py-6 text-center">
-            <LoadingSpinner />
+          <div className="mb-4">
+            <SkeletonTable columns={6} rows={5} />
           </div>
         ) : null}
         <HistoryTable history={visibleHistory} />
@@ -1598,13 +1622,18 @@ export function MedicalManagementView() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-[1400px] mx-auto">
+      <div className="max-w-full">
         {currentView === "main" && renderMainView()}
         {currentView === "details" && renderDetailsView()}
         {currentView === "history" && renderHistoryView()}
       </div>
 
       <style>{`
+        @page {
+          size: A4 landscape;
+          margin: 0mm !important;
+        }
+
         .print-hide {
         }
 
@@ -1613,60 +1642,91 @@ export function MedicalManagementView() {
         }
 
         @media print {
-          @page {
-            size: A4 portrait;
-            margin: 5mm;
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            box-sizing: border-box !important;
           }
 
-          :global(html, body) {
+          html, body {
+            width: 100% !important;
+            height: 100vh !important;
+            max-height: 100vh !important;
+            margin: 0 !important;
+            padding: 2mm 5mm 5mm 5mm !important; 
+            background: #ffffff !important;
+            overflow: hidden !important;
+          }
+
+          body > div, main, section, .container, [class*="max-w-"], .min-h-screen, .p-6 {
+            max-width: 100% !important;
+            width: 100% !important;
             margin: 0 !important;
             padding: 0 !important;
-            background: #ffffff !important;
-            display: block !important;
+            box-shadow: none !important;
           }
 
-          :global(body.print-drug-history *) {
-            visibility: hidden !important;
-          }
-          :global(body.print-drug-history [style*="min-h-screen"]),
-          :global(body.print-drug-history [style*="min-h-screen"] *) {
-            visibility: visible !important;
-          }
-
-          :global(body.print-drug-history header),
-          :global(body.print-drug-history nav),
-          :global(body.print-drug-history footer),
-          :global(body.print-drug-history .site-footer) {
+          body.print-drug-history header,
+          body.print-drug-history nav,
+          body.print-drug-history aside,
+          body.print-drug-history footer,
+          body.print-drug-history .sidebar,
+          body.print-drug-history .navbar,
+          body.print-drug-history #sidebar,
+          body.print-drug-history #navbar {
             display: none !important;
+          }
+
+          .print-root {
+            width: 100% !important;
+            max-width: 100% !important;
+            margin-top: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+          }
+
+          .print-root > .space-y-4 > * + *,
+          .space-y-6 > * + * {
+            margin-top: 4px !important; 
+          }
+
+          .print-only {
+            display: block !important;
+            padding: 0 !important; 
+            margin-bottom: 0 !important;
           }
 
           .print-hide {
             display: none !important;
           }
 
-          .print-only {
+          .print-table {
             display: block !important;
+            width: 100% !important;
+            margin-bottom: 0 !important;
           }
 
           table {
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
             border-collapse: collapse !important;
+            width: 100% !important;
+            table-layout: auto !important;
+            margin-bottom: 0 !important;
           }
 
-          th,
-          td {
-            border: 1px solid #d1d5db;
-          }
-
-          .status-pill {
+          th, td {
             border: 1px solid #d1d5db !important;
-            background: #ffffff !important;
-            color: #111827 !important;
+            padding: 4px 2px !important; 
+            font-size: 10px !important; 
+            line-height: 1.1 !important;
+            word-wrap: break-word !important;
+          }
+          
+          th, th button, th span {
+            font-size: 10px !important;
           }
 
           tr {
-            page-break-inside: avoid;
+            page-break-inside: avoid !important;
           }
         }
       `}</style>

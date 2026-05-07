@@ -1232,7 +1232,12 @@ export function VitalSignsDetailTable({
         {confirmDialog}
       </div>
 
-      <style>{`
+  <style>{`
+        @page {
+          size: A4 landscape;
+          margin: 0mm !important; /* จัดการ Margin ใน CSS แทนเพื่อความแม่นยำ */
+        }
+
         .print-hide {
         }
 
@@ -1241,31 +1246,60 @@ export function VitalSignsDetailTable({
         }
 
         @media print {
-          @page {
-            size: A4 portrait;
-            margin: 5mm;
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            box-sizing: border-box !important;
           }
 
-          :global(html, body) {
+          /* ล็อคความสูงหน้ากระดาษไว้ที่ 1 หน้า และเว้นขอบกระดาษ 8mm */
+          html, body {
+            width: 100% !important;
+            height: 100vh !important;
+            max-height: 100vh !important;
+            margin: 0 !important;
+            padding: 8mm !important;
+            background: #ffffff !important;
+            overflow: hidden !important; /* ตัดหน้า 2 ทิ้งเด็ดขาด */
+          }
+
+          body > div, main, section, .container, [class*="max-w-"] {
+            max-width: 100% !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            box-shadow: none !important;
+          }
+
+          /* 🌟 ซ่อน Navbar, Sidebar, Footer แบบเจาะจง */
+          body.print-vital-signs header,
+          body.print-vital-signs nav,
+          body.print-vital-signs aside,
+          body.print-vital-signs footer,
+          body.print-vital-signs .sidebar,
+          body.print-vital-signs .navbar,
+          body.print-vital-signs #sidebar,
+          body.print-vital-signs #navbar {
+            display: none !important;
+          }
+
+          /* ตัวตาราง */
+          .print-root {
+            width: 100% !important;
+            max-width: 100% !important;
             margin: 0 !important;
             padding: 0 !important;
             background: #ffffff !important;
+          }
+
+          .print-root > .space-y-4 > * + * {
+            margin-top: 6px !important; 
+          }
+
+          .print-only {
             display: block !important;
-          }
-
-          :global(body.print-vital-signs *) {
-            visibility: hidden !important;
-          }
-          :global(body.print-vital-signs .print-root),
-          :global(body.print-vital-signs .print-root *) {
-            visibility: visible !important;
-          }
-
-          :global(body.print-vital-signs header),
-          :global(body.print-vital-signs nav),
-          :global(body.print-vital-signs footer),
-          :global(body.print-vital-signs .site-footer) {
-            display: none !important;
+            padding: 0 !important; 
+            margin-bottom: 0 !important;
           }
 
           .print-hide {
@@ -1274,25 +1308,31 @@ export function VitalSignsDetailTable({
 
           .print-table {
             display: block !important;
-          }
-
-          .print-only {
-            display: block !important;
+            width: 100% !important;
+            margin-bottom: 0 !important;
           }
 
           table {
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
             border-collapse: collapse !important;
+            width: 100% !important;
+            table-layout: auto !important;
+            margin-bottom: 0 !important;
           }
 
-          th,
-          td {
-            border: 1px solid #d1d5db;
+          th, td {
+            border: 1px solid #d1d5db !important;
+            padding: 4px 2px !important; 
+            font-size: 10px !important; 
+            line-height: 1.1 !important;
+            word-wrap: break-word !important;
+          }
+          
+          th, th button, th span {
+            font-size: 10px !important;
           }
 
           tr {
-            page-break-inside: avoid;
+            page-break-inside: avoid !important;
           }
         }
       `}</style>

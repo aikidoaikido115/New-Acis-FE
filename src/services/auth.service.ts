@@ -312,7 +312,7 @@ class AuthService {
       if (typeof window !== 'undefined') {
         localStorage.removeItem('access_token');
         localStorage.removeItem('user');
-        // Clear cookies so middleware redirects to login
+        // Clear cookies so proxy redirects to login
         document.cookie = 'auth_token=; path=/; max-age=0; SameSite=Lax';
         document.cookie = 'user_role=; path=/; max-age=0; SameSite=Lax';
         window.dispatchEvent(new Event('auth:user-updated'));

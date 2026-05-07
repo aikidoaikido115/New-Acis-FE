@@ -265,7 +265,7 @@ export default function SupportTicketsPage() {
 
   return (
     <div className="w-full px-6 py-8">
-      <div className="mx-auto w-full max-w-7xl space-y-6">
+      <div className="w-full max-w-full space-y-6">
         <div>
           <h1 className="text-headline-5 font-semibold text-gray-800">จัดการ Support Tickets</h1>
           <p className="mt-2 text-body-small text-gray-600">ติดตามรายการแจ้งปัญหาและอัปเดตสถานะการดำเนินงาน</p>

@@ -13,6 +13,39 @@ const parseDateValue = (value?: string | null): Date | null => {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 };
 
+const dateKeyFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Bangkok',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+const formatDateKey = (date: Date): string => {
+  const parts = dateKeyFormatter.formatToParts(date);
+  const year = parts.find((part) => part.type === 'year')?.value || '0000';
+  const month = parts.find((part) => part.type === 'month')?.value || '00';
+  const day = parts.find((part) => part.type === 'day')?.value || '00';
+  return `${year}-${month}-${day}`;
+};
+
+const getDateKey = (value?: string | null): string | null => {
+  if (!value) {
+    return null;
+  }
+
+  const fromLiteralDate = String(value).match(/^(\d{4}-\d{2}-\d{2})/);
+  if (fromLiteralDate?.[1]) {
+    return fromLiteralDate[1];
+  }
+
+  const parsed = parseDateValue(value);
+  if (!parsed) {
+    return null;
+  }
+
+  return formatDateKey(parsed);
+};
+
 export const isResidentStatusActive = (status?: string | null): boolean => {
   const normalized = String(status || '').trim().toLowerCase();
   if (!normalized) {
@@ -32,10 +65,11 @@ export const isResidentActive = (resident: ResidentStatusDates): boolean => {
     return false;
   }
 
-  const now = new Date();
-  const checkInDate = parseDateValue(resident.check_in_date);
+  const todayDateKey = formatDateKey(new Date());
+  const checkInDateKey = getDateKey(resident.check_in_date);
 
-  if (checkInDate && now < checkInDate) {
+  // check_in_date in the future => not yet staying in center
+  if (checkInDateKey && checkInDateKey > todayDateKey) {
     return false;
   }
 

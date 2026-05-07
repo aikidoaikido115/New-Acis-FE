@@ -10,7 +10,7 @@ export default function EMRPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-[1400px] mx-auto">
+      <div className="max-w-full mx-auto space-y-6">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-headline-5 font-bold text-gray-800">เวชระเบียน</h1>
 
