@@ -32,7 +32,7 @@ export function MedicalInfoSection({
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-5">
       <h3 className="text-sm font-semibold text-slate-700">ข้อมูลทางการแพทย์</h3>
-      <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-[1.2fr_1fr]">
+      <div className="mt-4 grid grid-cols-1 gap-6 md:grid-cols-2">
         <div>
           <div className="flex items-center gap-2 text-xs text-slate-500">
             <Heart className="h-4 w-4" />

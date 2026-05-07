@@ -421,11 +421,6 @@ export function ResidentFormModal({
           </section>
 
           <SectionCard title="ข้อมูลทางการแพทย์">
-            <div className="flex flex-col gap-6 lg:flex-row">
-              
-              <div className="hidden lg:block w-40 shrink-0" /> 
-
-              <div className="flex-1">
                 <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
                     <Label icon={<Heart size={14} />} text="โรคประจำตัว (แยกแต่ละบรรทัด)" />
@@ -442,8 +437,6 @@ export function ResidentFormModal({
                     <Textarea name="chronicDiseasesNote" value={formData.chronicDiseasesNote} onChange={form.handleChange} placeholder="กรอกหมายเหตุ" className={cn(inputClass, "h-24 resize-none")} />
                   </div>
                 </div>
-              </div>
-              </div>
 
             <div className="mb-4">
               <Label icon={<Pill size={14} />} text="ยาที่ใช้ประจำ" />
