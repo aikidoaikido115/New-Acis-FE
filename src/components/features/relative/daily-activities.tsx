@@ -32,7 +32,9 @@ export function DailyActivities({ activities, participations, lastUpdatedAt }: D
   let displayItems: any[] = [];
 
   if (participations && participations.length > 0) {
-    displayItems = participations.map((p) => ({
+    const participatedOnly = participations.filter(p => p.is_participating === true);
+
+    displayItems = participatedOnly.map((p) => ({
       id: `${p.resident_id}-${p.as_id}`,
       time: `${formatTime(p.activity_schedule?.start_time)}-${formatTime(p.activity_schedule?.end_time)}`,
       title: p.activity_schedule?.activity?.activity_name || 'กิจกรรม',
@@ -57,9 +59,6 @@ export function DailyActivities({ activities, participations, lastUpdatedAt }: D
         <h2 className="text-xl font-semibold text-gray-800">
           กิจกรรมประจำวันที่เข้าร่วม
         </h2>
-        {lastUpdatedAt && (
-          <span className="text-xs text-gray-500">อัปเดตล่าสุด: {lastUpdatedAt}</span>
-        )}
       </div>
       {dailyActivities.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-gray-500">
