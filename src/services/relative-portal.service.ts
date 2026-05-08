@@ -31,6 +31,7 @@ export interface RelativeMedication {
 
 export interface RelativePatientInfoData {
   resident_id: string;
+  profile_image?: string;
   first_name: string;
   last_name: string;
   nickname?: string;
