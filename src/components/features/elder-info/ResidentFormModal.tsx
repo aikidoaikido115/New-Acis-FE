@@ -297,9 +297,21 @@ export function ResidentFormModal({
       scrollable
       disableBackdropClose
     >
-      {mode === "edit" && isFetchingInitialData ? (
-        renderSkeleton()
-      ) : (
+      <div className="relative w-full h-full"> 
+        {((mode === "edit" && isFetchingInitialData) || isLoading) && (
+          <div className="absolute inset-0 z-50 bg-white/90 backdrop-blur-sm flex flex-col pt-4">
+            <div className="px-6 opacity-70 w-full pointer-events-none"> 
+               {renderSkeleton()}
+            </div>
+            
+            {isLoading && (
+              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50">
+                <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#4A8B6A] border-t-transparent shadow-lg"></div>
+              </div>
+            )}
+          </div>
+        )}
+
         <form onSubmit={handleLocalSubmit} className="space-y-6">
 
           <section className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5 md:p-6">
@@ -583,7 +595,7 @@ export function ResidentFormModal({
           </div>
 
         </form>
-      )}
+      </div>
     </Modal>
   );
 }

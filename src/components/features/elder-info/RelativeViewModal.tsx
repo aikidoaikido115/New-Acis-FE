@@ -18,13 +18,16 @@ export function RelativeViewModal({ isOpen, onClose, residentName, residentId }:
   const [error, setError] = useState<string | null>(null);
 
   const fetchDashboard = async (date?: string) => {
-    if (!residentId) return;
+    if (!residentId || residentId === "undefined") return; 
+    
     setIsLoading(true);
+    setError(null);
     try {
       const result = await residentService.getRelativeDashboardPreview(residentId, date);
       setDashboardData(result);
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      const errorMessage = err?.response?.data?.message || "ไม่สามารถดึงข้อมูลพรีวิวได้";
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
