@@ -4,6 +4,7 @@ import type {
   CreateResidentRequest,
   ResidentOverviewListResponse,
 } from '@/types/resident';
+import { RelativeDashboardData } from './relative-portal.service';
 
 const parseDateValue = (value?: string | null): Date | null => {
   if (!value) {
@@ -202,6 +203,17 @@ class ResidentService {
     const response = await apiClient.get<ApiResponse<RelativeMagicLinkPayload>>(
       `/api/emr/relatives/magic-link?resident_id=${encodeURIComponent(residentId)}`
     );
+    return response.data.result;
+  }
+
+  async getRelativeDashboardPreview(residentId: string, date?: string): Promise<RelativeDashboardData> {
+    const params = new URLSearchParams();
+    if (date) params.append('date', date);
+    
+    const qs = params.toString();
+    const url = `/api/emr/residents/${residentId}/relative-dashboard${qs ? `?${qs}` : ''}`; 
+    
+    const response = await apiClient.get<ApiResponse<RelativeDashboardData>>(url);
     return response.data.result;
   }
 
