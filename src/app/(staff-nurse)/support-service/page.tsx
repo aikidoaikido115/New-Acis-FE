@@ -40,12 +40,15 @@ function SupportButton({
   onClick,
   variant = "submit",
 }: SupportButtonProps) {
+  // ปรับ px-4 สำหรับมือถือ และ sm:px-8 สำหรับจอใหญ่
   const baseClass =
-    "h-11 px-8 rounded-[5px] text-body-small transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
+    "h-11 px-4 sm:px-8 rounded-[5px] text-body-small transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap";
+  
+  // ปรับ min-w ของปุ่มส่งรายงาน: จอเล็กใช้ 120px เพื่อไม่ให้ล้น, จอใหญ่ใช้ 240px ตามเดิม
   const variantClass =
     variant === "clear"
-      ? "h-10 px-6 bg-[rgba(103,103,103,0.15)] text-[#676767] hover:bg-[rgba(103,103,103,0.24)]"
-      : "min-w-[240px] bg-emerald-600 text-white hover:bg-emerald-700";
+      ? "h-10 px-4 sm:px-6 bg-[rgba(103,103,103,0.15)] text-[#676767] hover:bg-[rgba(103,103,103,0.24)]"
+      : "min-w-[120px] sm:min-w-[240px] bg-emerald-600 text-white hover:bg-emerald-700";
 
   return (
     <button
@@ -148,14 +151,14 @@ export default function SupportPage() {
   };
 
   return (
-    <div className="w-full max-w-full px-6 py-8">
+    <div className="w-full max-w-full px-4 sm:px-6 py-8">
       <div className="mb-6">
         <h1 className="text-headline-5 font-semibold text-gray-800">แจ้งปัญหาการใช้งาน</h1>
         <p className="text-[16px] font-light text-gray-600">กรอกข้อมูลด้านล่างเพื่อแจ้งปัญหาที่พบ</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[70%_30%] gap-6">
-        <div className="bg-white rounded-2xl shadow-sm p-6 lg:p-10">
+        <div className="bg-white rounded-2xl shadow-sm p-5 sm:p-6 lg:p-10">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
@@ -167,7 +170,7 @@ export default function SupportPage() {
                   type="text"
                   value={formData.name}
                   onChange={(e) => updateField("name", e.target.value)}
-                  className="mt-3 h-11 text-black border-gray-300 bg-[rgba(245,245,245,1)] placeholder:text-[#8C929D]"
+                  className="mt-3 h-11 text-black border-gray-300 placeholder:text-[#8C929D]"
                   required
                 />
                 {validationErrors.name && <p className="mt-2 text-caption text-red-600">{validationErrors.name}</p>}
@@ -182,7 +185,7 @@ export default function SupportPage() {
                   type="email"
                   value={formData.email}
                   onChange={(e) => updateField("email", e.target.value)}
-                  className="mt-3 h-11 text-black border-gray-300 bg-[rgba(245,245,245,1)] placeholder:text-[#8C929D]"
+                  className="mt-3 h-11 text-black border-gray-300 placeholder:text-[#8C929D]"
                 />
                 {validationErrors.email && <p className="mt-2 text-caption text-red-600">{validationErrors.email}</p>}
               </div>
@@ -197,7 +200,7 @@ export default function SupportPage() {
                 type="text"
                 value={formData.subject}
                 onChange={(e) => updateField("subject", e.target.value)}
-                className="mt-3 h-11 text-black border-gray-300 bg-[rgba(245,245,245,1)] placeholder:text-[#8C929D]"
+                className="mt-3 h-11 text-black border-gray-300 placeholder:text-[#8C929D]"
                 required
               />
               {validationErrors.subject && <p className="mt-2 text-caption text-red-600">{validationErrors.subject}</p>}
@@ -208,10 +211,10 @@ export default function SupportPage() {
                 เนื้อหา<span className="text-red-500">*</span>
               </label>
               <Textarea
-                placeholder="อธิบายรายละเอียดของปัญหาที่พบ..."
+                placeholder="อธิบายรายละเอียดของปัญหที่พบ..."
                 value={formData.message}
                 onChange={(e) => updateField("message", e.target.value)}
-                className="mt-3 min-h-[150px] text-black border-gray-300 bg-[rgba(245,245,245,1)] placeholder:text-[#8C929D] resize-none"
+                className="mt-3 min-h-[150px] text-black border-gray-300 placeholder:text-[#8C929D] resize-none"
                 rows={6}
                 required
               />
@@ -221,13 +224,14 @@ export default function SupportPage() {
 
             <div className="border-t border-[rgba(103,103,103,0.54)] pt-6"></div>
 
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center gap-2">
               <SupportButton
                 type="button"
                 onClick={handleClear}
                 variant="clear"
               >
-                ล้างข้อมูล
+                {/* แสดง 'ข้อมูล' เฉพาะหน้าจอ sm (Tablet) ขึ้นไป */}
+                ล้าง<span className="hidden sm:inline">ข้อมูล</span>
               </SupportButton>
               <SupportButton
                 type="submit"
