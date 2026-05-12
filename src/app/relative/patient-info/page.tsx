@@ -264,7 +264,7 @@ export default function RelativePatientInfoPage() {
         <RelativeSidebar isOpen={true} />
       </div>
       {/* Main Content */}
-      <div className="flex-1 flex flex-col lg:ml-80 min-h-screen">
+      <div className="flex-1 flex flex-col lg:ml-80 min-h-screen min-w-0">
         {/* Mobile Menu Button */}
         <button
           onClick={() => setIsSidebarOpen(true)}
@@ -274,8 +274,8 @@ export default function RelativePatientInfoPage() {
         </button>
 
         {/* Content */}
-        <div className="flex-1 px-4 py-6 pt-20 sm:px-6 lg:px-8 lg:py-8">
-          <BackButton />
+        <div className="flex-1 px-6 py-6 pt-20 sm:px-6 sm:py-8 lg:px-8 lg:py-8">
+            <BackButton />
 
           <div className="max-w-full space-y-6">
             <h1 className="text-2xl font-bold text-gray-800">ข้อมูลผู้สูงอายุ</h1>
@@ -345,7 +345,7 @@ export default function RelativePatientInfoPage() {
                     <Pill size={16} className="text-gray-500" />
                     ยาที่ใช้ประจำ
                   </div>
-                  <div className="overflow-hidden rounded-lg border border-gray-100">
+                  <div className="overflow-x-auto rounded-lg border border-gray-100">
                     <table className="w-full text-sm">
                       <thead className="bg-gray-50 text-gray-500">
                         <tr>
