@@ -11,7 +11,7 @@ import { Skeleton }          from "@/components/ui/skeleton";
 import {
   Calendar, CreditCard, Heart, Home, Layers, Pill,
   Scissors, AlertTriangle, Activity, ShieldCheck,
-  Building2, Phone, Users, User,
+  Building2, Phone, Plus, Trash2, Users, User,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { intakeService } from '@/services/intake.service';
@@ -32,6 +32,13 @@ const inputClass =
 const labelClass = "flex items-center gap-1.5 text-sm font-medium text-slate-700 mb-1.5";
 
 const Req = () => <span className="text-red-500">*</span>;
+
+const CARE_LEVEL_OPTIONS = [
+  "ช่วยเหลือตัวเองได้ทั้งหมด",
+  "ช่วยเหลือตัวเองได้บางส่วน",
+  "ผู้สูงอายุติดเตียง",
+  "อื่นๆ",
+];
 
 function Label({ icon, text, required }: { icon: React.ReactNode; text: string; required?: boolean }) {
   return (
@@ -55,6 +62,24 @@ const parseLocalDate = (value?: string) => {
   const [year, month, day] = value.split("-").map(Number);
   if (!year || !month || !day) return null;
   return new Date(year, month - 1, day);
+};
+
+const toLocalDateString = (value: Date) => {
+  const year = value.getFullYear();
+  const month = `${value.getMonth() + 1}`.padStart(2, "0");
+  const day = `${value.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const formatThaiDateLabel = (value?: string) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("th-TH", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 };
 
 interface ResidentFormModalProps {
@@ -89,6 +114,9 @@ export function ResidentFormModal({
   const form = useResidentForm(onSubmit, onClose, initialValues);
   const { formData, set, updateMedication, resetForm } = form;
 
+  const [isDischargeConfirmOpen, setIsDischargeConfirmOpen] = useState(false);
+  const [dischargeDateDraft, setDischargeDateDraft] = useState("");
+
   const [hospitalOptions, setHospitalOptions] = useState(() => [...EMERGENCY_HOSPITAL_MASTERS]);
   
   const [floorOptions, setFloorOptions] = useState<Array<{ value: string; label: string }>>([]);
@@ -101,19 +129,24 @@ export function ResidentFormModal({
   }, [isOpen, resetForm]);
 
   useEffect(() => {
-    if (!formData.emergencyHospital) return;
+    const entries = formData.emergencyHospitals
+      .map((item) => ({
+        name: item.name.trim(),
+        phone: item.phone?.trim() || "",
+      }))
+      .filter((item) => item.name !== "");
+
+    if (entries.length === 0) return;
+
     setHospitalOptions((prev) => {
-      if (prev.some((item) => item.value === formData.emergencyHospital)) return prev;
-      return [
-        ...prev,
-        {
-          value: formData.emergencyHospital,
-          label: formData.emergencyHospital,
-          phone: formData.emergencyHospitalPhone || "",
-        },
-      ];
+      const next = [...prev];
+      entries.forEach((item) => {
+        if (next.some((option) => option.value === item.name)) return;
+        next.push({ value: item.name, label: item.name, phone: item.phone });
+      });
+      return next;
     });
-  }, [formData.emergencyHospital, formData.emergencyHospitalPhone]);
+  }, [formData.emergencyHospitals]);
 
   useEffect(() => {
     const uniqueFloors = Array.from(new Set(rooms.map((r) => String((r as any).floor ?? "")).filter(Boolean)))
@@ -134,9 +167,17 @@ export function ResidentFormModal({
       try {
         const labels = await intakeService.getAllLabels();
         if (!mounted) return;
-        const opts = labels.map((l) => ({ value: l.label_name, label: l.label_name }));
-        setIntakeOptions(opts);
+
+        const filtered = CARE_LEVEL_OPTIONS
+          .map(careLevel => labels.find(l => l.label_name === careLevel))
+          .filter((l) => l !== undefined);
+
+        const opts = filtered.map((l) => ({ value: l.label_name, label: l.label_name }));
+        
+        setIntakeOptions(opts.length > 0 ? opts : CARE_LEVEL_OPTIONS.map((label) => ({ value: label, label })));
       } catch (err) {
+        if (!mounted) return;
+        setIntakeOptions(CARE_LEVEL_OPTIONS.map((label) => ({ value: label, label })));
       }
     })();
     return () => { mounted = false; };
@@ -159,20 +200,23 @@ export function ResidentFormModal({
     [hospitalOptions]
   );
 
-  const handleEmergencyHospitalSelect = (value: string) => {
+  const handleEmergencyHospitalSelect = (idx: number, value: string) => {
     const selected = hospitalOptions.find((item) => item.value === value);
-    if (!selected) return;
-    set({ emergencyHospital: selected.value, emergencyHospitalPhone: selected.phone });
+    if (!selected) {
+      form.updateHospital(idx, { name: value, phone: "" });
+      return;
+    }
+    form.updateHospital(idx, { name: selected.value, phone: selected.phone || "" });
   };
 
-  const handleEmergencyHospitalCreate = (name: string) => {
+  const handleEmergencyHospitalCreate = (idx: number, name: string) => {
     const trimmed = name.trim();
     if (!trimmed) return;
     setHospitalOptions((prev) => {
       if (prev.some((item) => item.value === trimmed)) return prev;
       return [...prev, { value: trimmed, label: trimmed, phone: "" }];
     });
-    set({ emergencyHospital: trimmed, emergencyHospitalPhone: "" });
+    form.updateHospital(idx, { name: trimmed, phone: "" });
   };
 
   const handleCreateMedication = async (idx: number, name: string) => {
@@ -226,11 +270,40 @@ export function ResidentFormModal({
     set({ roomId: created.value });
   };
 
+  const handleStatusChange = (value: string) => {
+    if (value === "inactive") {
+      const defaultDate = formData.expectedDischargeDate || toLocalDateString(new Date());
+      setDischargeDateDraft(defaultDate);
+      setIsDischargeConfirmOpen(true);
+      return;
+    }
+
+    if (value === "active") {
+      set({ status: value, expectedDischargeDate: "" });
+      return;
+    }
+
+    set({ status: value });
+  };
+
+  const handleConfirmDischarge = () => {
+    const resolvedDate = dischargeDateDraft || toLocalDateString(new Date());
+    set({ status: "inactive", expectedDischargeDate: resolvedDate });
+    setIsDischargeConfirmOpen(false);
+  };
+
+  const handleCancelDischarge = () => {
+    setIsDischargeConfirmOpen(false);
+  };
+
   const handleLocalSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.emergencyHospital || formData.emergencyHospital.trim() === "") {
-      alert("กรุณาระบุ โรงพยาบาลกรณีฉุกเฉิน");
+    const hasValidHospital = formData.emergencyHospitals.some(
+      (hospital) => hospital.name.trim() !== "" && hospital.phone.trim() !== ""
+    );
+    if (!hasValidHospital) {
+      alert("กรุณาระบุ โรงพยาบาลกรณีฉุกเฉินอย่างน้อย 1 แห่ง (ชื่อและเบอร์โทร)");
       return;
     }
     if (!formData.careLevel || formData.careLevel.trim() === "") {
@@ -289,14 +362,15 @@ export function ResidentFormModal({
   );
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={form.handleClose}
-      title={mode === "edit" ? "แก้ไขแฟ้มข้อมูลผู้สูงอายุ" : "แฟ้มข้อมูลผู้สูงอายุ"}
-      size="4xl"
-      scrollable
-      disableBackdropClose
-    >
+    <>
+      <Modal
+        isOpen={isOpen}
+        onClose={form.handleClose}
+        title={mode === "edit" ? "แก้ไขแฟ้มข้อมูลผู้สูงอายุ" : "แฟ้มข้อมูลผู้สูงอายุ"}
+        size="4xl"
+        scrollable
+        disableBackdropClose
+      >
       <div className="relative w-full h-full"> 
         {((mode === "edit" && isFetchingInitialData) || isLoading) && (
           <div className="absolute inset-0 z-50 bg-white/90 backdrop-blur-sm flex flex-col pt-4">
@@ -319,7 +393,13 @@ export function ResidentFormModal({
               <h3 className="text-base font-semibold text-slate-800">ข้อมูลพื้นฐาน</h3>
               <div className="w-full sm:w-auto sm:min-w-40 "> 
                 <Label icon={null} text="สถานะ" required />
-                <Dropdown options={STATUS_OPTIONS} value={formData.status} onChange={(val) => set({ status: val })} placeholder="เลือกสถานะ" className="w-full" />
+                <Dropdown
+                  options={STATUS_OPTIONS}
+                  value={formData.status}
+                  onChange={handleStatusChange}
+                  placeholder="เลือกสถานะ"
+                  className="w-full"
+                />
               </div>
             </div>
 
@@ -500,32 +580,12 @@ export function ResidentFormModal({
               <div>
                 <Label icon={<Activity size={14} />} text="การประเมินการช่วยเหลือตัวเอง (ADL)" required />
                     <div className="mt-2">
-                      <SearchableDropdown
+                      <Dropdown
                         options={intakeOptions}
                         value={formData.careLevel} 
                         onChange={(val) => set({ careLevel: val })} 
-                        placeholder="เลือกสถานะ" className="w-full text-black" 
-                        allowCreate={true}
-                        onCreate={async (name: string) => {
-                          const trimmed = name.trim();
-                          if (!trimmed) return;
-                          try {
-                            const created = await intakeService.createMaster(trimmed);
-                            const val = created.label_name || trimmed;
-                            setIntakeOptions((prev) => {
-                              if (prev.some((p) => p.value === val)) return prev;
-                              return [...prev, { value: val, label: val }];
-                            });
-                            set({ careLevel: val });
-                          } catch (err) {
-                            setIntakeOptions((prev) => {
-                              if (prev.some((p) => p.value === trimmed)) return prev;
-                              return [...prev, { value: trimmed, label: trimmed }];
-                            });
-                            set({ careLevel: trimmed });
-                          }
-                        }}
-                        createLabel="เพิ่มประเภทการช่วยเหลือ"
+                        placeholder="เลือกสถานะ"
+                        className="w-full text-black" 
                       />
                     </div>
               </div>
@@ -550,24 +610,52 @@ export function ResidentFormModal({
 
           <SectionCard title="ความปลอดภัยฉุกเฉิน">
 
-            <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-10">
-              <div className="md:col-span-6">
-                <Label icon={<Building2 size={14} />} text="โรงพยาบาลกรณีฉุกเฉิน" required />
-                <SearchableDropdown
-                  options={emergencyHospitalOptions}
-                  value={formData.emergencyHospital}
-                  onChange={handleEmergencyHospitalSelect}
-                  onCreate={handleEmergencyHospitalCreate}
-                  allowCreate
-                  createLabel="เพิ่มโรงพยาบาล"
-                  placeholder="เลือกโรงพยาบาล"
-                  className="w-full text-black"
-                />
-              </div>
-              <div className="md:col-span-4">
-                <Label icon={<Phone size={14} />} text="เบอร์โรงพยาบาลกรณีฉุกเฉิน" />
-                <Input type="text" name="emergencyHospitalPhone" value={formData.emergencyHospitalPhone} onChange={form.handlePhoneChange} placeholder="กรอกเบอร์โรงพยาบาล" className={inputClass} />
-              </div>
+            <div className="mb-4 space-y-3">
+              <Label icon={<Building2 size={14} />} text="โรงพยาบาลกรณีฉุกเฉิน" required />
+              {formData.emergencyHospitals.map((hospital, index) => (
+                <div key={`${hospital.name}-${index}`} className="grid grid-cols-1 items-end gap-3 rounded-lg border border-slate-200 bg-slate-50/50 p-3 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-xs text-slate-500">โรงพยาบาล</label>
+                    <SearchableDropdown
+                      options={emergencyHospitalOptions}
+                      value={hospital.name}
+                      onChange={(val) => handleEmergencyHospitalSelect(index, val)}
+                      onCreate={(name) => handleEmergencyHospitalCreate(index, name)}
+                      allowCreate
+                      createLabel="เพิ่มโรงพยาบาล"
+                      placeholder="เลือกโรงพยาบาล"
+                      className="w-full text-black"
+                    />
+                  </div>
+                  <div className="flex items-end gap-2">
+                    <div className="flex-1">
+                      <label className="mb-1 block text-xs text-slate-500">เบอร์โทร</label>
+                      <Input
+                        type="text"
+                        value={hospital.phone}
+                        onChange={(e) => form.updateHospitalPhone(index, e)}
+                        placeholder="กรอกเบอร์โรงพยาบาล"
+                        className={inputClass}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => form.removeHospital(index)}
+                      className="rounded p-1 text-slate-400 transition hover:bg-red-50 hover:text-red-500"
+                      aria-label="ลบโรงพยาบาลกรณีฉุกเฉิน"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={form.addHospital}
+                className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-300 py-2.5 text-sm text-emerald-600 transition hover:border-emerald-400 hover:bg-emerald-50"
+              >
+                <Plus size={15} /> เพิ่มโรงพยาบาล
+              </button>
             </div>
 
             <div>
@@ -597,5 +685,40 @@ export function ResidentFormModal({
         </form>
       </div>
     </Modal>
+
+    <Modal
+      isOpen={isDischargeConfirmOpen}
+      onClose={handleCancelDischarge}
+      title="ยืนยันการออกจากศูนย์"
+      size="sm"
+      disableBackdropClose
+    >
+      <div className="space-y-4">
+        <p className="text-sm text-slate-700">
+          ยืนยันการออกจากศูนย์วันที่ {formatThaiDateLabel(dischargeDateDraft) || "-"} หรือไม่?
+        </p>
+        <div>
+          <Label icon={<Calendar size={14} />} text="วันที่ออกจากศูนย์" required />
+          <DatePicker
+            value={parseLocalDate(dischargeDateDraft)}
+            onChange={(date) => setDischargeDateDraft(date ? toLocalDateString(date) : "")}
+            placeholder="DD/MM/YYYY"
+          />
+        </div>
+        <div className="flex justify-end gap-3">
+          <Button type="button" onClick={handleCancelDischarge} className="h-10 px-4  bg-slate-200 text-sm font-semibold text-slate-700 transition hover:bg-slate-300">
+            ยกเลิก
+          </Button>
+          <Button
+            type="button"
+            onClick={handleConfirmDischarge}
+            className="h-10 bg-emerald-600 px-4 text-white hover:bg-emerald-700"
+          >
+            ยืนยัน
+          </Button>
+        </div>
+      </div>
+    </Modal>
+    </>
   );
 }

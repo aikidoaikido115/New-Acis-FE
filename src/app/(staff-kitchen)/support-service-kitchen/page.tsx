@@ -269,11 +269,6 @@ export default function SupportPage() {
             <h3 className="text-headline-7 font-semibold text-green-800 mb-2">ติดต่อด่วน</h3>
             <p className="text-body-small text-green-700 leading-relaxed">โทร: {SUPPORT_CONTACT_CONFIG.urgentPhone}</p>
           </div>
-
-          <div className="bg-yellow-50 border border-yellow-100 rounded-xl p-6 shadow-sm">
-            <h3 className="text-headline-7 font-semibold text-yellow-800 mb-2">อีเมล</h3>
-            <p className="text-body-small text-yellow-700 leading-relaxed break-all">{SUPPORT_CONTACT_CONFIG.supportEmail}</p>
-          </div>
         </div>
       </div>
     </div>

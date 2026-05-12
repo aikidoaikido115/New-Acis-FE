@@ -22,6 +22,11 @@ export interface RelativeEmergencyContact {
   phone: string;
 }
 
+export interface RelativeEmergencyHospital {
+  name: string;
+  phone: string;
+}
+
 export interface RelativeMedication {
   name: string;
   dose: string;
@@ -51,6 +56,7 @@ export interface RelativePatientInfoData {
   drug_allergies: string[];
   emergency_hospital?: string;
   emergency_hospital_phone?: string;
+  emergency_hospitals?: RelativeEmergencyHospital[];
   emergency_contacts: RelativeEmergencyContact[];
 }
 

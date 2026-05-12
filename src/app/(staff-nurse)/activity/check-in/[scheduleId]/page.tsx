@@ -37,6 +37,13 @@ const formatTime = (value?: string | null) => {
   return `${hours}:${minutes}`;
 };
 
+const CARE_LEVEL_OPTIONS = [
+  "ช่วยเหลือตัวเองได้ทั้งหมด",
+  "ช่วยเหลือตัวเองได้บางส่วน",
+  "ผู้สูงอายุติดเตียง",
+  "อื่นๆ",
+];
+
 // ดึงชื่อประเภท (Label) ตัวแรกสุดจาก DB มาแสดงเลย
 const resolveCareType = (labels: string[] = []) => {
   if (!labels || labels.length === 0) return "-";
@@ -85,11 +92,16 @@ export default function ActivityCheckInPage() {
 
     const loadFilters = async () => {
       try {
-        const labels = await intakeService.getAllLabels();
+       const labels = await intakeService.getAllLabels();
         if (mounted && labels) {
+          const filtered = CARE_LEVEL_OPTIONS
+            .map(careLevel => labels.find(l => l.label_name === careLevel))
+            .filter((l) => l !== undefined);
+
+          const optionsBase = filtered.length > 0 ? filtered : CARE_LEVEL_OPTIONS.map((label) => ({ label_name: label }));
           const opts = [
             { value: "all", label: "ทุกประเภท" },
-            ...labels.map((l) => ({ value: l.label_name, label: l.label_name }))
+            ...optionsBase.map((l) => ({ value: l.label_name, label: l.label_name }))
           ];
           setCareTypeOptions(opts);
         }
@@ -99,7 +111,8 @@ export default function ActivityCheckInPage() {
             { value: "all", label: "ทุกประเภท" },
             { value: "ช่วยเหลือตัวเองได้ทั้งหมด", label: "ช่วยเหลือตัวเองได้ทั้งหมด" },
             { value: "ช่วยเหลือตัวเองได้บางส่วน", label: "ช่วยเหลือตัวเองได้บางส่วน" },
-            { value: "ติดเตียง", label: "ติดเตียง" },
+            { value: "ผู้สูงอายุติดเตียง", label: "ผู้สูงอายุติดเตียง" },
+            { value: "อื่นๆ", label: "อื่นๆ" },
           ]);
         }
       }

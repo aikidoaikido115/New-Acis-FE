@@ -1,10 +1,11 @@
-import type { Medication, EmergencyContact, ResidentFormState } from "@/types/resident";
+import type { Medication, EmergencyContact, EmergencyHospital, ResidentFormState } from "@/types/resident";
 export const INITIAL_MEDICATION: Medication = { pdId: "", dmId: "", name: "", dose: "", frequency: "", time: "", mealType: "", note: "" };
 export const MEDICATION_MEAL_TYPE_OPTIONS = [
   { value: "before_meal", label: "ก่อนอาหาร" },
   { value: "after_meal", label: "หลังอาหาร" },
 ];
 export const INITIAL_EMERGENCY_CONTACT: EmergencyContact = { name: "", relation: "", phone: "" };
+export const INITIAL_EMERGENCY_HOSPITAL: EmergencyHospital = { name: "", phone: "" };
 
 export const INITIAL_FORM_STATE: ResidentFormState = {
   status: "active",
@@ -31,8 +32,7 @@ export const INITIAL_FORM_STATE: ResidentFormState = {
   careLevel: "",
   cprStatus: "",
   intakeLabel: "",
-  emergencyHospital: "",
-  emergencyHospitalPhone: "",
+  emergencyHospitals: [{ ...INITIAL_EMERGENCY_HOSPITAL }],
   emergencyContacts: [{ ...INITIAL_EMERGENCY_CONTACT }],
 };
 
