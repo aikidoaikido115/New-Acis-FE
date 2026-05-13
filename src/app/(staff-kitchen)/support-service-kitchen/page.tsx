@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { SUPPORT_CONTACT_CONFIG } from "@/constants/support-service";
 import supportTicketService from "@/services/support-ticket.service";
 import { Dropdown } from "@/components/ui/dropdown";
 import { Input } from "@/components/ui/input";
@@ -169,7 +168,7 @@ export default function SupportPage() {
         <p className="text-sm sm:text-[16px] font-light text-gray-600">กรอกข้อมูลด้านล่างเพื่อแจ้งปัญหาที่พบ</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[70%_30%] gap-6">
+      <div className="grid grid-cols-1 gap-6">
         <div className="bg-white rounded-2xl shadow-sm p-5 sm:p-6 lg:p-10">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -262,17 +261,6 @@ export default function SupportPage() {
           </form>
         </div>
 
-        <div className="space-y-4">
-          <div className="bg-blue-50 border border-blue-100 rounded-xl p-6 shadow-sm">
-            <h3 className="text-headline-7 font-semibold text-blue-800 mb-2">เวลาตอบกลับ</h3>
-            <p className="text-body-small text-blue-700 leading-relaxed">{SUPPORT_CONTACT_CONFIG.responseTimeText}</p>
-          </div>
-
-          <div className="bg-green-50 border border-green-100 rounded-xl p-6 shadow-sm">
-            <h3 className="text-headline-7 font-semibold text-green-800 mb-2">ติดต่อด่วน</h3>
-            <p className="text-body-small text-green-700 leading-relaxed">โทร: {SUPPORT_CONTACT_CONFIG.urgentPhone}</p>
-          </div>
-        </div>
       </div>
     </div>
   );
