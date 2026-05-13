@@ -6,6 +6,8 @@ export interface ActivitySchedule {
   date: string;
   start_time: string;
   end_time: string;
+  series_id?: string | null;
+  status?: string;
   created_at?: string;
   updated_at?: string;
   activity?: Activity;
@@ -25,4 +27,22 @@ export interface UpdateActivityScheduleRequest {
   date?: string;
   start_time?: string;
   end_time?: string;
+}
+
+export interface CreateRecurringActivityScheduleRequest {
+  activity_id: string;
+  start_date: string;
+  end_date: string;
+  start_time: string;
+  end_time: string;
+  repeat_days: number[];
+}
+
+export interface CancelActivityScheduleRequest {
+  activity_id: string;
+  cancel_mode: "single" | "following";
+}
+
+export interface RestoreActivityScheduleRequest {
+  activity_id: string;
 }
