@@ -1,11 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowUpDown, CheckCircle2, Search } from "lucide-react";
+import { ArrowUpDown, CheckCircle2, Search, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Dropdown } from "@/components/ui/dropdown";
 import { Pagination } from "@/components/ui/pagination";
 import { useToast } from "@/components/ui/toast";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { AdminSectionTabs } from "@/components/features/admin/admin-section-tabs";
 import { useAdminContext } from "@/components/features/admin/AdminContext";
 import {
@@ -80,6 +81,7 @@ function toRegistrationRequest(user: AdminManagedUser): RegistrationRequest {
 
 export default function AdminRegisterApprovalsPage() {
   const { showToast } = useToast();
+  const { confirm, confirmDialog } = useConfirmDialog();
   const { refetchPendingCount } = useAdminContext();
   const [requests, setRequests] = useState<RegistrationRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -167,9 +169,10 @@ export default function AdminRegisterApprovalsPage() {
     setUpdatingId(requestId);
     try {
       const updated = await adminService.updateUserApproval(target.userId, status === "approved");
+      const nextRequest = toRegistrationRequest(updated);
       setRequests((prev) =>
         prev.map((request) =>
-          request.id === requestId ? toRegistrationRequest(updated) : request
+          request.id === requestId ? nextRequest : request
         )
       );
 
@@ -184,6 +187,73 @@ export default function AdminRegisterApprovalsPage() {
       showToast({
         title: "บันทึกไม่สำเร็จ",
         message: "ไม่สามารถอัปเดตสถานะคำขอได้",
+        type: "error",
+      });
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const handleApprove = async (requestId: string) => {
+    const target = requests.find((request) => request.id === requestId);
+    if (!target) return;
+
+    const confirmed = await confirm({
+      title: "ยืนยันการอนุมัติ",
+      message: `ต้องการอนุมัติการใช้งานของ ${target.username} ใช่หรือไม่?`,
+      confirmText: "อนุมัติ",
+      cancelText: "ยกเลิก",
+    });
+
+    if (!confirmed) return;
+    await updateRequestStatus(requestId, "approved");
+  };
+
+  const handleSuspend = async (requestId: string) => {
+    const target = requests.find((request) => request.id === requestId);
+    if (!target) return;
+
+    const confirmed = await confirm({
+      title: "ยืนยันการปิดใช้งาน",
+      message: `ต้องการปิดการใช้งานของ ${target.username} ใช่หรือไม่?`,
+      confirmText: "ปิดการใช้งาน",
+      cancelText: "ยกเลิก",
+      tone: "danger",
+    });
+
+    if (!confirmed) return;
+    await updateRequestStatus(requestId, "pending");
+  };
+
+  const handleReject = async (requestId: string) => {
+    const target = requests.find((request) => request.id === requestId);
+    if (!target) return;
+
+    const confirmed = await confirm({
+      title: "ยืนยันการปฏิเสธ",
+      message: `หากปฏิเสธ ระบบจะลบผู้ใช้ ${target.username} ออกจากระบบทันที ต้องการดำเนินการต่อหรือไม่?`,
+      confirmText: "ปฏิเสธและลบ",
+      cancelText: "ยกเลิก",
+      tone: "danger",
+    });
+
+    if (!confirmed) return;
+
+    setUpdatingId(requestId);
+    try {
+      await adminService.deleteUserById(target.userId);
+      setRequests((prev) => prev.filter((request) => request.id !== requestId));
+      showToast({
+        title: "ปฏิเสธการสมัครแล้ว",
+        message: `${target.username} ถูกลบออกจากระบบเรียบร้อย`,
+        type: "success",
+      });
+
+      await refetchPendingCount();
+    } catch {
+      showToast({
+        title: "ลบผู้ใช้ไม่สำเร็จ",
+        message: "ไม่สามารถปฏิเสธและลบผู้ใช้งานได้",
         type: "error",
       });
     } finally {
@@ -296,20 +366,47 @@ export default function AdminRegisterApprovalsPage() {
                   </td>
                   <td className="px-4 py-3 text-right sm:px-6">
                     <div className="flex justify-end">
-                      <button
-                        type="button"
-                        onClick={() => updateRequestStatus(request.id, request.status === "pending" ? "approved" : "pending")}
-                        disabled={updatingId === request.id}
-                        className={cn(
-                          "inline-flex min-w-[136px] items-center justify-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-40",
-                          request.status === "pending"
-                            ? "border border-green-200 text-green-700 hover:bg-green-50"
-                            : "border border-red-200 text-red-700 hover:bg-red-50"
-                        )}
-                      >
-                        <CheckCircle2 className="h-3.5 w-3.5" />
-                        {request.status === "pending" ? "อนุมัติการใช้งาน" : "ปิดการใช้งาน"}
-                      </button>
+                      {request.status === "pending" ? (
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleApprove(request.id)}
+                            disabled={updatingId === request.id}
+                            className={cn(
+                              "inline-flex min-w-[136px] items-center justify-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-40",
+                              "border border-green-200 text-green-700 hover:bg-green-50"
+                            )}
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            อนุมัติการใช้งาน
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleReject(request.id)}
+                            disabled={updatingId === request.id}
+                            className={cn(
+                              "inline-flex min-w-[120px] items-center justify-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-40",
+                              "border border-red-200 text-red-700 hover:bg-red-50"
+                            )}
+                          >
+                            <XCircle className="h-3.5 w-3.5" />
+                            ปฏิเสธ
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleSuspend(request.id)}
+                          disabled={updatingId === request.id}
+                          className={cn(
+                            "inline-flex min-w-[136px] items-center justify-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-40",
+                            "border border-red-200 text-red-700 hover:bg-red-50"
+                          )}
+                        >
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          ปิดการใช้งาน
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -333,6 +430,8 @@ export default function AdminRegisterApprovalsPage() {
       {filteredAndSortedRequests.length > 0 && (
         <Pagination currentPage={safeCurrentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
       )}
+
+      {confirmDialog}
     </div>
   );
 }

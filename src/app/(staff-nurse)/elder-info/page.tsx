@@ -30,7 +30,7 @@ export const determineCareLevel = (adlScore?: number) => {
   if (adlScore === undefined || adlScore === null) return "";
   if (adlScore <= 5) return "ผู้สูงอายุติดเตียง";
   if (adlScore <= 11) return "ช่วยเหลือตัวเองได้บางส่วน";
-  return "ผู้สูงอายุทั่วไป";
+  return "ช่วยเหลือตัวเองได้ทั้งหมด";
 };
 
 // ดึงชื่อ Label จาก DB มาแสดงผลตรงๆ เลย
@@ -238,8 +238,20 @@ export default function Page() {
       adlScore: resident.adl_score !== undefined && resident.adl_score !== null ? String(resident.adl_score) : "",
       careLevel: fallbackCareLevel || "", 
       cprStatus: resident.resuscitation_status || "",
-      emergencyHospital: resident.preferred_emergency_hospital || "",
-      emergencyHospitalPhone: resident.emergency_hospital_phone || "",
+      emergencyHospitals:
+        resident.emergency_hospitals && resident.emergency_hospitals.length > 0
+          ? resident.emergency_hospitals.map((hospital) => ({
+              name: hospital.name || "",
+              phone: hospital.phone || "",
+            }))
+          : resident.preferred_emergency_hospital || resident.emergency_hospital_phone
+            ? [
+                {
+                  name: resident.preferred_emergency_hospital || "",
+                  phone: resident.emergency_hospital_phone || "",
+                },
+              ]
+            : [{ name: "", phone: "" }],
       emergencyContacts: resident.emergency_contacts || [],
     };
 
@@ -384,6 +396,14 @@ export default function Page() {
 
   const normalizePhone = (value?: string) => value?.replace(/\D/g, "") || "";
 
+  const normalizeHospitals = (hospitals: ResidentFormState["emergencyHospitals"]) =>
+    hospitals
+      .map((hospital) => ({
+        name: hospital.name.trim(),
+        phone: normalizePhone(hospital.phone),
+      }))
+      .filter((hospital) => hospital.name || hospital.phone);
+
   const toRFC3339 = (value?: string) => {
     if (!value) return undefined;
     if (value.includes("T")) return value;
@@ -405,7 +425,8 @@ export default function Page() {
 
   const buildResidentFormData = (formData: ResidentFormState, labels?: Array<{ label_name: string; note_text?: string }>) => {
     const form = new FormData();
-    const emergencyPhone = normalizePhone(formData.emergencyHospitalPhone);
+    const cleanedHospitals = normalizeHospitals(formData.emergencyHospitals);
+    const primaryHospital = cleanedHospitals[0];
     const cleanedContacts = formData.emergencyContacts
       .map((contact) => ({
         name: contact.name.trim(),
@@ -431,8 +452,12 @@ export default function Page() {
     appendFormValue(form, "pre_existing_conditions_notes", formData.chronicDiseasesNote || "");
     appendFormValue(form, "surgical_history", formData.surgicalHistory || "");
     appendFormValue(form, "resuscitation_status", formData.cprStatus || "");
-    appendFormValue(form, "preferred_emergency_hospital", formData.emergencyHospital || "");
-    appendFormValue(form, "emergency_hospital_phone", emergencyPhone || "");
+    appendFormValue(form, "preferred_emergency_hospital", primaryHospital?.name || "");
+    appendFormValue(form, "emergency_hospital_phone", primaryHospital?.phone || "");
+
+    if (cleanedHospitals.length > 0) {
+      form.append("emergency_hospitals", JSON.stringify(cleanedHospitals));
+    }
 
     if (cleanedContacts.length > 0) {
       form.append("emergency_contacts", JSON.stringify(cleanedContacts));
@@ -448,7 +473,8 @@ export default function Page() {
   };
 
   const buildResidentPayload = (formData: ResidentFormState, labels?: Array<{ label_name: string; note_text?: string }>): CreateResidentRequest => {
-    const emergencyPhone = normalizePhone(formData.emergencyHospitalPhone);
+    const cleanedHospitals = normalizeHospitals(formData.emergencyHospitals);
+    const primaryHospital = cleanedHospitals[0];
     const idCardNumber = formData.idCardNumber.trim();
     const checkInDate = toRFC3339(formData.admitDate);
     const expectedCheckOutDate = toRFC3339(formData.expectedDischargeDate);
@@ -476,8 +502,9 @@ export default function Page() {
     pre_existing_conditions_notes: formData.chronicDiseasesNote || undefined,
     surgical_history: formData.surgicalHistory || undefined,
     resuscitation_status: formData.cprStatus || undefined,
-    preferred_emergency_hospital: formData.emergencyHospital || undefined,
-    emergency_hospital_phone: emergencyPhone || undefined,
+    preferred_emergency_hospital: primaryHospital?.name || undefined,
+    emergency_hospital_phone: primaryHospital?.phone || undefined,
+    emergency_hospitals: cleanedHospitals.length > 0 ? cleanedHospitals : undefined,
     emergency_contacts: cleanedContacts.length > 0 ? cleanedContacts : undefined,
     profile_image: formData.profileImagePreview || undefined,
     status: formData.status,
@@ -698,20 +725,26 @@ export default function Page() {
       validateMedications(formData.medications);
 
       const careLevelLabel = formData.careLevel?.trim();
-      const labels = modalMode === "edit" && careLevelLabel ? [{ label_name: careLevelLabel }] : undefined;
+      const isReAdmission =
+        modalMode === "edit" &&
+        editingInitialValues?.status === "inactive" &&
+        formData.status === "active";
+      const shouldUpdateExisting = modalMode === "edit" && !isReAdmission && Boolean(editingResidentId);
+      const labels = shouldUpdateExisting && careLevelLabel ? [{ label_name: careLevelLabel }] : undefined;
       
       let savedResident: ApiResident;
 
-      if (modalMode === "edit" && editingResidentId) {
-        // โหมดแก้ไข: ถ้ามีรูปให้ส่ง FormData ถ้าไม่มีส่ง JSON
+      if (shouldUpdateExisting) {
         const payload = formData.profileImage
           ? buildResidentFormData(formData, labels)
           : buildResidentPayload(formData, labels);
-        savedResident = await residentService.update(editingResidentId, payload as any);
+          
+        savedResident = await residentService.update(editingResidentId!, payload as any); 
       } else {
         // โหมดสร้างใหม่: สร้างด้วย JSON ก่อนเสมอเพื่อหลบ 400 Bad Request
         const jsonPayload = buildResidentPayload(formData, labels);
         savedResident = await residentService.create(jsonPayload as any);
+      
 
         // ถ้ามีการแนบรูปมาด้วย ให้อัปเดตตามไปทันที (เทคนิค 2 Step)
         if (formData.profileImage) {
@@ -730,7 +763,7 @@ export default function Page() {
 
       // บันทึกข้อมูลอื่นๆ เพิ่มเติม
       const postSaveTasks: Promise<unknown>[] = [];
-      if (modalMode !== "edit" && careLevelLabel) {
+      if (!shouldUpdateExisting && careLevelLabel) {
         postSaveTasks.push(
           intakeService.createResidentLabels({
             resident_id: residentId,
@@ -749,7 +782,7 @@ export default function Page() {
       showToast({
         type: "success",
         title: "บันทึกข้อมูลสำเร็จ",
-        message: modalMode === "edit" ? "แก้ไขแฟ้มผู้สูงอายุเรียบร้อย" : "เพิ่มแฟ้มผู้สูงอายุเรียบร้อย",
+        message: shouldUpdateExisting ? "แก้ไขแฟ้มผู้สูงอายุเรียบร้อย" : "เพิ่มแฟ้มผู้สูงอายุเรียบร้อย",
       });
 
       if (postSaveErrors.length > 0) {

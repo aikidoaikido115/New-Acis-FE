@@ -4,6 +4,13 @@ import { Dropdown } from "@/components/ui/dropdown";
 import { useState, useEffect, useMemo } from "react";
 import { intakeService } from '@/services/intake.service';
 
+const CARE_LEVEL_OPTIONS = [
+  "ช่วยเหลือตัวเองได้ทั้งหมด",
+  "ช่วยเหลือตัวเองได้บางส่วน",
+  "ผู้สูงอายุติดเตียง",
+  "อื่นๆ",
+];
+
 interface ElderTableFilterProps {
   searchTerm: string;
   onSearchChange: (value: string) => void;
@@ -13,7 +20,7 @@ interface ElderTableFilterProps {
   onCareTypeChange: (value: string) => void;
   showActive: boolean;
   onShowActiveToggle: () => void;
-  availableFloors?: string[]; // 1. เพิ่ม Prop รับข้อมูลชั้นจากหน้าหลัก
+  availableFloors?: string[]; 
 }
 
 export function ElderTableFilter({
@@ -25,12 +32,10 @@ export function ElderTableFilter({
   onCareTypeChange,
   showActive,
   onShowActiveToggle,
-  availableFloors = [], // รับค่าชั้นเข้ามา (ค่าตั้งต้นคืออาเรย์ว่าง)
+  availableFloors = [], 
 }: ElderTableFilterProps) {
   
-  // 2. สร้างตัวเลือก "ชั้น" แบบ Dynamic ตามข้อมูลที่ส่งเข้ามา
   const floorOptions = useMemo(() => {
-    // เรียงลำดับชั้นจากน้อยไปมาก
     const sortedFloors = [...availableFloors].sort((a, b) => Number(a) - Number(b));
     
     return [
@@ -49,19 +54,29 @@ export function ElderTableFilter({
       try {
         const labels = await intakeService.getAllLabels();
         if (!mounted) return;
+
+        const filtered = CARE_LEVEL_OPTIONS
+          .map(careLevel => labels.find(l => l.label_name === careLevel))
+          .filter((l) => l !== undefined);
+
+        const optionsBase = filtered.length > 0 ? filtered : CARE_LEVEL_OPTIONS.map((label) => ({ label_name: label }));
+
         const opts = [
           { value: "all", label: "ทุกประเภท" },
-          ...labels.map((l) => ({ value: l.label_name, label: l.label_name }))
+          ...optionsBase.map((l) => ({ value: l.label_name, label: l.label_name }))
         ];
         setIntakeOptions(opts);
+
       } catch (err) {
-        // ถ้า API พัง ให้ใช้ค่า Default เบื้องต้น
-        setIntakeOptions([
-          { value: "all", label: "ทุกประเภท" },
-          { value: "ผู้สูงอายุทั่วไป", label: "ผู้สูงอายุทั่วไป" },
-          { value: "ช่วยเหลือตัวเองได้บางส่วน", label: "ช่วยเหลือตัวเองได้บางส่วน" },
-          { value: "ผู้สูงอายุติดเตียง", label: "ผู้สูงอายุติดเตียง" },
-        ]);
+        if (mounted) {
+          setIntakeOptions([
+            { value: "all", label: "ทุกประเภท" },
+            { value: "ช่วยเหลือตัวเองได้ทั้งหมด", label: "ช่วยเหลือตัวเองได้ทั้งหมด" },
+            { value: "ช่วยเหลือตัวเองได้บางส่วน", label: "ช่วยเหลือตัวเองได้บางส่วน" },
+            { value: "ผู้สูงอายุติดเตียง", label: "ผู้สูงอายุติดเตียง" },
+            { value: "อื่นๆ", label: "อื่นๆ" },
+          ]);
+        }
       }
     })();
     return () => { mounted = false; };
@@ -69,9 +84,7 @@ export function ElderTableFilter({
 
   return (
     <div className="border-b border-slate-200 px-3 py-3">
-      {/* Mobile: Compact layout */}
       <div className="flex flex-col gap-2 md:hidden">
-        {/* Search bar with status button */}
         <div className="flex items-center gap-2">
           <div className="relative flex items-center flex-1 min-w-0">
             <Search className="absolute left-2.5 h-3.5 w-3.5 text-slate-400" />
@@ -98,7 +111,6 @@ export function ElderTableFilter({
           </button>
         </div>
         
-        {/* Filters in one row */}
         <div className="flex items-center gap-2 text-xs">
           <div className="flex items-center gap-1.5 text-slate-600">
             <span className="whitespace-nowrap">ชั้น</span>
@@ -122,7 +134,6 @@ export function ElderTableFilter({
         </div>
       </div>
 
-      {/* Tablet: Horizontal with status button in same row as filters */}
       <div className="hidden md:flex lg:hidden md:flex-col md:gap-3">
         <div className="relative flex items-center">
           <Search className="absolute left-3 h-4 w-4 text-slate-400" />
@@ -171,7 +182,6 @@ export function ElderTableFilter({
         </div>
       </div>
 
-      {/* Desktop: Traditional horizontal layout */}
       <div className="hidden lg:flex lg:items-center lg:justify-between lg:gap-4">
         <div className="flex items-center gap-4">
           <div className="relative flex items-center w-80">

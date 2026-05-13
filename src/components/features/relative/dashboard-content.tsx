@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { DailySummaryHeader } from './daily-summary-header';
 import { DailyActivities } from './daily-activities';
+import { DailyHealthSummary } from './daily-health-summary';
 import { AdditionalNotes } from './additional-notes';
 import type { RelativeDashboardNote } from '@/services/relative-portal.service';
 import type { ActivityParticipation } from '@/types/activity-participation';
@@ -21,6 +22,7 @@ interface RelativeDashboardContentProps {
 }
 
 export function RelativeDashboardContent({ 
+  residentId,
   residentName,
   lastUpdatedAt,
   notes = [],
@@ -90,6 +92,8 @@ export function RelativeDashboardContent({
             selectedDate={selectedDate}
             lastUpdatedAt={lastUpdatedAt}
           />
+
+          <DailyHealthSummary residentId={residentId} selectedDate={selectedDate} />
 
           {/* Daily Activities */}
           <DailyActivities participations={participations} lastUpdatedAt={lastUpdatedAt} />

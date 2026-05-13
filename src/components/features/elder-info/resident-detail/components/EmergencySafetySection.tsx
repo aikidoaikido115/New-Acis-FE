@@ -7,6 +7,15 @@ interface EmergencySafetySectionProps {
 }
 
 export function EmergencySafetySection({ resident }: EmergencySafetySectionProps) {
+  const emergencyHospitals = resident?.emergency_hospitals && resident.emergency_hospitals.length > 0
+    ? resident.emergency_hospitals
+    : resident?.preferred_emergency_hospital || resident?.emergency_hospital_phone
+      ? [{
+          name: resident?.preferred_emergency_hospital || "-",
+          phone: resident?.emergency_hospital_phone || "-",
+        }]
+      : [];
+
   return (
     <section className="rounded-xl border border-slate-200 border-l-4 border-l-rose-500 bg-white p-5">
       <h3 className="text-sm font-semibold text-slate-700">ความปลอดภัยฉุกเฉิน</h3>
@@ -16,24 +25,35 @@ export function EmergencySafetySection({ resident }: EmergencySafetySectionProps
             <Building2 className="h-4 w-4" />
             <span>โรงพยาบาลกรณีฉุกเฉิน</span>
           </div>
-          <div className="mt-2 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-slate-700">
-            <span>{resident?.preferred_emergency_hospital || "-"}</span>
-            {toTelHref(resident?.emergency_hospital_phone) ? (
-              <a
-                href={toTelHref(resident?.emergency_hospital_phone)}
-                className="flex items-center gap-2 text-sm font-semibold text-rose-600 hover:text-rose-700"
-                aria-label="โทรหาโรงพยาบาลกรณีฉุกเฉิน"
-              >
-                <Phone className="h-4 w-4" />
-                {resident?.emergency_hospital_phone || "-"}
-              </a>
-            ) : (
-              <span className="flex items-center gap-2 text-sm font-semibold text-slate-500">
-                <Phone className="h-4 w-4" />
-                {resident?.emergency_hospital_phone || "-"}
-              </span>
-            )}
-          </div>
+          {emergencyHospitals.length > 0 ? (
+            <div className="mt-2 space-y-3">
+              {emergencyHospitals.map((hospital, index) => (
+                <div
+                  key={`${hospital.name}-${index}`}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-slate-700"
+                >
+                  <span>{hospital.name || "-"}</span>
+                  {toTelHref(hospital.phone) ? (
+                    <a
+                      href={toTelHref(hospital.phone)}
+                      className="flex items-center gap-2 text-sm font-semibold text-rose-600 hover:text-rose-700"
+                      aria-label="โทรหาโรงพยาบาลกรณีฉุกเฉิน"
+                    >
+                      <Phone className="h-4 w-4" />
+                      {hospital.phone || "-"}
+                    </a>
+                  ) : (
+                    <span className="flex items-center gap-2 text-sm font-semibold text-slate-500">
+                      <Phone className="h-4 w-4" />
+                      {hospital.phone || "-"}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-2 text-sm text-slate-500">ไม่มีข้อมูล</div>
+          )}
         </div>
 
         <div>

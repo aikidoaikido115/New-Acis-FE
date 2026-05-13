@@ -163,10 +163,10 @@ export function DashboardScheduleRow({
           />
           <div className="space-y-4 max-h-[35vh] overflow-y-auto pr-2 custom-scrollbar">
             {scheduleItems.length > 0 ? (
-              scheduleItems.map((item) => (
+              scheduleItems.map((item, index) => (
                 <Link 
                   href={`/activity?date=${dateStr}`}
-                  key={item.time} 
+                  key={`${item.time}-${item.title}-${index}`} 
                   className="block transition-all hover:shadow-md rounded-xl"
                 >
                   <ScheduleItem {...item} />

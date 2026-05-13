@@ -364,6 +364,8 @@ export function MedicalManagementView() {
   const [currentPage, setCurrentPage] = useState(1);
   const [showAddMedicationModal, setShowAddMedicationModal] = useState(false);
   const [medsDisplayMode, setMedsDisplayMode] = useState<"split" | "combined">("split");
+  const [pendingActionsByPatient, setPendingActionsByPatient] = useState<Record<string, number>>({});
+  const [showCompletedPatients, setShowCompletedPatients] = useState(false);
 
   const [residents, setResidents] = useState<Resident[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -378,6 +380,82 @@ export function MedicalManagementView() {
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [isMutating, setIsMutating] = useState(false);
+
+  const pendingActionTotal = useMemo(
+    () => Object.values(pendingActionsByPatient).reduce((sum, count) => sum + count, 0),
+    [pendingActionsByPatient]
+  );
+  const hasPendingActions = pendingActionTotal > 0;
+
+  const confirmLeaveWithPending = useCallback(() => {
+    if (!hasPendingActions) {
+      return true;
+    }
+
+    return window.confirm(
+      "มีรายการกำลังนับถอยหลังเพื่อบันทึกการให้ยา หากออกจากหน้านี้รายการจะยังถูกส่งตามเวลาเดิม ต้องการออกหรือไม่?"
+    );
+  }, [hasPendingActions]);
+
+  useEffect(() => {
+    if (!hasPendingActions) {
+      return;
+    }
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasPendingActions]);
+
+  useEffect(() => {
+    if (!hasPendingActions) {
+      return;
+    }
+
+    const handleDocumentClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target) {
+        return;
+      }
+
+      const anchor = target.closest("a") as HTMLAnchorElement | null;
+      if (!anchor) {
+        return;
+      }
+
+      const href = anchor.getAttribute("href");
+      if (!href || href.startsWith("#")) {
+        return;
+      }
+
+      if (anchor.target && anchor.target !== "_self") {
+        return;
+      }
+
+      if (!confirmLeaveWithPending()) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
+
+    const handlePopState = () => {
+      if (!confirmLeaveWithPending()) {
+        window.history.pushState(null, "", window.location.href);
+      }
+    };
+
+    document.addEventListener("click", handleDocumentClick, true);
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      document.removeEventListener("click", handleDocumentClick, true);
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [confirmLeaveWithPending, hasPendingActions]);
 
   const roomById = useMemo(() => {
     return new Map(rooms.map((room) => [getRoomPrimaryId(room), room] as const));
@@ -507,6 +585,7 @@ export function MedicalManagementView() {
           actionAt: item.action_at || undefined,
           patientName: item.resident_name,
           medication: [item.drug_name, item.drug_dose].filter(Boolean).join(" "),
+          meal: toThaiTimeOfDayListLabel(item.time_of_day),
           status: toHistoryStatus(item.status),
           note: item.note || "-",
           givenBy: item.given_by_staff_name || "-",
@@ -851,15 +930,28 @@ export function MedicalManagementView() {
     [refreshAfterMutation, showToast]
   );
 
+  const handlePendingCountChange = useCallback((patientId: string, count: number) => {
+    setPendingActionsByPatient((prev) => {
+      if (count <= 0) {
+        const { [patientId]: _, ...rest } = prev;
+        return rest;
+      }
+      return { ...prev, [patientId]: count };
+    });
+  }, []);
+
   const handleOpenDetails = useCallback(
     async (patientId: string) => {
+      if (!confirmLeaveWithPending()) {
+        return;
+      }
       setSelectedPatientId(patientId);
       setCurrentView("details");
       setDetailsTab("meds");
       setDetailSearchTerm("");
       await loadPatientMedicationList(patientId);
     },
-    [loadPatientMedicationList]
+    [confirmLeaveWithPending, loadPatientMedicationList]
   );
 
   useEffect(() => {
@@ -1030,8 +1122,19 @@ export function MedicalManagementView() {
   }, [allPatientMedications, mainSearchTerm, selectedFloor, selectedLabelId]);
 
   const visiblePatients = useMemo(() => {
-    return filteredPatients.filter((patient) => patient.pendingCount > 0);
-  }, [filteredPatients]);
+    const base = showCompletedPatients
+      ? filteredPatients
+      : filteredPatients.filter((patient) => patient.pendingCount > 0);
+
+    return [...base].sort((a, b) => {
+      const aPending = a.pendingCount > 0 ? 0 : 1;
+      const bPending = b.pendingCount > 0 ? 0 : 1;
+      if (aPending !== bPending) {
+        return aPending - bPending;
+      }
+      return a.name.localeCompare(b.name);
+    });
+  }, [filteredPatients, showCompletedPatients]);
 
   const selectedPatient = useMemo(() => {
     const patient = allPatientMedications.find((patient) => patient.id === selectedPatientId);
@@ -1253,10 +1356,23 @@ export function MedicalManagementView() {
             onChange={(value) => setSelectedLabelId(value)}
             className="w-48"
           />
+
+          <label className="flex items-center gap-2 text-body-small text-gray-600">
+            <input
+              type="checkbox"
+              checked={showCompletedPatients}
+              onChange={(event) => setShowCompletedPatients(event.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500"
+            />
+            แสดงรายการที่ให้ยาครบแล้ว
+          </label>
         </div>
 
         <button
           onClick={() => {
+            if (!confirmLeaveWithPending()) {
+              return;
+            }
             setCurrentView("history");
             setCurrentPage(1);
           }}
@@ -1267,7 +1383,7 @@ export function MedicalManagementView() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {isLoadingMain ? (
+        {isLoadingMain && !(hasPendingActions && visiblePatients.length > 0) ? (
           <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
             {Array.from({ length: 4 }).map((_, index) => (
               <SkeletonCard
@@ -1284,18 +1400,27 @@ export function MedicalManagementView() {
             <div className="text-xs text-gray-400 mt-1">รายการที่ให้ยาแล้วหรืองดแล้วจะถูกซ่อน และแยกตามช่วงเวลาที่เลือก</div>
           </div>
         ) : (
-          visiblePatients.map((patient) => (
-            <MedicationCard
-              key={patient.id}
-              patient={patient}
-              onViewDetails={(id) => {
-                void handleOpenDetails(id);
-              }}
-              onGiveMedication={handleGiveMedication}
-              onWithholdMedication={handleWithholdMedication}
-              onGiveAllMeds={handleGiveAllMeds}
-            />
-          ))
+          <>
+            {isLoadingMain ? (
+              <div className="md:col-span-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-700">
+                กำลังรีเฟรชข้อมูลยา รายการที่กำลังนับถอยหลังจะยังทำงานต่อ
+              </div>
+            ) : null}
+            {visiblePatients.map((patient) => (
+              <MedicationCard
+                key={patient.id}
+                patient={patient}
+                onViewDetails={(id) => {
+                  void handleOpenDetails(id);
+                }}
+                onGiveMedication={handleGiveMedication}
+                onWithholdMedication={handleWithholdMedication}
+                onGiveAllMeds={handleGiveAllMeds}
+                onPendingCountChange={handlePendingCountChange}
+                isCompleted={patient.pendingCount === 0}
+              />
+            ))}
+          </>
         )}
       </div>
     </div>
@@ -1304,7 +1429,12 @@ export function MedicalManagementView() {
   const renderDetailsView = () => (
     <div className="space-y-4">
       <button
-        onClick={() => setCurrentView("main")}
+        onClick={() => {
+          if (!confirmLeaveWithPending()) {
+            return;
+          }
+          setCurrentView("main");
+        }}
         className="print-hide flex items-center gap-2 text-blue-500 hover:text-blue-700 transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
@@ -1496,7 +1626,7 @@ export function MedicalManagementView() {
               }}
             />
           </div>
-          {isLoadingHistory ? <div className="mb-4"><SkeletonTable columns={6} rows={5} /></div> : null}
+          {isLoadingHistory ? <div className="mb-4"><SkeletonTable columns={7} rows={5} /></div> : null}
           <HistoryTable history={historyBySelectedPatient} />
         </div>
       )}
@@ -1506,7 +1636,12 @@ export function MedicalManagementView() {
   const renderHistoryView = () => (
     <div className="space-y-6">
       <button
-        onClick={() => setCurrentView("main")}
+        onClick={() => {
+          if (!confirmLeaveWithPending()) {
+            return;
+          }
+          setCurrentView("main");
+        }}
         className="print-hide flex items-center gap-2 text-blue-500 hover:text-blue-700 transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
@@ -1611,7 +1746,7 @@ export function MedicalManagementView() {
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         {isLoadingHistory ? (
           <div className="mb-4">
-            <SkeletonTable columns={6} rows={5} />
+            <SkeletonTable columns={7} rows={5} />
           </div>
         ) : null}
         <HistoryTable history={visibleHistory} />

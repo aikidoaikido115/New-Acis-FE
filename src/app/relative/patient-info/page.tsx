@@ -25,6 +25,11 @@ type EmergencyContact = {
   phone: string;
 };
 
+type EmergencyHospital = {
+  name: string;
+  phone: string;
+};
+
 type PatientInfo = {
   fullName: string;
   nickname?: string;
@@ -39,8 +44,7 @@ type PatientInfo = {
   allergies: string[];
   foodAllergies: string[];
   cprStatus: string;
-  emergencyHospital: string;
-  emergencyHospitalPhone: string;
+  emergencyHospitals: EmergencyHospital[];
   emergencyContacts: EmergencyContact[];
 };
 
@@ -163,8 +167,15 @@ function toPatientInfoView(data: RelativePatientInfoData): PatientInfo {
     allergies: data.drug_allergies || [],
     foodAllergies: data.food_allergies || [],
     cprStatus: data.resuscitation_status || '-',
-    emergencyHospital: data.emergency_hospital || '-',
-    emergencyHospitalPhone: data.emergency_hospital_phone || '-',
+    emergencyHospitals:
+      data.emergency_hospitals && data.emergency_hospitals.length > 0
+        ? data.emergency_hospitals
+        : data.emergency_hospital || data.emergency_hospital_phone
+          ? [{
+              name: data.emergency_hospital || '-',
+              phone: data.emergency_hospital_phone || '-',
+            }]
+          : [],
     emergencyContacts: data.emergency_contacts || [],
   };
 }
@@ -207,8 +218,7 @@ export default function RelativePatientInfoPage() {
     allergies: [],
     foodAllergies: [],
     cprStatus: '-',
-    emergencyHospital: '-',
-    emergencyHospitalPhone: '-',
+    emergencyHospitals: [],
     emergencyContacts: [],
   };
 
@@ -254,7 +264,7 @@ export default function RelativePatientInfoPage() {
         <RelativeSidebar isOpen={true} />
       </div>
       {/* Main Content */}
-      <div className="flex-1 flex flex-col lg:ml-80 min-h-screen">
+      <div className="flex-1 flex flex-col lg:ml-80 min-h-screen min-w-0">
         {/* Mobile Menu Button */}
         <button
           onClick={() => setIsSidebarOpen(true)}
@@ -264,11 +274,11 @@ export default function RelativePatientInfoPage() {
         </button>
 
         {/* Content */}
-        <div className="flex-1 px-4 py-6 pt-20 sm:px-6 lg:px-8 lg:py-8">
-          <BackButton />
+        <div className="flex-1 px-6 py-6 pt-20 sm:px-6 sm:py-8 lg:px-8 lg:py-8">
+            <BackButton />
 
           <div className="max-w-full space-y-6">
-            <h1 className="text-2xl font-bold text-gray-800">ข้อมูลผู้สูงอายุ</h1>
+            <h1 className="text-2xl font-bold text-gray-800">ประวัติผู้สูงอายุ</h1>
 
             {isInitialLoading && <PatientInfoSkeleton />}
 
@@ -335,7 +345,7 @@ export default function RelativePatientInfoPage() {
                     <Pill size={16} className="text-gray-500" />
                     ยาที่ใช้ประจำ
                   </div>
-                  <div className="overflow-hidden rounded-lg border border-gray-100">
+                  <div className="overflow-x-auto rounded-lg border border-gray-100">
                     <table className="w-full text-sm">
                       <thead className="bg-gray-50 text-gray-500">
                         <tr>
@@ -445,17 +455,34 @@ export default function RelativePatientInfoPage() {
                     <HeartPulse size={16} className="text-gray-500" />
                     โรงพยาบาลกรณีฉุกเฉิน
                   </div>
-                  <div className="flex items-center justify-between bg-red-50 border border-red-100 px-4 py-3 rounded-lg">
-                    <span className="text-sm text-gray-700">{displayPatientInfo.emergencyHospital}</span>
-                    <a
-                      href={`tel:${toTelHref(displayPatientInfo.emergencyHospitalPhone)}`}
-                      className="inline-flex items-center gap-2 text-sm text-red-600 hover:underline"
-                      aria-label={`โทรหา ${displayPatientInfo.emergencyHospital}`}
-                    >
-                      <Phone size={16} />
-                      {displayPatientInfo.emergencyHospitalPhone}
-                    </a>
-                  </div>
+                  {displayPatientInfo.emergencyHospitals.length > 0 ? (
+                    <div className="space-y-2">
+                      {displayPatientInfo.emergencyHospitals.map((hospital, index) => (
+                        <div
+                          key={`${hospital.name}-${index}`}
+                          className="flex items-center justify-between bg-red-50 border border-red-100 px-4 py-3 rounded-lg"
+                        >
+                          <span className="text-sm text-gray-700">{hospital.name}</span>
+                          {hospital.phone ? (
+                            <a
+                              href={`tel:${toTelHref(hospital.phone)}`}
+                              className="inline-flex items-center gap-2 text-sm text-red-600 hover:underline"
+                              aria-label={`โทรหา ${hospital.name}`}
+                            >
+                              <Phone size={16} />
+                              {hospital.phone}
+                            </a>
+                          ) : (
+                            <span className="inline-flex items-center gap-2 text-sm text-gray-400">
+                              <Phone size={16} />-
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-gray-500">ไม่มีข้อมูล</div>
+                  )}
                 </div>
 
                 <div>

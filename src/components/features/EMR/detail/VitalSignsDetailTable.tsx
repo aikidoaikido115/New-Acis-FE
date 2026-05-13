@@ -204,6 +204,36 @@ const buildDraftFromRecords = (vital?: VitalSign | null, lab?: LaboratoryValue |
   diaperChange: typeof lab?.diaper_change === "number" ? String(lab.diaper_change) : "",
 });
 
+const applyFallbackToEmptyFields = (draft: MatrixDraft, fallback: MatrixDraft): MatrixDraft => {
+  const next: MatrixDraft = { ...draft };
+  const fillableKeys: Array<Exclude<keyof MatrixDraft, "urineType">> = [
+    "temperature",
+    "heartRate",
+    "bloodPressureSystolic",
+    "bloodPressureDiastolic",
+    "oxygenSaturation",
+    "breathingRate",
+    "bloodGlucose",
+    "fluidIn",
+    "fluidOut",
+    "urineOutput",
+    "stool",
+    "diaperChange",
+  ];
+
+  fillableKeys.forEach((key) => {
+    if (next[key].trim() === "" && fallback[key].trim() !== "") {
+      next[key] = fallback[key];
+    }
+  });
+
+  if (next.urineOutput.trim() !== "" && draft.urineOutput.trim() === "") {
+    next.urineType = fallback.urineType;
+  }
+
+  return next;
+};
+
 const isDraftEqual = (left: MatrixDraft, right: MatrixDraft): boolean => {
   return (
     left.temperature === right.temperature &&
@@ -219,6 +249,23 @@ const isDraftEqual = (left: MatrixDraft, right: MatrixDraft): boolean => {
     left.urineType === right.urineType &&
     left.stool === right.stool &&
     left.diaperChange === right.diaperChange
+  );
+};
+
+const hasAnyDraftValue = (draft: MatrixDraft): boolean => {
+  return (
+    draft.temperature.trim() !== "" ||
+    draft.heartRate.trim() !== "" ||
+    draft.bloodPressureSystolic.trim() !== "" ||
+    draft.bloodPressureDiastolic.trim() !== "" ||
+    draft.oxygenSaturation.trim() !== "" ||
+    draft.breathingRate.trim() !== "" ||
+    draft.bloodGlucose.trim() !== "" ||
+    draft.fluidIn.trim() !== "" ||
+    draft.fluidOut.trim() !== "" ||
+    draft.urineOutput.trim() !== "" ||
+    draft.stool.trim() !== "" ||
+    draft.diaperChange.trim() !== ""
   );
 };
 
@@ -314,6 +361,7 @@ export function VitalSignsDetailTable({
   const [sortOrder, setSortOrder] = useState<HistorySortOrder>("newest");
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [showPreviousPlaceholder, setShowPreviousPlaceholder] = useState(false);
   const [printDateTime, setPrintDateTime] = useState<string>("");
   const [isPrintMode, setIsPrintMode] = useState(false);
 
@@ -656,6 +704,39 @@ export function VitalSignsDetailTable({
 
   const abnormalDraftKeys = useMemo(() => getAbnormalDraftKeys(draft), [draft]);
   const hasPersisted = useMemo(() => Boolean(selectedSlotVital || selectedSlotLab), [selectedSlotVital, selectedSlotLab]);
+  const previousSlotDraft = useMemo(() => {
+    if (isAllSlots) {
+      return emptyDraft;
+    }
+
+    const currentSlotRank = Number(selectedTime) || Number.POSITIVE_INFINITY;
+    let latest: HistoryRow | undefined;
+    let latestCreatedAt = Number.NEGATIVE_INFINITY;
+
+    for (const row of historyRows) {
+      if (row.dateKey !== selectedDateKey) {
+        continue;
+      }
+
+      const rowSlotRank = Number(row.slot) || Number.POSITIVE_INFINITY;
+      if (rowSlotRank >= currentSlotRank) {
+        continue;
+      }
+
+      const createdAt = new Date(row.createdAt).getTime();
+      if (createdAt > latestCreatedAt) {
+        latestCreatedAt = createdAt;
+        latest = row;
+      }
+    }
+
+    if (!latest) {
+      return emptyDraft;
+    }
+
+    return buildDraftFromRecords(latest.vital, latest.lab);
+  }, [historyRows, isAllSlots, selectedDateKey, selectedTime]);
+  const hasPreviousSlotValue = useMemo(() => hasAnyDraftValue(previousSlotDraft), [previousSlotDraft]);
 
   const inputClassName = "w-[54px] rounded border border-gray-300 bg-white px-1.5 py-1 text-center text-[11px] text-gray-900 focus:border-blue-500 focus:outline-none";
   const abnormalInputClassName = "w-[54px] rounded border border-rose-400 bg-rose-50 px-1.5 py-1 text-center text-[11px] text-rose-700 focus:border-rose-500 focus:outline-none";
@@ -682,6 +763,50 @@ export function VitalSignsDetailTable({
         [key]: value,
       },
     }));
+  };
+
+  const getDraftPlaceholder = (key: keyof MatrixDraft): string => {
+    if (!showPreviousPlaceholder || draft[key].trim() !== "") {
+      return "";
+    }
+
+    return previousSlotDraft[key];
+  };
+
+  const handlePullPrevious = () => {
+    if (isAllSlots) {
+      return;
+    }
+
+    if (!hasPreviousSlotValue) {
+      showToast({
+        type: "info",
+        title: "ไม่มีข้อมูลก่อนหน้า",
+        message: "ไม่พบค่าวัดล่าสุดของวันเดียวกันในช่วงเวลาก่อนหน้านี้",
+      });
+      return;
+    }
+
+    const mergedDraft = applyFallbackToEmptyFields(draft, previousSlotDraft);
+    if (isDraftEqual(draft, mergedDraft)) {
+      showToast({
+        type: "info",
+        title: "ไม่มีช่องว่างให้เติม",
+        message: "ช่องที่มีข้อมูลอยู่แล้วจะไม่ถูกแทนที่",
+      });
+      return;
+    }
+
+    setSlotDrafts((prev) => ({
+      ...prev,
+      [currentSlotKey]: mergedDraft,
+    }));
+
+    showToast({
+      type: "success",
+      title: "ดึงค่าก่อนหน้าสำเร็จ",
+      message: "เติมค่าล่าสุดของวันเดียวกันลงในช่องที่ยังว่างแล้ว",
+    });
   };
 
   const handleSave = async () => {
@@ -947,6 +1072,29 @@ export function VitalSignsDetailTable({
               </button>
             ))}
           </div>
+          {!isAllSlots ? (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowPreviousPlaceholder((prev) => !prev)}
+                className={`rounded border px-3 py-1.5 text-xs font-medium ${
+                  showPreviousPlaceholder
+                    ? "border-amber-300 bg-amber-50 text-amber-700"
+                    : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                {showPreviousPlaceholder ? "ซ่อนค่าก่อนหน้าในช่องว่าง" : "แสดงค่าก่อนหน้าในช่องว่าง"}
+              </button>
+              <button
+                type="button"
+                onClick={handlePullPrevious}
+                disabled={isSlotLoading || !hasPreviousSlotValue}
+                className="rounded border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-60"
+              >
+                ดึงค่าก่อนหน้า
+              </button>
+            </div>
+          ) : null}
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1041,7 +1189,9 @@ export function VitalSignsDetailTable({
                 {renderSortableHeader("ปัสสาวะ", "urineOutput", "w-[94px] text-center py-3 px-1")}
                 {renderSortableHeader("อุจจาระ", "stool", "w-16 text-center py-3 px-1")}
                 {renderSortableHeader("ผ้าอ้อม", "diaperChange", "w-16 text-center py-3 px-1")}
-                <th className="w-[120px] text-center py-3 px-2 text-[11px] font-semibold" style={{ color: "rgba(126, 143, 164, 1)" }}>จัดการ</th>
+                {!isAllSlots ? (
+                  <th className="w-[120px] text-center py-3 px-2 text-[11px] font-semibold" style={{ color: "rgba(126, 143, 164, 1)" }}>จัดการ</th>
+                ) : null}
               </tr>
             </thead>
 
@@ -1059,51 +1209,61 @@ export function VitalSignsDetailTable({
                     {isSlotLoading ? <LoadingSpinner /> : null}
                   </div>
                 </td>
-                <td className="py-2 px-1 text-center"><input type="number" inputMode="decimal" placeholder="36.5" value={draft.temperature} onChange={(event) => handleDraftChange("temperature", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("temperature"))} /></td>
-                <td className="py-2 px-1 text-center"><input type="number" inputMode="decimal" placeholder="72" value={draft.heartRate} onChange={(event) => handleDraftChange("heartRate", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("heartRate"))} /></td>
+                <td className="py-2 px-1 text-center"><input type="number" inputMode="decimal" placeholder={getDraftPlaceholder("temperature")} value={draft.temperature} onChange={(event) => handleDraftChange("temperature", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("temperature"))} /></td>
+                <td className="py-2 px-1 text-center"><input type="number" inputMode="decimal" placeholder={getDraftPlaceholder("heartRate")} value={draft.heartRate} onChange={(event) => handleDraftChange("heartRate", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("heartRate"))} /></td>
                 <td className="py-2 px-1 text-center">
                   <div className="flex items-center justify-center gap-1">
-                    <input type="number" inputMode="decimal" placeholder="120" value={draft.bloodPressureSystolic} onChange={(event) => handleDraftChange("bloodPressureSystolic", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("bloodPressureSystolic"))} />
+                    <input type="number" inputMode="decimal" placeholder={getDraftPlaceholder("bloodPressureSystolic")} value={draft.bloodPressureSystolic} onChange={(event) => handleDraftChange("bloodPressureSystolic", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("bloodPressureSystolic"))} />
                     <span className="text-[10px] text-gray-400">/</span>
-                    <input type="number" inputMode="decimal" placeholder="80" value={draft.bloodPressureDiastolic} onChange={(event) => handleDraftChange("bloodPressureDiastolic", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("bloodPressureDiastolic"))} />
+                    <input type="number" inputMode="decimal" placeholder={getDraftPlaceholder("bloodPressureDiastolic")} value={draft.bloodPressureDiastolic} onChange={(event) => handleDraftChange("bloodPressureDiastolic", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("bloodPressureDiastolic"))} />
                   </div>
                 </td>
-                <td className="py-2 px-1 text-center"><input type="number" inputMode="decimal" placeholder="98" value={draft.oxygenSaturation} onChange={(event) => handleDraftChange("oxygenSaturation", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("oxygenSaturation"))} /></td>
-                <td className="py-2 px-1 text-center"><input type="number" inputMode="decimal" placeholder="16" value={draft.breathingRate} onChange={(event) => handleDraftChange("breathingRate", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("breathingRate"))} /></td>
-                <td className="py-2 px-1 text-center"><input type="number" inputMode="decimal" placeholder="110" value={draft.bloodGlucose} onChange={(event) => handleDraftChange("bloodGlucose", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("bloodGlucose"))} /></td>
-                <td className="py-2 px-1 text-center"><input type="number" inputMode="decimal" placeholder="250" value={draft.fluidIn} onChange={(event) => handleDraftChange("fluidIn", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("fluidIn"))} /></td>
-                <td className="py-2 px-1 text-center"><input type="number" inputMode="decimal" placeholder="200" value={draft.fluidOut} onChange={(event) => handleDraftChange("fluidOut", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("fluidOut"))} /></td>
+                <td className="py-2 px-1 text-center"><input type="number" inputMode="decimal" placeholder={getDraftPlaceholder("oxygenSaturation")} value={draft.oxygenSaturation} onChange={(event) => handleDraftChange("oxygenSaturation", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("oxygenSaturation"))} /></td>
+                <td className="py-2 px-1 text-center"><input type="number" inputMode="decimal" placeholder={getDraftPlaceholder("breathingRate")} value={draft.breathingRate} onChange={(event) => handleDraftChange("breathingRate", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("breathingRate"))} /></td>
+                <td className="py-2 px-1 text-center"><input type="number" inputMode="decimal" placeholder={getDraftPlaceholder("bloodGlucose")} value={draft.bloodGlucose} onChange={(event) => handleDraftChange("bloodGlucose", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("bloodGlucose"))} /></td>
+                <td className="py-2 px-1 text-center"><input type="number" inputMode="decimal" placeholder={getDraftPlaceholder("fluidIn")} value={draft.fluidIn} onChange={(event) => handleDraftChange("fluidIn", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("fluidIn"))} /></td>
+                <td className="py-2 px-1 text-center"><input type="number" inputMode="decimal" placeholder={getDraftPlaceholder("fluidOut")} value={draft.fluidOut} onChange={(event) => handleDraftChange("fluidOut", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("fluidOut"))} /></td>
                 <td className="py-2 px-1 text-center">
                   <div className="flex items-center justify-center gap-1">
-                    <input type="number" inputMode="decimal" placeholder="1" value={draft.urineOutput} onChange={(event) => handleDraftChange("urineOutput", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("urineOutput"))} />
+                    <input type="number" inputMode="decimal" placeholder={getDraftPlaceholder("urineOutput")} value={draft.urineOutput} onChange={(event) => handleDraftChange("urineOutput", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("urineOutput"))} />
                     <button type="button" onClick={() => handleDraftChange("urineType", draft.urineType === "times" ? "ml" : "times")} className="rounded border border-gray-300 bg-white px-1.5 py-1 text-[9px] text-gray-600 hover:bg-gray-50" title="สลับหน่วยปัสสาวะ">
                       {draft.urineType === "times" ? "ครั้ง" : "มล."}
                     </button>
                   </div>
                 </td>
-                <td className="py-2 px-1 text-center"><input type="number" inputMode="decimal" placeholder="0" value={draft.stool} onChange={(event) => handleDraftChange("stool", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("stool"))} /></td>
-                <td className="py-2 px-1 text-center"><input type="number" inputMode="decimal" placeholder="0" value={draft.diaperChange} onChange={(event) => handleDraftChange("diaperChange", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("diaperChange"))} /></td>
+                <td className="py-2 px-1 text-center"><input type="number" inputMode="decimal" placeholder={getDraftPlaceholder("stool")} value={draft.stool} onChange={(event) => handleDraftChange("stool", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("stool"))} /></td>
+                <td className="py-2 px-1 text-center"><input type="number" inputMode="decimal" placeholder={getDraftPlaceholder("diaperChange")} value={draft.diaperChange} onChange={(event) => handleDraftChange("diaperChange", event.target.value)} onKeyDown={handleInputKeyDown} className={getInputClassName(abnormalDraftKeys.has("diaperChange"))} /></td>
                 <td className="py-3 px-2 text-center">
-                  <button type="button" onClick={() => void handleSave()} disabled={isSaving || isSlotLoading || !hasUnsavedChanges} className="rounded bg-blue-500 px-2 py-1 text-[10px] font-medium text-white hover:bg-blue-600 disabled:opacity-60">
-                    {isSaving ? "กำลังบันทึก" : "บันทึก"}
-                  </button>
+                  <div className="flex flex-col items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={handlePullPrevious}
+                      disabled={isSaving || isSlotLoading || !hasPreviousSlotValue}
+                      className="rounded border border-amber-300 bg-amber-50 px-2 py-1 text-[10px] font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-60"
+                    >
+                      ดึงค่าก่อนหน้า
+                    </button>
+                    <button type="button" onClick={() => void handleSave()} disabled={isSaving || isSlotLoading || !hasUnsavedChanges} className="rounded bg-blue-500 px-2 py-1 text-[10px] font-medium text-white hover:bg-blue-600 disabled:opacity-60">
+                      {isSaving ? "กำลังบันทึก" : "บันทึก"}
+                    </button>
+                  </div>
                 </td>
               </tr>
               ) : null}
 
               {isLoading ? (
                 <tr>
-                  <td colSpan={13} className="py-6 px-4 text-center">
+                  <td colSpan={isAllSlots ? 12 : 13} className="py-6 px-4 text-center">
                     <LoadingSpinner />
                   </td>
                 </tr>
               ) : error ? (
                 <tr>
-                  <td colSpan={13} className="py-6 px-4 text-center text-sm text-red-500">{error}</td>
+                  <td colSpan={isAllSlots ? 12 : 13} className="py-6 px-4 text-center text-sm text-red-500">{error}</td>
                 </tr>
               ) : displayRows.length === 0 ? (
                 <tr>
-                  <td colSpan={13} className="py-12 px-4 text-center">
+                  <td colSpan={isAllSlots ? 12 : 13} className="py-12 px-4 text-center">
                     <div className="text-sm text-gray-600">ไม่พบข้อมูลสัญญาณชีพในช่วงเวลานี้</div>
                     <div className="text-xs text-gray-400 mt-1">สามารถกรอกแถวด้านบนเพื่อบันทึกข้อมูลใหม่ได้</div>
                   </td>
@@ -1129,7 +1289,7 @@ export function VitalSignsDetailTable({
                       </td>
                       <td className={`py-2 px-2 text-center text-xs ${(typeof row.lab?.stool === "number" && row.lab.stool > 3) ? "text-red-500 font-medium" : "text-gray-900"}`}>{asText(row.lab?.stool)}</td>
                       <td className={`py-2 px-2 text-center text-xs ${(typeof row.lab?.diaper_change === "number" && row.lab.diaper_change > 6) ? "text-red-500 font-medium" : "text-gray-900"}`}>{asText(row.lab?.diaper_change)}</td>
-                      <td className="py-2 px-2 text-center text-xs text-gray-400">-</td>
+                      {!isAllSlots ? <td className="py-2 px-2 text-center text-xs text-gray-400">-</td> : null}
                     </tr>
                   );
                 })
@@ -1142,7 +1302,7 @@ export function VitalSignsDetailTable({
                 <td className="py-3 px-2 text-center text-[11px] text-gray-700">{daySummary.urineMl > 0 || daySummary.urineTimes > 0 ? `${daySummary.urineMl || 0} มล. / ${daySummary.urineTimes || 0} ครั้ง` : "-"}</td>
                 <td className="py-3 px-2 text-center text-[11px] text-gray-700">{daySummary.stool || "-"}</td>
                 <td className="py-3 px-2 text-center text-[11px] text-gray-700">{daySummary.diaper || "-"}</td>
-                <td className="py-3 px-2 text-center text-[11px] text-gray-500">-</td>
+                {!isAllSlots ? <td className="py-3 px-2 text-center text-[11px] text-gray-500">-</td> : null}
               </tr>
             </tbody>
           </table>
@@ -1160,26 +1320,34 @@ export function VitalSignsDetailTable({
           </div>
 
           <div className="grid grid-cols-2 gap-2">
-            <label className="text-[11px] text-gray-600">อุณหภูมิ <input type="number" inputMode="decimal" placeholder="36.5" value={draft.temperature} onChange={(event) => handleDraftChange("temperature", event.target.value)} onKeyDown={handleInputKeyDown} className={`mt-1 w-full ${getInputClassName(abnormalDraftKeys.has("temperature"))}`} /></label>
-            <label className="text-[11px] text-gray-600">ชีพจร <input type="number" inputMode="decimal" placeholder="72" value={draft.heartRate} onChange={(event) => handleDraftChange("heartRate", event.target.value)} onKeyDown={handleInputKeyDown} className={`mt-1 w-full ${getInputClassName(abnormalDraftKeys.has("heartRate"))}`} /></label>
-            <label className="text-[11px] text-gray-600">ความดันบน <input type="number" inputMode="decimal" placeholder="120" value={draft.bloodPressureSystolic} onChange={(event) => handleDraftChange("bloodPressureSystolic", event.target.value)} onKeyDown={handleInputKeyDown} className={`mt-1 w-full ${getInputClassName(abnormalDraftKeys.has("bloodPressureSystolic"))}`} /></label>
-            <label className="text-[11px] text-gray-600">ความดันล่าง <input type="number" inputMode="decimal" placeholder="80" value={draft.bloodPressureDiastolic} onChange={(event) => handleDraftChange("bloodPressureDiastolic", event.target.value)} onKeyDown={handleInputKeyDown} className={`mt-1 w-full ${getInputClassName(abnormalDraftKeys.has("bloodPressureDiastolic"))}`} /></label>
-            <label className="text-[11px] text-gray-600">O2 <input type="number" inputMode="decimal" placeholder="98" value={draft.oxygenSaturation} onChange={(event) => handleDraftChange("oxygenSaturation", event.target.value)} onKeyDown={handleInputKeyDown} className={`mt-1 w-full ${getInputClassName(abnormalDraftKeys.has("oxygenSaturation"))}`} /></label>
-            <label className="text-[11px] text-gray-600">หายใจ <input type="number" inputMode="decimal" placeholder="16" value={draft.breathingRate} onChange={(event) => handleDraftChange("breathingRate", event.target.value)} onKeyDown={handleInputKeyDown} className={`mt-1 w-full ${getInputClassName(abnormalDraftKeys.has("breathingRate"))}`} /></label>
-            <label className="text-[11px] text-gray-600">น้ำตาล <input type="number" inputMode="decimal" placeholder="110" value={draft.bloodGlucose} onChange={(event) => handleDraftChange("bloodGlucose", event.target.value)} onKeyDown={handleInputKeyDown} className={`mt-1 w-full ${getInputClassName(abnormalDraftKeys.has("bloodGlucose"))}`} /></label>
-            <label className="text-[11px] text-gray-600">น้ำเข้า <input type="number" inputMode="decimal" placeholder="250" value={draft.fluidIn} onChange={(event) => handleDraftChange("fluidIn", event.target.value)} onKeyDown={handleInputKeyDown} className={`mt-1 w-full ${getInputClassName(abnormalDraftKeys.has("fluidIn"))}`} /></label>
-            <label className="text-[11px] text-gray-600">น้ำออก <input type="number" inputMode="decimal" placeholder="200" value={draft.fluidOut} onChange={(event) => handleDraftChange("fluidOut", event.target.value)} onKeyDown={handleInputKeyDown} className={`mt-1 w-full ${getInputClassName(abnormalDraftKeys.has("fluidOut"))}`} /></label>
-            <label className="text-[11px] text-gray-600">อุจจาระ <input type="number" inputMode="decimal" placeholder="0" value={draft.stool} onChange={(event) => handleDraftChange("stool", event.target.value)} onKeyDown={handleInputKeyDown} className={`mt-1 w-full ${getInputClassName(abnormalDraftKeys.has("stool"))}`} /></label>
-            <label className="text-[11px] text-gray-600">ผ้าอ้อม <input type="number" inputMode="decimal" placeholder="0" value={draft.diaperChange} onChange={(event) => handleDraftChange("diaperChange", event.target.value)} onKeyDown={handleInputKeyDown} className={`mt-1 w-full ${getInputClassName(abnormalDraftKeys.has("diaperChange"))}`} /></label>
+            <label className="text-[11px] text-gray-600">อุณหภูมิ <input type="number" inputMode="decimal" placeholder={getDraftPlaceholder("temperature")} value={draft.temperature} onChange={(event) => handleDraftChange("temperature", event.target.value)} onKeyDown={handleInputKeyDown} className={`mt-1 w-full ${getInputClassName(abnormalDraftKeys.has("temperature"))}`} /></label>
+            <label className="text-[11px] text-gray-600">ชีพจร <input type="number" inputMode="decimal" placeholder={getDraftPlaceholder("heartRate")} value={draft.heartRate} onChange={(event) => handleDraftChange("heartRate", event.target.value)} onKeyDown={handleInputKeyDown} className={`mt-1 w-full ${getInputClassName(abnormalDraftKeys.has("heartRate"))}`} /></label>
+            <label className="text-[11px] text-gray-600">ความดันบน <input type="number" inputMode="decimal" placeholder={getDraftPlaceholder("bloodPressureSystolic")} value={draft.bloodPressureSystolic} onChange={(event) => handleDraftChange("bloodPressureSystolic", event.target.value)} onKeyDown={handleInputKeyDown} className={`mt-1 w-full ${getInputClassName(abnormalDraftKeys.has("bloodPressureSystolic"))}`} /></label>
+            <label className="text-[11px] text-gray-600">ความดันล่าง <input type="number" inputMode="decimal" placeholder={getDraftPlaceholder("bloodPressureDiastolic")} value={draft.bloodPressureDiastolic} onChange={(event) => handleDraftChange("bloodPressureDiastolic", event.target.value)} onKeyDown={handleInputKeyDown} className={`mt-1 w-full ${getInputClassName(abnormalDraftKeys.has("bloodPressureDiastolic"))}`} /></label>
+            <label className="text-[11px] text-gray-600">O2 <input type="number" inputMode="decimal" placeholder={getDraftPlaceholder("oxygenSaturation")} value={draft.oxygenSaturation} onChange={(event) => handleDraftChange("oxygenSaturation", event.target.value)} onKeyDown={handleInputKeyDown} className={`mt-1 w-full ${getInputClassName(abnormalDraftKeys.has("oxygenSaturation"))}`} /></label>
+            <label className="text-[11px] text-gray-600">หายใจ <input type="number" inputMode="decimal" placeholder={getDraftPlaceholder("breathingRate")} value={draft.breathingRate} onChange={(event) => handleDraftChange("breathingRate", event.target.value)} onKeyDown={handleInputKeyDown} className={`mt-1 w-full ${getInputClassName(abnormalDraftKeys.has("breathingRate"))}`} /></label>
+            <label className="text-[11px] text-gray-600">น้ำตาล <input type="number" inputMode="decimal" placeholder={getDraftPlaceholder("bloodGlucose")} value={draft.bloodGlucose} onChange={(event) => handleDraftChange("bloodGlucose", event.target.value)} onKeyDown={handleInputKeyDown} className={`mt-1 w-full ${getInputClassName(abnormalDraftKeys.has("bloodGlucose"))}`} /></label>
+            <label className="text-[11px] text-gray-600">น้ำเข้า <input type="number" inputMode="decimal" placeholder={getDraftPlaceholder("fluidIn")} value={draft.fluidIn} onChange={(event) => handleDraftChange("fluidIn", event.target.value)} onKeyDown={handleInputKeyDown} className={`mt-1 w-full ${getInputClassName(abnormalDraftKeys.has("fluidIn"))}`} /></label>
+            <label className="text-[11px] text-gray-600">น้ำออก <input type="number" inputMode="decimal" placeholder={getDraftPlaceholder("fluidOut")} value={draft.fluidOut} onChange={(event) => handleDraftChange("fluidOut", event.target.value)} onKeyDown={handleInputKeyDown} className={`mt-1 w-full ${getInputClassName(abnormalDraftKeys.has("fluidOut"))}`} /></label>
+            <label className="text-[11px] text-gray-600">อุจจาระ <input type="number" inputMode="decimal" placeholder={getDraftPlaceholder("stool")} value={draft.stool} onChange={(event) => handleDraftChange("stool", event.target.value)} onKeyDown={handleInputKeyDown} className={`mt-1 w-full ${getInputClassName(abnormalDraftKeys.has("stool"))}`} /></label>
+            <label className="text-[11px] text-gray-600">ผ้าอ้อม <input type="number" inputMode="decimal" placeholder={getDraftPlaceholder("diaperChange")} value={draft.diaperChange} onChange={(event) => handleDraftChange("diaperChange", event.target.value)} onKeyDown={handleInputKeyDown} className={`mt-1 w-full ${getInputClassName(abnormalDraftKeys.has("diaperChange"))}`} /></label>
             <div className="text-[11px] text-gray-600">
               ปัสสาวะ
               <div className="mt-1 flex items-center gap-1">
-                <input type="number" inputMode="decimal" placeholder="1" value={draft.urineOutput} onChange={(event) => handleDraftChange("urineOutput", event.target.value)} onKeyDown={handleInputKeyDown} className={`w-full ${getInputClassName(abnormalDraftKeys.has("urineOutput"))}`} />
+                <input type="number" inputMode="decimal" placeholder={getDraftPlaceholder("urineOutput")} value={draft.urineOutput} onChange={(event) => handleDraftChange("urineOutput", event.target.value)} onKeyDown={handleInputKeyDown} className={`w-full ${getInputClassName(abnormalDraftKeys.has("urineOutput"))}`} />
                 <button type="button" onClick={() => handleDraftChange("urineType", draft.urineType === "times" ? "ml" : "times")} className="rounded border border-gray-300 bg-white px-2 py-1 text-[10px] text-gray-700">{draft.urineType === "times" ? "ครั้ง" : "มล."}</button>
               </div>
             </div>
           </div>
 
+          <button
+            type="button"
+            onClick={handlePullPrevious}
+            disabled={isSaving || isSlotLoading || !hasPreviousSlotValue}
+            className="mt-3 w-full rounded border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-60"
+          >
+            ดึงค่าก่อนหน้า (เติมเฉพาะช่องว่าง)
+          </button>
           <button type="button" onClick={() => void handleSave()} disabled={isSaving || isSlotLoading || !hasUnsavedChanges} className="mt-3 w-full rounded bg-blue-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-600 disabled:opacity-60">
             {isSaving ? "กำลังบันทึก" : "บันทึก"}
           </button>

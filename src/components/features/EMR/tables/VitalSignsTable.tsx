@@ -31,6 +31,27 @@ const slotToTimeOfDay: Record<string, string> = {
   "22": "night",
 };
 
+const timeOfDayToSlot: Record<string, string> = {
+  morning: "06",
+  late_morning: "10",
+  afternoon: "14",
+  evening: "18",
+  night: "22",
+  เช้า: "06",
+  สาย: "10",
+  บ่าย: "14",
+  เย็น: "18",
+  กลางคืน: "22",
+};
+
+const slotOrder: Record<string, number> = {
+  "06": 6,
+  "10": 10,
+  "14": 14,
+  "18": 18,
+  "22": 22,
+};
+
 type MatrixDraft = {
   temperature: string;
   heartRate: string;
@@ -91,6 +112,84 @@ const formatDateToISO = (date: Date): string => {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+};
+
+const normalizeDateKey = (raw?: string | null): string | null => {
+  if (!raw) {
+    return null;
+  }
+
+  const trimmed = raw.trim();
+  const isoMatch = trimmed.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (isoMatch) {
+    return isoMatch[1];
+  }
+
+  const parsed = new Date(trimmed);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return formatDateToISO(parsed);
+};
+
+const getRecordDateKey = (measurementDate?: string | null, createdAt?: string | null): string | null => {
+  return normalizeDateKey(measurementDate) || normalizeDateKey(createdAt);
+};
+
+const getRecordSlot = (timeOfDay?: string | null, createdAt?: string | null): string => {
+  if (timeOfDay && timeOfDayToSlot[timeOfDay]) {
+    return timeOfDayToSlot[timeOfDay];
+  }
+
+  if (!createdAt) {
+    return "06";
+  }
+
+  const date = new Date(createdAt);
+  if (Number.isNaN(date.getTime())) {
+    return "06";
+  }
+
+  const hour = date.getHours();
+  if (hour >= 4 && hour < 8) return "06";
+  if (hour >= 8 && hour < 12) return "10";
+  if (hour >= 12 && hour < 16) return "14";
+  if (hour >= 16 && hour < 20) return "18";
+  return "22";
+};
+
+const getLatestRecordBeforeSlot = <
+  T extends { measurement_date?: string; time_of_day?: string; created_at?: string }
+>(
+  records: T[],
+  selectedDateKey: string,
+  selectedSlot: string
+): T | undefined => {
+  const currentSlotRank = slotOrder[selectedSlot] ?? Number.POSITIVE_INFINITY;
+  let latest: T | undefined;
+  let latestCreatedAt = Number.NEGATIVE_INFINITY;
+
+  records.forEach((record) => {
+    const dateKey = getRecordDateKey(record.measurement_date, record.created_at);
+    if (dateKey !== selectedDateKey) {
+      return;
+    }
+
+    const slot = getRecordSlot(record.time_of_day, record.created_at);
+    const slotRank = slotOrder[slot] ?? Number.POSITIVE_INFINITY;
+    if (slotRank >= currentSlotRank) {
+      return;
+    }
+
+    const createdAt = record.created_at ? new Date(record.created_at).getTime() : Number.NEGATIVE_INFINITY;
+    if (createdAt > latestCreatedAt) {
+      latestCreatedAt = createdAt;
+      latest = record;
+    }
+  });
+
+  return latest;
 };
 
 const parseOptionalNumber = (value: string): number | undefined => {
@@ -176,6 +275,36 @@ const buildDraftFromRecords = (vital?: VitalSign, lab?: LaboratoryValue): Matrix
   stool: typeof lab?.stool === "number" ? String(lab.stool) : "",
   diaperChange: typeof lab?.diaper_change === "number" ? String(lab.diaper_change) : "",
 });
+
+const applyFallbackToEmptyFields = (draft: MatrixDraft, fallback: MatrixDraft): MatrixDraft => {
+  const next: MatrixDraft = { ...draft };
+  const fillableKeys: Array<Exclude<keyof MatrixDraft, "urineType">> = [
+    "temperature",
+    "heartRate",
+    "bloodPressureSystolic",
+    "bloodPressureDiastolic",
+    "oxygenSaturation",
+    "breathingRate",
+    "bloodGlucose",
+    "fluidIn",
+    "fluidOut",
+    "urineOutput",
+    "stool",
+    "diaperChange",
+  ];
+
+  fillableKeys.forEach((key) => {
+    if (next[key].trim() === "" && fallback[key].trim() !== "") {
+      next[key] = fallback[key];
+    }
+  });
+
+  if (next.urineOutput.trim() !== "" && draft.urineOutput.trim() === "") {
+    next.urineType = fallback.urineType;
+  }
+
+  return next;
+};
 
 const isDraftEqual = (left: MatrixDraft, right: MatrixDraft): boolean => {
   return (
@@ -300,6 +429,8 @@ export function VitalSignsTable({ selectedFloor = "all", selectedStatus = "all",
 
   const [vitalRecords, setVitalRecords] = useState<VitalSign[]>([]);
   const [labRecords, setLabRecords] = useState<LaboratoryValue[]>([]);
+  const [dayVitalRecords, setDayVitalRecords] = useState<VitalSign[]>([]);
+  const [dayLabRecords, setDayLabRecords] = useState<LaboratoryValue[]>([]);
   const [activeResidents, setActiveResidents] = useState<ResidentOverviewItem[]>([]);
 
   const [rowDrafts, setRowDrafts] = useState<Record<string, MatrixDraft>>({});
@@ -310,6 +441,7 @@ export function VitalSignsTable({ selectedFloor = "all", selectedStatus = "all",
   const [failedRowIds, setFailedRowIds] = useState<Set<string>>(new Set());
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [showPreviousPlaceholder, setShowPreviousPlaceholder] = useState(false);
   const { confirm, confirmDialog } = useConfirmDialog();
 
   const [isLoading, setIsLoading] = useState(true);
@@ -364,7 +496,7 @@ export function VitalSignsTable({ selectedFloor = "all", selectedStatus = "all",
           }, [...allResidents]);
         }
 
-        const [firstVitalOverview, firstLabOverview] = await Promise.all([
+        const [firstVitalOverview, firstLabOverview, firstDayVitalOverview, firstDayLabOverview] = await Promise.all([
           vitalSignService.getOverview({
             date: selectedDateKey,
             time_of_day: slotToTimeOfDay[selectedTime],
@@ -380,6 +512,22 @@ export function VitalSignsTable({ selectedFloor = "all", selectedStatus = "all",
             floor: Number.isFinite(floorNumber) ? floorNumber : undefined,
             label_ids: normalizedLabelIds.length > 0 ? normalizedLabelIds : undefined,
             laboratory_value_status: selectedStatus,
+            page: 1,
+            page_size: 200,
+          }),
+          vitalSignService.getOverview({
+            date: selectedDateKey,
+            floor: Number.isFinite(floorNumber) ? floorNumber : undefined,
+            label_ids: normalizedLabelIds.length > 0 ? normalizedLabelIds : undefined,
+            vitalsign_status: "all",
+            page: 1,
+            page_size: 200,
+          }),
+          laboratoryValueService.getOverview({
+            date: selectedDateKey,
+            floor: Number.isFinite(floorNumber) ? floorNumber : undefined,
+            label_ids: normalizedLabelIds.length > 0 ? normalizedLabelIds : undefined,
+            laboratory_value_status: "all",
             page: 1,
             page_size: 200,
           }),
@@ -413,6 +561,33 @@ export function VitalSignsTable({ selectedFloor = "all", selectedStatus = "all",
           }, [...allVitalSigns]);
         }
 
+        let allDayVitalSigns = firstDayVitalOverview.items || [];
+        const dayVitalTotalPages = Math.max(firstDayVitalOverview.pagination.total_pages || 1, 1);
+
+        if (dayVitalTotalPages > 1) {
+          const dayVitalPageRequests: Promise<Awaited<ReturnType<typeof vitalSignService.getOverview>>>[] = [];
+          for (let page = 2; page <= dayVitalTotalPages; page += 1) {
+            dayVitalPageRequests.push(
+              vitalSignService.getOverview({
+                date: selectedDateKey,
+                floor: Number.isFinite(floorNumber) ? floorNumber : undefined,
+                label_ids: normalizedLabelIds.length > 0 ? normalizedLabelIds : undefined,
+                vitalsign_status: "all",
+                page,
+                page_size: 200,
+              })
+            );
+          }
+
+          const remainingDayVitalPages = await Promise.all(dayVitalPageRequests);
+          allDayVitalSigns = remainingDayVitalPages.reduce<VitalSign[]>((acc, pageResult) => {
+            if (pageResult.items?.length) {
+              acc.push(...pageResult.items);
+            }
+            return acc;
+          }, [...allDayVitalSigns]);
+        }
+
         let allLabs = firstLabOverview.items || [];
         const labTotalPages = Math.max(firstLabOverview.pagination.total_pages || 1, 1);
 
@@ -439,6 +614,33 @@ export function VitalSignsTable({ selectedFloor = "all", selectedStatus = "all",
             }
             return acc;
           }, [...allLabs]);
+        }
+
+        let allDayLabs = firstDayLabOverview.items || [];
+        const dayLabTotalPages = Math.max(firstDayLabOverview.pagination.total_pages || 1, 1);
+
+        if (dayLabTotalPages > 1) {
+          const dayLabPageRequests: Promise<Awaited<ReturnType<typeof laboratoryValueService.getOverview>>>[] = [];
+          for (let page = 2; page <= dayLabTotalPages; page += 1) {
+            dayLabPageRequests.push(
+              laboratoryValueService.getOverview({
+                date: selectedDateKey,
+                floor: Number.isFinite(floorNumber) ? floorNumber : undefined,
+                label_ids: normalizedLabelIds.length > 0 ? normalizedLabelIds : undefined,
+                laboratory_value_status: "all",
+                page,
+                page_size: 200,
+              })
+            );
+          }
+
+          const remainingDayLabPages = await Promise.all(dayLabPageRequests);
+          allDayLabs = remainingDayLabPages.reduce<LaboratoryValue[]>((acc, pageResult) => {
+            if (pageResult.items?.length) {
+              acc.push(...pageResult.items);
+            }
+            return acc;
+          }, [...allDayLabs]);
         }
 
         if (isCancelled) {
@@ -469,6 +671,8 @@ export function VitalSignsTable({ selectedFloor = "all", selectedStatus = "all",
 
         setVitalRecords(allVitalSigns);
         setLabRecords(allLabs);
+        setDayVitalRecords(allDayVitalSigns);
+        setDayLabRecords(allDayLabs);
         setActiveResidents(allResidents);
         setRowDrafts(nextDrafts);
         setInitialRowDrafts(nextDrafts);
@@ -513,6 +717,39 @@ export function VitalSignsTable({ selectedFloor = "all", selectedStatus = "all",
       return acc;
     }, new Map<string, LaboratoryValue>());
   }, [labRecords]);
+
+  const previousDraftByResident = useMemo(() => {
+    const vitalHistoryByResident = dayVitalRecords.reduce((acc, item) => {
+      const list = acc.get(item.resident_id) || [];
+      list.push(item);
+      acc.set(item.resident_id, list);
+      return acc;
+    }, new Map<string, VitalSign[]>());
+
+    const labHistoryByResident = dayLabRecords.reduce((acc, item) => {
+      const list = acc.get(item.resident_id) || [];
+      list.push(item);
+      acc.set(item.resident_id, list);
+      return acc;
+    }, new Map<string, LaboratoryValue[]>());
+
+    const next: Record<string, MatrixDraft> = {};
+    activeResidents.forEach((resident) => {
+      const latestVital = getLatestRecordBeforeSlot(
+        vitalHistoryByResident.get(resident.resident_id) || [],
+        selectedDateKey,
+        selectedTime
+      );
+      const latestLab = getLatestRecordBeforeSlot(
+        labHistoryByResident.get(resident.resident_id) || [],
+        selectedDateKey,
+        selectedTime
+      );
+      next[resident.resident_id] = buildDraftFromRecords(latestVital, latestLab);
+    });
+
+    return next;
+  }, [activeResidents, dayLabRecords, dayVitalRecords, selectedDateKey, selectedTime]);
 
   const isRowDirty = useCallback((residentId: string): boolean => {
     const current = rowDrafts[residentId] || emptyDraft;
@@ -608,6 +845,48 @@ export function VitalSignsTable({ selectedFloor = "all", selectedStatus = "all",
         [key]: value,
       },
     }));
+  };
+
+  const handlePullPreviousRow = (residentId: string) => {
+    const previousDraft = previousDraftByResident[residentId] || emptyDraft;
+    if (!hasAnyDraftValue(previousDraft)) {
+      showToast({
+        type: "info",
+        title: "ไม่มีข้อมูลก่อนหน้า",
+        message: "ไม่พบค่าวัดล่าสุดของวันเดียวกันในช่วงเวลาก่อนหน้านี้",
+      });
+      return;
+    }
+
+    const currentDraft = rowDrafts[residentId] || emptyDraft;
+    const mergedDraft = applyFallbackToEmptyFields(currentDraft, previousDraft);
+    if (isDraftEqual(currentDraft, mergedDraft)) {
+      showToast({
+        type: "info",
+        title: "ไม่มีช่องว่างให้เติม",
+        message: "ช่องที่มีข้อมูลอยู่แล้วจะไม่ถูกแทนที่",
+      });
+      return;
+    }
+
+    setRowDrafts((prev) => ({
+      ...prev,
+      [residentId]: mergedDraft,
+    }));
+    setFailedRowIds((prev) => {
+      if (!prev.has(residentId)) {
+        return prev;
+      }
+      const next = new Set(prev);
+      next.delete(residentId);
+      return next;
+    });
+
+    showToast({
+      type: "success",
+      title: "ดึงค่าก่อนหน้าสำเร็จ",
+      message: "เติมค่าล่าสุดของวันเดียวกันลงในช่องที่ยังว่างแล้ว",
+    });
   };
 
   const saveResidentRow = async (residentId: string, options?: { silent?: boolean }): Promise<boolean> => {
@@ -895,14 +1174,12 @@ export function VitalSignsTable({ selectedFloor = "all", selectedStatus = "all",
     void handleSaveRow(residentId);
   };
 
-  const renderInput = (
-    residentId: string,
-    key: keyof MatrixDraft,
-    placeholder: string,
-    options?: { isAbnormal?: boolean }
-  ) => {
+  const renderInput = (residentId: string, key: keyof MatrixDraft, options?: { isAbnormal?: boolean }) => {
     const draft = rowDrafts[residentId] || emptyDraft;
+    const previousDraft = previousDraftByResident[residentId] || emptyDraft;
     const isAbnormal = options?.isAbnormal ?? false;
+    const placeholderValue =
+      showPreviousPlaceholder && draft[key].trim() === "" ? previousDraft[key] : "";
 
     return (
       <input
@@ -911,7 +1188,7 @@ export function VitalSignsTable({ selectedFloor = "all", selectedStatus = "all",
         value={draft[key]}
         onChange={(event) => handleDraftChange(residentId, key, event.target.value)}
         onKeyDown={(event) => handleInputKeyDown(event, residentId)}
-        placeholder={placeholder}
+        placeholder={placeholderValue}
         className={isAbnormal ? abnormalInputClassName : inputClassName}
       />
     );
@@ -966,6 +1243,17 @@ export function VitalSignsTable({ selectedFloor = "all", selectedStatus = "all",
 
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-500">ค้างบันทึกหน้านี้ {dirtyCurrentPageResidents.length} รายการ</span>
+          <button
+            type="button"
+            onClick={() => setShowPreviousPlaceholder((prev) => !prev)}
+            className={`rounded border px-3 py-1.5 text-xs font-medium ${
+              showPreviousPlaceholder
+                ? "border-amber-300 bg-amber-50 text-amber-700"
+                : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+            }`}
+          >
+            {showPreviousPlaceholder ? "ซ่อนค่าก่อนหน้าในช่องว่าง" : "แสดงค่าก่อนหน้าในช่องว่าง"}
+          </button>
           <button
             type="button"
             onClick={() => void handleSaveAllCurrentPage()}
@@ -1076,6 +1364,7 @@ export function VitalSignsTable({ selectedFloor = "all", selectedStatus = "all",
                   const isFailed = failedRowIds.has(residentId);
                   const abnormalDraftKeys = getAbnormalDraftKeys(rowDrafts[residentId] || emptyDraft);
                   const hasPersisted = Boolean(vitalByResident.get(residentId) || labByResident.get(residentId));
+                  const hasPrevious = hasAnyDraftValue(previousDraftByResident[residentId] || emptyDraft);
                   const isSaving = savingRowId === residentId || isBulkSaving;
                   const residentName = `${resident.first_name || ""} ${resident.last_name || ""}`.trim() || residentId;
                   const roomLabel = resident.room_number ? `ห้อง ${resident.room_number}` : "";
@@ -1102,24 +1391,24 @@ export function VitalSignsTable({ selectedFloor = "all", selectedStatus = "all",
                         </div>
                       </td>
 
-                      <td className="py-2 px-1 text-center">{renderInput(residentId, "temperature", "36.5", { isAbnormal: abnormalDraftKeys.has("temperature") })}</td>
-                      <td className="py-2 px-1 text-center">{renderInput(residentId, "heartRate", "72", { isAbnormal: abnormalDraftKeys.has("heartRate") })}</td>
+                      <td className="py-2 px-1 text-center">{renderInput(residentId, "temperature", { isAbnormal: abnormalDraftKeys.has("temperature") })}</td>
+                      <td className="py-2 px-1 text-center">{renderInput(residentId, "heartRate", { isAbnormal: abnormalDraftKeys.has("heartRate") })}</td>
                       <td className="py-2 px-1 text-center">
                         <div className="flex items-center justify-center gap-1">
-                          {renderInput(residentId, "bloodPressureSystolic", "120", { isAbnormal: abnormalDraftKeys.has("bloodPressureSystolic") })}
+                          {renderInput(residentId, "bloodPressureSystolic", { isAbnormal: abnormalDraftKeys.has("bloodPressureSystolic") })}
                           <span className="text-[10px] text-gray-400">/</span>
-                          {renderInput(residentId, "bloodPressureDiastolic", "80", { isAbnormal: abnormalDraftKeys.has("bloodPressureDiastolic") })}
+                          {renderInput(residentId, "bloodPressureDiastolic", { isAbnormal: abnormalDraftKeys.has("bloodPressureDiastolic") })}
                         </div>
                       </td>
-                      <td className="py-2 px-1 text-center">{renderInput(residentId, "oxygenSaturation", "98", { isAbnormal: abnormalDraftKeys.has("oxygenSaturation") })}</td>
-                      <td className="py-2 px-1 text-center">{renderInput(residentId, "breathingRate", "16", { isAbnormal: abnormalDraftKeys.has("breathingRate") })}</td>
+                      <td className="py-2 px-1 text-center">{renderInput(residentId, "oxygenSaturation", { isAbnormal: abnormalDraftKeys.has("oxygenSaturation") })}</td>
+                      <td className="py-2 px-1 text-center">{renderInput(residentId, "breathingRate", { isAbnormal: abnormalDraftKeys.has("breathingRate") })}</td>
 
-                      <td className="py-2 px-1 text-center">{renderInput(residentId, "bloodGlucose", "110", { isAbnormal: abnormalDraftKeys.has("bloodGlucose") })}</td>
-                      <td className="py-2 px-1 text-center">{renderInput(residentId, "fluidIn", "250", { isAbnormal: abnormalDraftKeys.has("fluidIn") })}</td>
-                      <td className="py-2 px-1 text-center">{renderInput(residentId, "fluidOut", "200", { isAbnormal: abnormalDraftKeys.has("fluidOut") })}</td>
+                      <td className="py-2 px-1 text-center">{renderInput(residentId, "bloodGlucose", { isAbnormal: abnormalDraftKeys.has("bloodGlucose") })}</td>
+                      <td className="py-2 px-1 text-center">{renderInput(residentId, "fluidIn", { isAbnormal: abnormalDraftKeys.has("fluidIn") })}</td>
+                      <td className="py-2 px-1 text-center">{renderInput(residentId, "fluidOut", { isAbnormal: abnormalDraftKeys.has("fluidOut") })}</td>
                       <td className="py-2 px-1 text-center">
                         <div className="flex items-center justify-center gap-1">
-                          {renderInput(residentId, "urineOutput", "1", { isAbnormal: abnormalDraftKeys.has("urineOutput") })}
+                          {renderInput(residentId, "urineOutput", { isAbnormal: abnormalDraftKeys.has("urineOutput") })}
                           <button
                             type="button"
                             onClick={() =>
@@ -1136,8 +1425,8 @@ export function VitalSignsTable({ selectedFloor = "all", selectedStatus = "all",
                           </button>
                         </div>
                       </td>
-                      <td className="py-2 px-1 text-center">{renderInput(residentId, "stool", "0", { isAbnormal: abnormalDraftKeys.has("stool") })}</td>
-                      <td className="py-2 px-1 text-center">{renderInput(residentId, "diaperChange", "0", { isAbnormal: abnormalDraftKeys.has("diaperChange") })}</td>
+                      <td className="py-2 px-1 text-center">{renderInput(residentId, "stool", { isAbnormal: abnormalDraftKeys.has("stool") })}</td>
+                      <td className="py-2 px-1 text-center">{renderInput(residentId, "diaperChange", { isAbnormal: abnormalDraftKeys.has("diaperChange") })}</td>
 
                       <td className="py-3 px-2 text-center">
                         <div className="flex items-center justify-center gap-2">
@@ -1149,7 +1438,14 @@ export function VitalSignsTable({ selectedFloor = "all", selectedStatus = "all",
                           >
                             {isSaving ? "กำลังบันทึก" : "บันทึก"}
                           </button>
-
+                          <button
+                            type="button"
+                            onClick={() => handlePullPreviousRow(residentId)}
+                            disabled={!hasPrevious}
+                            className="rounded border border-amber-300 bg-amber-50 px-2 py-1 text-[10px] font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-60"
+                          >
+                            ดึงค่าก่อนหน้า
+                          </button>
                           <button
                             type="button"
                             className="text-blue-500 hover:text-blue-700 transition-colors"
@@ -1188,6 +1484,7 @@ export function VitalSignsTable({ selectedFloor = "all", selectedStatus = "all",
             const isFailed = failedRowIds.has(residentId);
             const abnormalDraftKeys = getAbnormalDraftKeys(rowDrafts[residentId] || emptyDraft);
             const hasPersisted = Boolean(vitalByResident.get(residentId) || labByResident.get(residentId));
+            const hasPrevious = hasAnyDraftValue(previousDraftByResident[residentId] || emptyDraft);
             const isSaving = savingRowId === residentId || isBulkSaving;
             const residentName = `${resident.first_name || ""} ${resident.last_name || ""}`.trim() || residentId;
             const roomLabel = resident.room_number ? `ห้อง ${resident.room_number}` : "";
@@ -1223,20 +1520,20 @@ export function VitalSignsTable({ selectedFloor = "all", selectedStatus = "all",
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  <label className="text-[11px] text-gray-600">อุณหภูมิ {renderInput(residentId, "temperature", "36.5", { isAbnormal: abnormalDraftKeys.has("temperature") })}</label>
-                  <label className="text-[11px] text-gray-600">ชีพจร {renderInput(residentId, "heartRate", "72", { isAbnormal: abnormalDraftKeys.has("heartRate") })}</label>
-                  <label className="text-[11px] text-gray-600">O2 {renderInput(residentId, "oxygenSaturation", "98", { isAbnormal: abnormalDraftKeys.has("oxygenSaturation") })}</label>
-                  <label className="text-[11px] text-gray-600">หายใจ {renderInput(residentId, "breathingRate", "16", { isAbnormal: abnormalDraftKeys.has("breathingRate") })}</label>
-                  <label className="text-[11px] text-gray-600">น้ำตาล {renderInput(residentId, "bloodGlucose", "110", { isAbnormal: abnormalDraftKeys.has("bloodGlucose") })}</label>
-                  <label className="text-[11px] text-gray-600">น้ำเข้า {renderInput(residentId, "fluidIn", "250", { isAbnormal: abnormalDraftKeys.has("fluidIn") })}</label>
-                  <label className="text-[11px] text-gray-600">น้ำออก {renderInput(residentId, "fluidOut", "200", { isAbnormal: abnormalDraftKeys.has("fluidOut") })}</label>
-                  <label className="text-[11px] text-gray-600">อุจจาระ {renderInput(residentId, "stool", "0", { isAbnormal: abnormalDraftKeys.has("stool") })}</label>
-                  <label className="text-[11px] text-gray-600">ผ้าอ้อม {renderInput(residentId, "diaperChange", "0", { isAbnormal: abnormalDraftKeys.has("diaperChange") })}</label>
-                  <label className="text-[11px] text-gray-600">ความดันบน {renderInput(residentId, "bloodPressureSystolic", "120", { isAbnormal: abnormalDraftKeys.has("bloodPressureSystolic") })}</label>
-                  <label className="text-[11px] text-gray-600">ความดันล่าง {renderInput(residentId, "bloodPressureDiastolic", "80", { isAbnormal: abnormalDraftKeys.has("bloodPressureDiastolic") })}</label>
+                  <label className="text-[11px] text-gray-600">อุณหภูมิ {renderInput(residentId, "temperature", { isAbnormal: abnormalDraftKeys.has("temperature") })}</label>
+                  <label className="text-[11px] text-gray-600">ชีพจร {renderInput(residentId, "heartRate", { isAbnormal: abnormalDraftKeys.has("heartRate") })}</label>
+                  <label className="text-[11px] text-gray-600">O2 {renderInput(residentId, "oxygenSaturation", { isAbnormal: abnormalDraftKeys.has("oxygenSaturation") })}</label>
+                  <label className="text-[11px] text-gray-600">หายใจ {renderInput(residentId, "breathingRate", { isAbnormal: abnormalDraftKeys.has("breathingRate") })}</label>
+                  <label className="text-[11px] text-gray-600">น้ำตาล {renderInput(residentId, "bloodGlucose", { isAbnormal: abnormalDraftKeys.has("bloodGlucose") })}</label>
+                  <label className="text-[11px] text-gray-600">น้ำเข้า {renderInput(residentId, "fluidIn", { isAbnormal: abnormalDraftKeys.has("fluidIn") })}</label>
+                  <label className="text-[11px] text-gray-600">น้ำออก {renderInput(residentId, "fluidOut", { isAbnormal: abnormalDraftKeys.has("fluidOut") })}</label>
+                  <label className="text-[11px] text-gray-600">อุจจาระ {renderInput(residentId, "stool", { isAbnormal: abnormalDraftKeys.has("stool") })}</label>
+                  <label className="text-[11px] text-gray-600">ผ้าอ้อม {renderInput(residentId, "diaperChange", { isAbnormal: abnormalDraftKeys.has("diaperChange") })}</label>
+                  <label className="text-[11px] text-gray-600">ความดันบน {renderInput(residentId, "bloodPressureSystolic", { isAbnormal: abnormalDraftKeys.has("bloodPressureSystolic") })}</label>
+                  <label className="text-[11px] text-gray-600">ความดันล่าง {renderInput(residentId, "bloodPressureDiastolic", { isAbnormal: abnormalDraftKeys.has("bloodPressureDiastolic") })}</label>
                   <div className="col-span-2 sm:col-span-3">
                     <div className="flex items-end gap-2">
-                      <label className="text-[11px] text-gray-600">ปัสสาวะ {renderInput(residentId, "urineOutput", "1", { isAbnormal: abnormalDraftKeys.has("urineOutput") })}</label>
+                      <label className="text-[11px] text-gray-600">ปัสสาวะ {renderInput(residentId, "urineOutput", { isAbnormal: abnormalDraftKeys.has("urineOutput") })}</label>
                       <button
                         type="button"
                         onClick={() => handleDraftChange(residentId, "urineType", urineType === "times" ? "ml" : "times")}
@@ -1250,6 +1547,14 @@ export function VitalSignsTable({ selectedFloor = "all", selectedStatus = "all",
                 </div>
 
                 <div className="mt-3">
+                  <button
+                    type="button"
+                    onClick={() => handlePullPreviousRow(residentId)}
+                    disabled={!hasPrevious}
+                    className="mb-2 w-full rounded border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-60"
+                  >
+                    ดึงค่าก่อนหน้า (เติมเฉพาะช่องว่าง)
+                  </button>
                   <button
                     type="button"
                     onClick={() => void handleSaveRow(residentId)}

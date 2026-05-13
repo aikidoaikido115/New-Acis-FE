@@ -1,7 +1,12 @@
 "use client";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import type { ResidentFormState, Medication, EmergencyContact } from "@/types/resident";
-import { INITIAL_FORM_STATE, INITIAL_MEDICATION, INITIAL_EMERGENCY_CONTACT } from "./constants";
+import type { ResidentFormState, Medication, EmergencyContact, EmergencyHospital } from "@/types/resident";
+import {
+  INITIAL_FORM_STATE,
+  INITIAL_MEDICATION,
+  INITIAL_EMERGENCY_CONTACT,
+  INITIAL_EMERGENCY_HOSPITAL,
+} from "./constants";
 
 const toLocalDateString = (value: Date) => {
   const year = value.getFullYear();
@@ -109,6 +114,34 @@ export function useResidentForm(
   const removeContact = (idx: number) =>
     setFormData((prev) => ({ ...prev, emergencyContacts: prev.emergencyContacts.filter((_, i) => i !== idx) }));
 
+  // ── Emergency hospital handlers ────────────────────────────
+  const updateHospital = (idx: number, patch: Partial<EmergencyHospital>) =>
+    setFormData((prev) => {
+      const hospitals = [...prev.emergencyHospitals];
+      hospitals[idx] = { ...hospitals[idx], ...patch };
+      return { ...prev, emergencyHospitals: hospitals };
+    });
+
+  const updateHospitalPhone = (idx: number, e: ChangeEvent<HTMLInputElement>) => {
+    const digits = e.target.value.replace(/\D/g, "");
+    updateHospital(idx, { phone: digits });
+  };
+
+  const addHospital = () =>
+    setFormData((prev) => ({
+      ...prev,
+      emergencyHospitals: [...prev.emergencyHospitals, { ...INITIAL_EMERGENCY_HOSPITAL }],
+    }));
+
+  const removeHospital = (idx: number) =>
+    setFormData((prev) => {
+      const next = prev.emergencyHospitals.filter((_, i) => i !== idx);
+      return {
+        ...prev,
+        emergencyHospitals: next.length > 0 ? next : [{ ...INITIAL_EMERGENCY_HOSPITAL }],
+      };
+    });
+
   // ── Submit / close ───────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -163,6 +196,10 @@ export function useResidentForm(
     updateContactPhone,
     addContact,
     removeContact,
+    updateHospital,
+    updateHospitalPhone,
+    addHospital,
+    removeHospital,
     handleSubmit,
     handleClose,
     resetForm,
