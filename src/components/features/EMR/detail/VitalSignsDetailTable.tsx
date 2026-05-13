@@ -1083,7 +1083,7 @@ export function VitalSignsDetailTable({
                     : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
                 }`}
               >
-                {showPreviousPlaceholder ? "ซ่อนค่าเดิมในช่องว่าง" : "แสดงค่าเดิมในช่องว่าง"}
+                {showPreviousPlaceholder ? "ซ่อนค่าก่อนหน้าในช่องว่าง" : "แสดงค่าก่อนหน้าในช่องว่าง"}
               </button>
               <button
                 type="button"
@@ -1091,7 +1091,7 @@ export function VitalSignsDetailTable({
                 disabled={isSlotLoading || !hasPreviousSlotValue}
                 className="rounded border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-60"
               >
-                ดึงค่าเดิม
+                ดึงค่าก่อนหน้า
               </button>
             </div>
           ) : null}
@@ -1189,7 +1189,9 @@ export function VitalSignsDetailTable({
                 {renderSortableHeader("ปัสสาวะ", "urineOutput", "w-[94px] text-center py-3 px-1")}
                 {renderSortableHeader("อุจจาระ", "stool", "w-16 text-center py-3 px-1")}
                 {renderSortableHeader("ผ้าอ้อม", "diaperChange", "w-16 text-center py-3 px-1")}
-                <th className="w-[120px] text-center py-3 px-2 text-[11px] font-semibold" style={{ color: "rgba(126, 143, 164, 1)" }}>จัดการ</th>
+                {!isAllSlots ? (
+                  <th className="w-[120px] text-center py-3 px-2 text-[11px] font-semibold" style={{ color: "rgba(126, 143, 164, 1)" }}>จัดการ</th>
+                ) : null}
               </tr>
             </thead>
 
@@ -1239,7 +1241,7 @@ export function VitalSignsDetailTable({
                       disabled={isSaving || isSlotLoading || !hasPreviousSlotValue}
                       className="rounded border border-amber-300 bg-amber-50 px-2 py-1 text-[10px] font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-60"
                     >
-                      ดึงค่าเดิม
+                      ดึงค่าก่อนหน้า
                     </button>
                     <button type="button" onClick={() => void handleSave()} disabled={isSaving || isSlotLoading || !hasUnsavedChanges} className="rounded bg-blue-500 px-2 py-1 text-[10px] font-medium text-white hover:bg-blue-600 disabled:opacity-60">
                       {isSaving ? "กำลังบันทึก" : "บันทึก"}
@@ -1251,17 +1253,17 @@ export function VitalSignsDetailTable({
 
               {isLoading ? (
                 <tr>
-                  <td colSpan={13} className="py-6 px-4 text-center">
+                  <td colSpan={isAllSlots ? 12 : 13} className="py-6 px-4 text-center">
                     <LoadingSpinner />
                   </td>
                 </tr>
               ) : error ? (
                 <tr>
-                  <td colSpan={13} className="py-6 px-4 text-center text-sm text-red-500">{error}</td>
+                  <td colSpan={isAllSlots ? 12 : 13} className="py-6 px-4 text-center text-sm text-red-500">{error}</td>
                 </tr>
               ) : displayRows.length === 0 ? (
                 <tr>
-                  <td colSpan={13} className="py-12 px-4 text-center">
+                  <td colSpan={isAllSlots ? 12 : 13} className="py-12 px-4 text-center">
                     <div className="text-sm text-gray-600">ไม่พบข้อมูลสัญญาณชีพในช่วงเวลานี้</div>
                     <div className="text-xs text-gray-400 mt-1">สามารถกรอกแถวด้านบนเพื่อบันทึกข้อมูลใหม่ได้</div>
                   </td>
@@ -1287,7 +1289,7 @@ export function VitalSignsDetailTable({
                       </td>
                       <td className={`py-2 px-2 text-center text-xs ${(typeof row.lab?.stool === "number" && row.lab.stool > 3) ? "text-red-500 font-medium" : "text-gray-900"}`}>{asText(row.lab?.stool)}</td>
                       <td className={`py-2 px-2 text-center text-xs ${(typeof row.lab?.diaper_change === "number" && row.lab.diaper_change > 6) ? "text-red-500 font-medium" : "text-gray-900"}`}>{asText(row.lab?.diaper_change)}</td>
-                      <td className="py-2 px-2 text-center text-xs text-gray-400">-</td>
+                      {!isAllSlots ? <td className="py-2 px-2 text-center text-xs text-gray-400">-</td> : null}
                     </tr>
                   );
                 })
@@ -1300,7 +1302,7 @@ export function VitalSignsDetailTable({
                 <td className="py-3 px-2 text-center text-[11px] text-gray-700">{daySummary.urineMl > 0 || daySummary.urineTimes > 0 ? `${daySummary.urineMl || 0} มล. / ${daySummary.urineTimes || 0} ครั้ง` : "-"}</td>
                 <td className="py-3 px-2 text-center text-[11px] text-gray-700">{daySummary.stool || "-"}</td>
                 <td className="py-3 px-2 text-center text-[11px] text-gray-700">{daySummary.diaper || "-"}</td>
-                <td className="py-3 px-2 text-center text-[11px] text-gray-500">-</td>
+                {!isAllSlots ? <td className="py-3 px-2 text-center text-[11px] text-gray-500">-</td> : null}
               </tr>
             </tbody>
           </table>
@@ -1344,7 +1346,7 @@ export function VitalSignsDetailTable({
             disabled={isSaving || isSlotLoading || !hasPreviousSlotValue}
             className="mt-3 w-full rounded border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-60"
           >
-            ดึงค่าเดิม (เติมเฉพาะช่องว่าง)
+            ดึงค่าก่อนหน้า (เติมเฉพาะช่องว่าง)
           </button>
           <button type="button" onClick={() => void handleSave()} disabled={isSaving || isSlotLoading || !hasUnsavedChanges} className="mt-3 w-full rounded bg-blue-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-600 disabled:opacity-60">
             {isSaving ? "กำลังบันทึก" : "บันทึก"}
