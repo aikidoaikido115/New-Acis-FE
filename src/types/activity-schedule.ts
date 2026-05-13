@@ -3,6 +3,8 @@ import type { Activity } from './activity';
 export interface ActivitySchedule {
   as_id: string;
   activity_id: string;
+  activity_name?: string;
+  activity_type?: string;
   date: string;
   start_time: string;
   end_time: string;
@@ -10,6 +12,8 @@ export interface ActivitySchedule {
   status?: string;
   created_at?: string;
   updated_at?: string;
+  description?: string | null;
+  location?: string | null;
   activity?: Activity;
   has_attendance?: boolean;
   can_check_in?: boolean;
