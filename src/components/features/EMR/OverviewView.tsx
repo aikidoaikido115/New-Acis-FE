@@ -57,9 +57,6 @@ export function OverviewView() {
     return [selectedLabelId];
   }, [selectedLabelId]);
 
-  const overviewDatePickerClassName =
-    "w-[200px] [&>button]:w-full [&>button]:justify-between [&>button]:border-2 [&>button]:border-blue-500 [&>button]:hover:bg-blue-50";
-
   const tabs = [
     { id: "vital_signs" as SubTab, label: "สัญญาณชีพ" },
     { id: "doctor_order" as SubTab, label: "คำสั่งแพทย์" },
@@ -150,7 +147,6 @@ export function OverviewView() {
               value={selectedDate}
               onChange={setSelectedDate}
               placeholder="เลือกวันที่"
-              className={overviewDatePickerClassName}
             />
           ) : null}
       </div>
