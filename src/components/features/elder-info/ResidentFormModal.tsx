@@ -33,13 +33,6 @@ const labelClass = "flex items-center gap-1.5 text-sm font-medium text-slate-700
 
 const Req = () => <span className="text-red-500">*</span>;
 
-const CARE_LEVEL_OPTIONS = [
-  "ช่วยเหลือตัวเองได้ทั้งหมด",
-  "ช่วยเหลือตัวเองได้บางส่วน",
-  "ผู้สูงอายุติดเตียง",
-  "อื่นๆ",
-];
-
 function Label({ icon, text, required }: { icon: React.ReactNode; text: string; required?: boolean }) {
   return (
     <label className={labelClass}>
@@ -168,16 +161,15 @@ export function ResidentFormModal({
         const labels = await intakeService.getAllLabels();
         if (!mounted) return;
 
-        const filtered = CARE_LEVEL_OPTIONS
-          .map(careLevel => labels.find(l => l.label_name === careLevel))
-          .filter((l) => l !== undefined);
+        const opts = labels
+          .map((l) => l.label_name?.trim())
+          .filter((name): name is string => Boolean(name))
+          .map((name) => ({ value: name, label: name }));
 
-        const opts = filtered.map((l) => ({ value: l.label_name, label: l.label_name }));
-        
-        setIntakeOptions(opts.length > 0 ? opts : CARE_LEVEL_OPTIONS.map((label) => ({ value: label, label })));
+        setIntakeOptions(opts);
       } catch (err) {
         if (!mounted) return;
-        setIntakeOptions(CARE_LEVEL_OPTIONS.map((label) => ({ value: label, label })));
+        setIntakeOptions([]);
       }
     })();
     return () => { mounted = false; };

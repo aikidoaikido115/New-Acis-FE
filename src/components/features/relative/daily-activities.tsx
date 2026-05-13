@@ -25,6 +25,14 @@ export function DailyActivities({ activities, participations, lastUpdatedAt }: D
 
   const formatTime = (value?: string): string => {
     if (!value) return "-";
+
+    const date = new Date(value);
+    if (!Number.isNaN(date.getTime())) {
+      const hours = String(date.getHours()).padStart(2, "0");
+      const minutes = String(date.getMinutes()).padStart(2, "0");
+      return `${hours}:${minutes}`;
+    }
+
     const match = value.match(/(\d{2}):(\d{2})(?::\d{2})?/);
     if (match) return `${match[1]}:${match[2]}`;
     return "-";
@@ -59,6 +67,8 @@ export function DailyActivities({ activities, participations, lastUpdatedAt }: D
       description: p.activity_schedule?.activity?.description,
       location: p.activity_schedule?.activity?.location,
       participated: p.is_participating,
+      scheduleStatus: p.activity_schedule?.status,
+      isCancelled: p.activity_schedule?.status === "cancelled",
       images: (p.img_urls || []).map((img) => img.url).filter(Boolean),
       lastUpdatedAt: lastUpdatedAt,
     }));
@@ -94,7 +104,8 @@ export function DailyActivities({ activities, participations, lastUpdatedAt }: D
           <div className="space-y-4">
             {dailyActivities.map((item) => {
               const hasImages = item.images && item.images.length > 0;
-              const isParticipated = item.participated === true;
+              const isCancelled = item.isCancelled === true;
+              const isParticipated = !isCancelled && item.participated === true;
 
               return (
                 <div
@@ -139,11 +150,13 @@ export function DailyActivities({ activities, participations, lastUpdatedAt }: D
                       </span>
                       {item.participated !== undefined && (
                         <span className={`text-xs px-3 py-1.5 rounded font-semibold ${
-                          item.participated 
-                            ? "bg-green-100 text-green-700" 
+                          isCancelled
+                            ? "bg-red-100 text-red-700"
+                            : item.participated
+                            ? "bg-green-100 text-green-700"
                             : "bg-gray-100 text-gray-600"
                         }`}>
-                          {item.participated ? "เข้าร่วม" : "ไม่เข้าร่วม"}
+                          {isCancelled ? "ศูนย์งดกิจกรรม" : item.participated ? "เข้าร่วม" : "ไม่เข้าร่วม"}
                         </span>
                       )}
                     </div>
