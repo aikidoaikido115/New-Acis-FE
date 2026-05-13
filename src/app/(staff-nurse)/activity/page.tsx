@@ -520,18 +520,27 @@ export default function ActivityPage() {
 
     try {
       let activityId = data.activityId;
+      let resolvedActivityName = data.name.trim();
+      let resolvedActivityType = data.type.trim();
 
       // 1. อัปเดต/สร้าง ข้อมูลกิจกรรมหลัก (Activity) ก่อน
       if (activityId) {
         await activityService.update(activityId, payload);
+        const matchedActivity = activities.find((activity) => activity.activity_id === activityId);
+        resolvedActivityName = matchedActivity?.activity_name || resolvedActivityName;
+        resolvedActivityType = matchedActivity?.activity_type || resolvedActivityType;
       } else {
         const newActivity = await activityService.create(payload);
         activityId = newActivity.activity_id;
+        resolvedActivityName = newActivity.activity_name;
+        resolvedActivityType = newActivity.activity_type;
       }
 
       // 2. จัดเตรียมข้อมูลวันเวลาสำหรับตาราง (Schedule)
       const schedulePayload = {
         activity_id: activityId,
+        activity_name: resolvedActivityName,
+        activity_type: resolvedActivityType,
         date: data.date,
         start_time: data.startTime,
         end_time: data.endTime,
@@ -543,6 +552,8 @@ export default function ActivityPage() {
       } else if (data.isRecurring) {
         await activityScheduleService.createRecurring({
           activity_id: activityId,
+          activity_name: resolvedActivityName,
+          activity_type: resolvedActivityType,
           start_date: data.date,
           end_date: data.repeatEndDate || data.date,
           start_time: data.startTime,

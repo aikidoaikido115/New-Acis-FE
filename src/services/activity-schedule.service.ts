@@ -176,8 +176,8 @@ class ActivityScheduleService {
       const created = await Promise.all(
         dateKeys.map((date) =>
           this.create({
-            activity_name: (payload as any).activity_name,
-            activity_type: (payload as any).activity_type,
+            activity_name: payload.activity_name,
+            activity_type: payload.activity_type,
             date,
             start_time: payload.start_time,
             end_time: payload.end_time,

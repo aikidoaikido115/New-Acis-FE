@@ -31,6 +31,8 @@ export interface UpdateActivityScheduleRequest {
 
 export interface CreateRecurringActivityScheduleRequest {
   activity_id: string;
+  activity_name?: string;
+  activity_type?: string;
   start_date: string;
   end_date: string;
   start_time: string;
