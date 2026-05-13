@@ -219,11 +219,10 @@ export function DatePicker({ value, onChange, placeholder = "เลือกว�
             return next;
           });
         }}
-        className="relative inline-flex w-full items-center justify-center gap-2 rounded-lg border border-blue-500 bg-white px-4 py-2 text-center text-sm font-semibold text-blue-600 transition hover:bg-blue-50 active:border-blue-600 focus-visible:border-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30"
+        className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 hover:bg-slate-50"
       >
-        <span className="h-4 w-4" aria-hidden="true" />
-        <span className={value ? "text-blue-600" : "text-slate-400"}>{value ? formatThaiDate(value) : placeholder}</span>
-        <Calendar className="h-4 w-4 text-blue-500" />
+        <Calendar className="h-4 w-4" />
+        <span className={value ? "text-black" : "text-slate-400"}>{value ? formatThaiDate(value) : placeholder}</span>
       </button>
       
       {isOpen && typeof document !== "undefined" && createPortal(
