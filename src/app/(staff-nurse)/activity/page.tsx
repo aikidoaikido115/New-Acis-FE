@@ -63,6 +63,7 @@ function EmptyActivityCard({ selectedDate, onAddActivity }: EmptyActivityCardPro
 interface ActivityScheduleCardProps {
   selectedDate: Date;
   items: ActivitySchedule[];
+  activities: Activity[];
   onAddActivity: () => void;
   onEdit: (schedule: ActivitySchedule) => void;
   onDelete: (schedule: ActivitySchedule) => void;
@@ -77,6 +78,7 @@ interface ActivityScheduleCardProps {
 function ActivityScheduleCard({
   selectedDate,
   items,
+  activities,
   onAddActivity,
   onEdit,
   onDelete,
@@ -120,10 +122,13 @@ function ActivityScheduleCard({
       <div className="px-6">
         <div className="max-h-[42vh] overflow-y-auto pr-2 lg:max-h-[56vh] divide-y divide-slate-100">
         {items.map((item, index) => {
-          const activity = resolveActivity(item);
+          const cachedActivity = activities.find((activity) => activity.activity_id === item.activity_id);
+          const activity = cachedActivity || resolveActivity(item);
           const isLast = index === items.length - 1;
-          const description = activity?.description && activity.description.trim() ? activity.description : "-";
-          const location = activity?.location && activity.location.trim() ? activity.location : "-";
+          const descriptionValue = item.description ?? activity?.description;
+          const locationValue = item.location ?? activity?.location;
+          const description = descriptionValue && descriptionValue.trim() ? descriptionValue : "-";
+          const location = locationValue && locationValue.trim() ? locationValue : "-";
           
           const resolveUpdatedBy = () => {
           const staffObj = (activity as any)?.staff || (activity as any)?.Staff;
@@ -541,6 +546,8 @@ export default function ActivityPage() {
         activity_id: activityId,
         activity_name: resolvedActivityName,
         activity_type: resolvedActivityType,
+        description: payload.description,
+        location: payload.location,
         date: data.date,
         start_time: data.startTime,
         end_time: data.endTime,
@@ -606,7 +613,7 @@ export default function ActivityPage() {
   };
 
   const resolveActivity = useCallback(
-    (schedule: ActivitySchedule) => schedule.activity || activities.find((activity) => activity.activity_id === schedule.activity_id),
+    (schedule: ActivitySchedule) => activities.find((activity) => activity.activity_id === schedule.activity_id) || schedule.activity,
     [activities]
   );
 
@@ -771,6 +778,7 @@ export default function ActivityPage() {
             <ActivityScheduleCard
               selectedDate={selectedDate}
               items={displayScheduleItems}
+              activities={activities}
               onAddActivity={handleAddActivity}
               onEdit={handleEditSchedule}
               onDelete={handleRequestDelete}
