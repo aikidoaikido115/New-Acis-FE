@@ -32,6 +32,11 @@ export function LoginFormRelative() {
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>("");
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const [formData, setFormData] = useState({
     password: "",
@@ -101,6 +106,10 @@ export function LoginFormRelative() {
     }
   };
 
+  if (!isMounted) {
+    return null;
+  }
+
   return (
     <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-[440px] mx-auto">
       <h2 className="text-2xl font-bold mb-6 text-gray-800">เข้าสู่ระบบสำหรับญาติ</h2>
@@ -158,7 +167,7 @@ export function LoginFormRelative() {
           <Button
             type="submit"
             className="w-full bg-[#4A8B6A] hover:bg-[#3d7357] text-white h-12 text-base font-medium transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={isLoading || !hasPortalParams}
+            disabled={!isMounted || isLoading || !hasPortalParams} 
           >
             {isLoading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
           </Button>

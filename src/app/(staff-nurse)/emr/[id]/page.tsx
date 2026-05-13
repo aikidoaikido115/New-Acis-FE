@@ -170,7 +170,7 @@ export default function PatientDetailPage() {
               value={selectedDate}
               onChange={(date) => setSelectedDate(date || new Date())}
               placeholder="เลือกวันที่"
-              className="w-full [&>button]:w-full [&>button]:justify-between [&>button]:border-2 [&>button]:border-blue-500 [&>button]:hover:bg-blue-50"
+              className="w-full"
             />
           </div>
         </div>

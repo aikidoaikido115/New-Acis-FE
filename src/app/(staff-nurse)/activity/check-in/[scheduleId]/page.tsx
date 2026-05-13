@@ -37,6 +37,13 @@ const formatTime = (value?: string | null) => {
   return `${hours}:${minutes}`;
 };
 
+const CARE_LEVEL_OPTIONS = [
+  "ช่วยเหลือตัวเองได้ทั้งหมด",
+  "ช่วยเหลือตัวเองได้บางส่วน",
+  "ผู้สูงอายุติดเตียง",
+  "อื่นๆ",
+];
+
 // ดึงชื่อประเภท (Label) ตัวแรกสุดจาก DB มาแสดงเลย
 const resolveCareType = (labels: string[] = []) => {
   if (!labels || labels.length === 0) return "-";
@@ -85,11 +92,16 @@ export default function ActivityCheckInPage() {
 
     const loadFilters = async () => {
       try {
-        const labels = await intakeService.getAllLabels();
+       const labels = await intakeService.getAllLabels();
         if (mounted && labels) {
+          const filtered = CARE_LEVEL_OPTIONS
+            .map(careLevel => labels.find(l => l.label_name === careLevel))
+            .filter((l) => l !== undefined);
+
+          const optionsBase = filtered.length > 0 ? filtered : CARE_LEVEL_OPTIONS.map((label) => ({ label_name: label }));
           const opts = [
             { value: "all", label: "ทุกประเภท" },
-            ...labels.map((l) => ({ value: l.label_name, label: l.label_name }))
+            ...optionsBase.map((l) => ({ value: l.label_name, label: l.label_name }))
           ];
           setCareTypeOptions(opts);
         }
@@ -99,7 +111,8 @@ export default function ActivityCheckInPage() {
             { value: "all", label: "ทุกประเภท" },
             { value: "ช่วยเหลือตัวเองได้ทั้งหมด", label: "ช่วยเหลือตัวเองได้ทั้งหมด" },
             { value: "ช่วยเหลือตัวเองได้บางส่วน", label: "ช่วยเหลือตัวเองได้บางส่วน" },
-            { value: "ติดเตียง", label: "ติดเตียง" },
+            { value: "ผู้สูงอายุติดเตียง", label: "ผู้สูงอายุติดเตียง" },
+            { value: "อื่นๆ", label: "อื่นๆ" },
           ]);
         }
       }
@@ -463,7 +476,8 @@ export default function ActivityCheckInPage() {
                 className="h-9 w-full rounded-md border border-slate-200 pl-8 pr-2 text-sm text-slate-700 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
               />
             </div>
-            <div className="flex items-center gap-2 text-xs">
+            {/* จุดแก้ที่ 1: เพิ่ม flex-wrap ให้มันขึ้นบรรทัดใหม่ได้ถ้าหน้าจอแคบเกินไป */}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
               <div className="flex items-center gap-1.5 text-slate-600">
                 <span className="whitespace-nowrap">ชั้น</span>
                 <Dropdown
@@ -473,13 +487,13 @@ export default function ActivityCheckInPage() {
                   className="w-20"
                 />
               </div>
-              <div className="flex items-center gap-1.5 text-slate-600 flex-1 min-w-0">
+              <div className="flex items-center gap-1.5 text-slate-600">
                 <span className="whitespace-nowrap">ประเภท</span>
                 <Dropdown
                   options={careTypeOptions}
                   value={careFilter}
                   onChange={setCareFilter}
-                  className="flex-1 min-w-0 max-w-40"
+                  className="w-32 sm:w-40"
                 />
               </div>
             </div>
@@ -562,7 +576,8 @@ export default function ActivityCheckInPage() {
           <table className="w-full text-left text-sm">
             <thead className="sticky top-0 bg-slate-50 text-xs font-semibold text-slate-600">
               <tr>
-                <th className="w-12 px-4 py-3">
+                {/* จุดแก้ที่ 2: เปลี่ยน px-4 เป็น px-2 sm:px-4 เพื่อลดระยะห่างคอลัมน์ในจอเล็ก */}
+                <th className="w-10 px-2 py-3 sm:w-12 sm:px-4">
                   <input
                     type="checkbox"
                     checked={filteredResidents.length > 0 && selectedCount === filteredResidents.length}
@@ -571,10 +586,10 @@ export default function ActivityCheckInPage() {
                     className={!isReadOnly ? 'cursor-pointer' : ''}
                   />
                 </th>
-                <th className="px-4 py-3">ชื่อ-นามสกุล</th>
-                <th className="px-4 py-3">ชื่อเล่น</th>
-                <th className="px-4 py-3">ห้อง</th>
-                <th className="px-4 py-3">ประเภท</th>
+                <th className="px-2 py-3 sm:px-4">ชื่อ-นามสกุล</th>
+                <th className="px-2 py-3 sm:px-4">ชื่อเล่น</th>
+                <th className="px-2 py-3 sm:px-4">ห้อง</th>
+                <th className="px-2 py-3 sm:px-4">ประเภท</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
@@ -597,7 +612,8 @@ export default function ActivityCheckInPage() {
                     className={`hover:bg-slate-100 transition-colors ${!isReadOnly ? 'cursor-pointer' : ''}`}
                     onClick={() => toggleResident(resident.id)}
                   >
-                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                    {/* จุดแก้ที่ 2 (ต่อ): เปลี่ยน px-4 เป็น px-2 sm:px-4 */}
+                    <td className="px-2 py-3 sm:px-4" onClick={(e) => e.stopPropagation()}>
                       <input
                         type="checkbox"
                         checked={selectedIds.has(resident.id)}
@@ -606,10 +622,10 @@ export default function ActivityCheckInPage() {
                         className={!isReadOnly ? 'cursor-pointer' : ''}
                       />
                     </td>
-                    <td className="px-4 py-3 text-slate-800">{resident.name}</td>
-                    <td className="px-4 py-3 text-slate-600">{resident.nickname || "-"}</td>
-                    <td className="px-4 py-3 text-slate-600">{resident.roomNumber || "-"}</td>
-                    <td className="px-4 py-3 text-slate-600">{resident.careType || "-"}</td>
+                    <td className="px-2 py-3 text-slate-800 sm:px-4">{resident.name}</td>
+                    <td className="px-2 py-3 text-slate-600 sm:px-4">{resident.nickname || "-"}</td>
+                    <td className="px-2 py-3 text-slate-600 sm:px-4">{resident.roomNumber || "-"}</td>
+                    <td className="px-2 py-3 text-slate-600 sm:px-4">{resident.careType || "-"}</td>
                   </tr>
                 ))
               )}
@@ -618,23 +634,24 @@ export default function ActivityCheckInPage() {
         </div>
       </div>
 
-      <div className="mt-6 flex flex-wrap items-center justify-center gap-4 ">
+      {/* จุดแก้ที่ 3: ปรับปุ่มให้เรียงบนล่าง (flex-col) ในจอเล็ก และให้ปุ่มกางเต็มจอ (w-full) */}
+      <div className="mt-6 flex flex-col sm:flex-row flex-wrap items-center justify-center gap-3 sm:gap-4 ">
         {isWithinWindow && !isHistoryMode && (
           <button
             type="button"
             onClick={handleSaveOnly}
-            className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+            className="inline-flex w-full sm:w-auto justify-center items-center gap-2 rounded-lg bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
           >
             บันทึกรายชื่อเท่านั้น (ไม่ถ่ายรูป)
           </button>
         )}
         
         {isWithinWindow && !isHistoryMode ? (
-          <div className="inline-flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
             <button
               type="button"
               onClick={handleSaveAndCapture}
-              className={`inline-flex items-center gap-2 rounded-lg px-5 py-3 text-sm font-semibold text-white shadow-sm transition ${
+              className={`inline-flex w-full sm:w-auto justify-center items-center gap-2 rounded-lg px-5 py-3 text-sm font-semibold text-white shadow-sm transition ${
                 cameraSupported ? "bg-[#0093EF] hover:bg-blue-500" : "bg-slate-300"
               }`}
               aria-disabled={!cameraSupported}
@@ -648,7 +665,7 @@ export default function ActivityCheckInPage() {
               <button
                 type="button"
                 onClick={handleViewPhotos}
-                className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-amber-600"
+                className="inline-flex w-full sm:w-auto justify-center items-center gap-2 rounded-lg bg-amber-500 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-amber-600"
                 title="มีรูปภาพ คลิกเพื่อดูรายละเอียด"
               >
                 ตรวจสอบรูปภาพ
@@ -658,7 +675,7 @@ export default function ActivityCheckInPage() {
         ) : isUpcoming ? (
           <button
             type="button"
-            className="inline-flex items-center gap-2 rounded-lg bg-slate-200 px-5 py-3 text-sm font-semibold text-slate-500 shadow-sm cursor-not-allowed"
+            className="inline-flex w-full sm:w-auto justify-center items-center gap-2 rounded-lg bg-slate-200 px-5 py-3 text-sm font-semibold text-slate-500 shadow-sm cursor-not-allowed"
             title="ยังไม่ถึงวันจัดกิจกรรม"
             aria-disabled="true"
           >
@@ -668,7 +685,7 @@ export default function ActivityCheckInPage() {
           <button
             type="button"
             onClick={handleViewHistory}
-            className="inline-flex items-center gap-2 rounded-lg bg-slate-400 px-5 py-3 text-sm font-semibold text-white shadow-sm transition cursor-default"
+            className="inline-flex w-full sm:w-auto justify-center items-center gap-2 rounded-lg bg-slate-400 px-5 py-3 text-sm font-semibold text-white shadow-sm transition cursor-default"
             title="หมดเวลาเช็คชื่อแล้ว (ดูประวัติเท่านั้น)"
           >
             ดูประวัติ

@@ -220,6 +220,10 @@ class AdminService {
   async deleteRelativeUser(userId: string): Promise<void> {
     await apiClient.delete(`/api/admin/users/relatives/${userId}`);
   }
+
+  async deleteUserById(userId: string): Promise<void> {
+    await apiClient.delete(`/api/admin/users/${userId}`);
+  }
 }
 
 export const adminService = new AdminService();

@@ -35,7 +35,7 @@ const DEFAULT_FORM_DATA: RegisterFormData = {
 
 const ROLE_OPTIONS: Array<{ value: RegisterFormData["role_name"]; label: string }> = [
   { value: "Medical Staff", label: "แพทย์ / พยาบาล" },
-  { value: "Kitchen Staff", label: "โภชนา / ห้องครัว" },
+  { value: "Kitchen Staff", label: "เจ้าหน้าที่ครัว" },
 ];
 
 function getInitialFormData(): RegisterFormData {

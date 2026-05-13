@@ -118,6 +118,14 @@ export default function Page() {
 
   const normalizePhone = (value?: string) => value?.replace(/\D/g, "") || "";
 
+  const normalizeHospitals = (hospitals: ResidentFormState["emergencyHospitals"]) =>
+    hospitals
+      .map((hospital) => ({
+        name: hospital.name.trim(),
+        phone: normalizePhone(hospital.phone),
+      }))
+      .filter((hospital) => hospital.name || hospital.phone);
+
   const toRFC3339 = (value?: string) => {
     if (!value) return undefined;
     if (value.includes("T")) return value;
@@ -133,7 +141,8 @@ export default function Page() {
 
   const buildResidentFormData = (formData: ResidentFormState, labels?: Array<{ label_name: string; note_text?: string }>) => {
     const form = new FormData();
-    const emergencyPhone = normalizePhone(formData.emergencyHospitalPhone);
+    const cleanedHospitals = normalizeHospitals(formData.emergencyHospitals);
+    const primaryHospital = cleanedHospitals[0];
     const cleanedContacts = formData.emergencyContacts
       .map((contact) => ({
         name: contact.name.trim(),
@@ -159,8 +168,12 @@ export default function Page() {
     appendFormValue(form, "pre_existing_conditions_notes", formData.chronicDiseasesNote || "");
     appendFormValue(form, "surgical_history", formData.surgicalHistory || "");
     appendFormValue(form, "resuscitation_status", formData.cprStatus || "");
-    appendFormValue(form, "preferred_emergency_hospital", formData.emergencyHospital || "");
-    appendFormValue(form, "emergency_hospital_phone", emergencyPhone || "");
+    appendFormValue(form, "preferred_emergency_hospital", primaryHospital?.name || "");
+    appendFormValue(form, "emergency_hospital_phone", primaryHospital?.phone || "");
+
+    if (cleanedHospitals.length > 0) {
+      form.append("emergency_hospitals", JSON.stringify(cleanedHospitals));
+    }
 
     if (cleanedContacts.length > 0) {
       form.append("emergency_contacts", JSON.stringify(cleanedContacts));
@@ -176,7 +189,8 @@ export default function Page() {
   };
 
   const buildResidentPayload = (formData: ResidentFormState, labels?: Array<{ label_name: string; note_text?: string }>): CreateResidentRequest => {
-    const emergencyPhone = normalizePhone(formData.emergencyHospitalPhone);
+    const cleanedHospitals = normalizeHospitals(formData.emergencyHospitals);
+    const primaryHospital = cleanedHospitals[0];
     const idCardNumber = formData.idCardNumber.trim();
     const cleanedContacts = formData.emergencyContacts
       .map((contact) => ({
@@ -201,8 +215,9 @@ export default function Page() {
       pre_existing_conditions_notes: formData.chronicDiseasesNote || undefined,
       surgical_history: formData.surgicalHistory || undefined,
       resuscitation_status: formData.cprStatus || undefined,
-      preferred_emergency_hospital: formData.emergencyHospital || undefined,
-      emergency_hospital_phone: emergencyPhone.length >= 4 && emergencyPhone.length <= 10 ? emergencyPhone : undefined,
+      preferred_emergency_hospital: primaryHospital?.name || undefined,
+      emergency_hospital_phone: primaryHospital?.phone || undefined,
+      emergency_hospitals: cleanedHospitals.length > 0 ? cleanedHospitals : undefined,
       emergency_contacts: cleanedContacts.length > 0 ? cleanedContacts : undefined,
       profile_image: formData.profileImagePreview || undefined,
       status: formData.status,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { ChevronDown, ChevronRight, AlertTriangle, FileText, Clock3 } from "lucide-react";
 import { WithholdMedicationModal, GiveAllMedicationsModal } from "./modals";
@@ -14,6 +14,8 @@ interface MedicationCardProps {
   onGiveAllMeds: (patientId: string, payload: GiveAllFormData) => Promise<void>;
   onGiveMedication: (medication: Medication) => Promise<void>;
   onWithholdMedication: (medication: Medication, payload: WithholdFormData) => Promise<void>;
+  onPendingCountChange?: (patientId: string, count: number) => void;
+  isCompleted?: boolean;
 }
 
 export function MedicationCard({
@@ -22,21 +24,115 @@ export function MedicationCard({
   onGiveAllMeds,
   onGiveMedication,
   onWithholdMedication,
+  onPendingCountChange,
+  isCompleted = false,
 }: MedicationCardProps) {
+  const GIVE_DELAY_SECONDS = 5;
+
+  type PendingEntry = {
+    id: string;
+    type: "single" | "all";
+    remainingSeconds: number;
+    medicationId?: string;
+  };
+
   const [isExpanded, setIsExpanded] = useState(true);
   const [showWithholdModal, setShowWithholdModal] = useState(false);
   const [showGiveAllModal, setShowGiveAllModal] = useState(false);
   const [selectedMedication, setSelectedMedication] = useState<Medication | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [activeRequests, setActiveRequests] = useState(0);
+  const [pendingEntries, setPendingEntries] = useState<PendingEntry[]>([]);
+  const timersRef = useRef(new Map<string, { timeoutId: number; intervalId: number }>());
 
-  const handleGiveMedication = async (med: Medication) => {
-    setIsSubmitting(true);
-    try {
-      await onGiveMedication(med);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  const clearPendingTimer = useCallback((id: string) => {
+    const timers = timersRef.current.get(id);
+    if (!timers) return;
+    window.clearTimeout(timers.timeoutId);
+    window.clearInterval(timers.intervalId);
+    timersRef.current.delete(id);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      timersRef.current.forEach((timers) => {
+        window.clearTimeout(timers.timeoutId);
+        window.clearInterval(timers.intervalId);
+      });
+      timersRef.current.clear();
+      onPendingCountChange?.(patient.id, 0);
+    };
+  }, [onPendingCountChange, patient.id]);
+
+  useEffect(() => {
+    onPendingCountChange?.(patient.id, pendingEntries.length);
+  }, [onPendingCountChange, patient.id, pendingEntries.length]);
+
+  const startPendingAction = useCallback(
+    (
+      id: string,
+      nextAction: () => Promise<void>,
+      pending: { type: "single"; medicationId: string } | { type: "all" }
+    ) => {
+      if (timersRef.current.has(id)) {
+        return;
+      }
+
+      setPendingEntries((prev) => [
+        ...prev,
+        {
+          id,
+          type: pending.type,
+          medicationId: pending.type === "single" ? pending.medicationId : undefined,
+          remainingSeconds: GIVE_DELAY_SECONDS,
+        },
+      ]);
+
+      const intervalId = window.setInterval(() => {
+        setPendingEntries((current) =>
+          current.map((entry) =>
+            entry.id === id
+              ? { ...entry, remainingSeconds: Math.max(entry.remainingSeconds - 1, 0) }
+              : entry
+          )
+        );
+      }, 1000);
+
+      const timeoutId = window.setTimeout(() => {
+        clearPendingTimer(id);
+        setPendingEntries((current) => current.filter((entry) => entry.id !== id));
+        void (async () => {
+          setActiveRequests((count) => count + 1);
+          try {
+            await nextAction();
+          } finally {
+            setActiveRequests((count) => Math.max(0, count - 1));
+          }
+        })();
+      }, GIVE_DELAY_SECONDS * 1000);
+
+      timersRef.current.set(id, { timeoutId, intervalId });
+    },
+    [GIVE_DELAY_SECONDS, clearPendingTimer]
+  );
+
+  const cancelPendingAction = useCallback(
+    (id: string) => {
+      clearPendingTimer(id);
+      setPendingEntries((current) => current.filter((entry) => entry.id !== id));
+    },
+    [clearPendingTimer]
+  );
+
+  const handleGiveMedication = useCallback(
+    (med: Medication) => {
+      startPendingAction(
+        `med:${med.id}`,
+        () => onGiveMedication(med),
+        { type: "single", medicationId: med.id }
+      );
+    },
+    [onGiveMedication, startPendingAction]
+  );
 
   const handleWithholdMedication = (med: Medication) => {
     setSelectedMedication(med);
@@ -50,10 +146,18 @@ export function MedicationCard({
 
   const pendingMedications = patient.medications.filter((med) => med.status === "รอให้");
   const pendingCount = pendingMedications.length;
+  const isGiveAllPending = pendingEntries.some((entry) => entry.type === "all");
+  const allPendingEntry = pendingEntries.find((entry) => entry.type === "all");
 
   return (
     <>
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+      <div
+        className={`rounded-lg border shadow-sm overflow-hidden transition-colors ${
+          isCompleted
+            ? "bg-gray-50 border-gray-200 text-gray-500"
+            : "bg-white border-gray-200"
+        }`}
+      >
         {/* Card Header */}
         <div className="flex items-center gap-3 p-3.5 lg:p-4 transition-colors">
           {/* Avatar */}
@@ -91,6 +195,11 @@ export function MedicationCard({
                 รอ {pendingCount} รายการ
               </span>
             )}
+            {pendingCount === 0 && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-gray-100 text-gray-600 border border-gray-200 rounded-full text-xs font-medium">
+                ให้ยาครบแล้ว
+              </span>
+            )}
           </div>
 
           {/* Expand/Collapse Toggle */}
@@ -108,52 +217,85 @@ export function MedicationCard({
         {isExpanded ? (
           <div className="border-t border-gray-200 p-3.5 space-y-2.5">
             {/* Medication List */}
-            {pendingMedications.map((med) => (
-              <div key={med.id} className="flex items-center justify-between py-1.5">
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-800">{med.name}</p>
-                  <p className="text-[11px] text-gray-500">{med.dosage}</p>
+            {pendingMedications.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-gray-200 bg-white px-4 py-3 text-xs text-gray-500">
+                ให้ยาครบแล้ว ไม่มีรายการค้างในช่วงเวลานี้
+              </div>
+            ) : (
+              pendingMedications.map((med) => {
+              const medPending = pendingEntries.some(
+                (entry) => entry.type === "single" && entry.medicationId === med.id
+              );
+              const pendingEntry = pendingEntries.find(
+                (entry) => entry.type === "single" && entry.medicationId === med.id
+              );
+
+              return (
+              <div key={med.id} className="space-y-2">
+                <div className="flex items-center justify-between py-1.5">
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-800">{med.name}</p>
+                    <p className="text-[11px] text-gray-500">{med.dosage}</p>
+                  </div>
+
+                  {/* Status Buttons */}
+                  <div className="flex items-center gap-2">
+                    {med.status === "รอให้" && (
+                      <>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleGiveMedication(med);
+                          }}
+                          disabled={medPending}
+                          className="px-2.5 py-1 bg-blue-500 text-white rounded-full text-xs font-medium hover:bg-blue-600 transition-colors disabled:opacity-60"
+                        >
+                          ให้ยา
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleWithholdMedication(med);
+                          }}
+                          disabled={medPending}
+                          className="px-2.5 py-1 bg-white text-red-600 border border-red-300 rounded-full text-xs font-medium hover:bg-red-50 transition-colors disabled:opacity-60"
+                        >
+                          งด
+                        </button>
+                      </>
+                    )}
+                    {med.status === "ให้ยา" && (
+                      <span className="px-2.5 py-1 bg-blue-500 text-white rounded-full text-xs font-medium">
+                        ให้ยา
+                      </span>
+                    )}
+                    {med.status === "งด" && (
+                      <span className="px-2.5 py-1 bg-white text-red-600 border border-red-300 rounded-full text-xs font-medium">
+                        งด
+                      </span>
+                    )}
+                  </div>
                 </div>
 
-                {/* Status Buttons */}
-                <div className="flex items-center gap-2">
-                  {med.status === "รอให้" && (
-                    <>
-                      <button
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          await handleGiveMedication(med);
-                        }}
-                        disabled={isSubmitting}
-                        className="px-2.5 py-1 bg-blue-500 text-white rounded-full text-xs font-medium hover:bg-blue-600 transition-colors"
-                      >
-                        ให้ยา
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleWithholdMedication(med);
-                        }}
-                        disabled={isSubmitting}
-                        className="px-2.5 py-1 bg-white text-red-600 border border-red-300 rounded-full text-xs font-medium hover:bg-red-50 transition-colors"
-                      >
-                        งด
-                      </button>
-                    </>
-                  )}
-                  {med.status === "ให้ยา" && (
-                    <span className="px-2.5 py-1 bg-blue-500 text-white rounded-full text-xs font-medium">
-                      ให้ยา
-                    </span>
-                  )}
-                  {med.status === "งด" && (
-                    <span className="px-2.5 py-1 bg-white text-red-600 border border-red-300 rounded-full text-xs font-medium">
-                      งด
-                    </span>
-                  )}
-                </div>
+                {pendingEntry ? (
+                  <div className="flex items-center justify-between rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-700">
+                    <span>จะบันทึกการให้ยาใน {pendingEntry.remainingSeconds} วินาที</span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        cancelPendingAction(pendingEntry.id);
+                      }}
+                      className="text-blue-700 underline hover:text-blue-900"
+                    >
+                      ยกเลิก
+                    </button>
+                  </div>
+                ) : null}
               </div>
-            ))}
+            );
+            })
+            )}
 
             {/* Footer Actions */}
             <div className="flex items-center justify-between pt-2.5 border-t border-gray-100">
@@ -167,13 +309,27 @@ export function MedicationCard({
               {pendingCount > 0 && (
                 <button
                   onClick={handleGiveAllClick}
-                  disabled={isSubmitting}
-                  className="px-3 py-1.5 bg-blue-500 text-white rounded-lg text-xs font-medium hover:bg-blue-600 transition-colors"
+                  disabled={isGiveAllPending}
+                  className="px-3 py-1.5 bg-blue-500 text-white rounded-lg text-xs font-medium hover:bg-blue-600 transition-colors disabled:opacity-60"
                 >
                   ให้ยาทั้งหมด ({pendingCount})
                 </button>
               )}
             </div>
+            {allPendingEntry ? (
+              <div className="mt-2 flex items-center justify-between rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-700">
+                <span>จะบันทึกการให้ยาทั้งหมดใน {allPendingEntry.remainingSeconds} วินาที</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    cancelPendingAction(allPendingEntry.id);
+                  }}
+                  className="text-blue-700 underline hover:text-blue-900"
+                >
+                  ยกเลิก
+                </button>
+              </div>
+            ) : null}
           </div>
         ) : (
           <>
@@ -204,8 +360,8 @@ export function MedicationCard({
               {pendingCount > 0 && (
                 <button
                   onClick={handleGiveAllClick}
-                  disabled={isSubmitting}
-                  className="px-3 py-1.5 bg-blue-500 text-white rounded-lg text-xs font-medium hover:bg-blue-600 transition-colors"
+                  disabled={isGiveAllPending}
+                  className="px-3 py-1.5 bg-blue-500 text-white rounded-lg text-xs font-medium hover:bg-blue-600 transition-colors disabled:opacity-60"
                 >
                   ให้ยาทั้งหมด ({pendingCount})
                 </button>
@@ -225,13 +381,13 @@ export function MedicationCard({
             }}
             onSubmit={(data) => {
               void (async () => {
-                setIsSubmitting(true);
+                setActiveRequests((count) => count + 1);
                 try {
                   await onWithholdMedication(selectedMedication, data);
                   setShowWithholdModal(false);
                   setSelectedMedication(null);
                 } finally {
-                  setIsSubmitting(false);
+                  setActiveRequests((count) => Math.max(0, count - 1));
                 }
               })();
             }}
@@ -246,15 +402,11 @@ export function MedicationCard({
         isOpen={showGiveAllModal}
         onClose={() => setShowGiveAllModal(false)}
         onSubmit={(data) => {
-          void (async () => {
-            setIsSubmitting(true);
-            try {
-              await onGiveAllMeds(patient.id, data);
-              setShowGiveAllModal(false);
-            } finally {
-              setIsSubmitting(false);
-            }
-          })();
+          setShowGiveAllModal(false);
+          if (timersRef.current.has("all")) {
+            return;
+          }
+          startPendingAction("all", () => onGiveAllMeds(patient.id, data), { type: "all" });
         }}
         patientName={patient.name}
         patientRoom={patient.room}

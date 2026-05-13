@@ -23,10 +23,7 @@ export function NoteTimelineControls({
   className,
   showClearButton = true,
 }: NoteTimelineControlsProps) {
-  const datePickerClassName = useMemo(
-    () => "w-[200px] [&>button]:w-full [&>button]:justify-between [&>button]:border-2 [&>button]:border-blue-500 [&>button]:hover:bg-blue-50",
-    []
-  );
+  const datePickerClassName = useMemo(() => "w-[200px]", []);
 
   return (
     <div className={className ? className : "flex flex-wrap items-center gap-3"}>

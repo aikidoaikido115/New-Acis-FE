@@ -23,11 +23,13 @@ function mapResidentStatusToThai(status?: string): string {
 export function RelativeSidebar({ isOpen = true, onClose }: RelativeSidebarProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
+  
   const [elderInfo, setElderInfo] = useState({
     name: '-',
     gender: '-',
     age: 0,
     status: '-',
+    profileImageUrl: '', 
   });
 
   useEffect(() => {
@@ -38,11 +40,14 @@ export function RelativeSidebar({ isOpen = true, onClose }: RelativeSidebarProps
         const normalizedGender = data.gender?.toLowerCase?.() || '';
         const genderText = normalizedGender === 'male' ? 'ชาย' : normalizedGender === 'female' ? 'หญิง' : data.gender || '-';
 
+        const rawData = data as any;
+
         setElderInfo({
           name: `${data.first_name || ''} ${data.last_name || ''}`.trim() || '-',
           gender: genderText,
           age: Math.max(data.age || 0, 0),
           status: mapResidentStatusToThai(data.status),
+          profileImageUrl: rawData.profile_image || '', 
         });
       } catch {
         setElderInfo({
@@ -50,6 +55,7 @@ export function RelativeSidebar({ isOpen = true, onClose }: RelativeSidebarProps
           gender: '-',
           age: 0,
           status: '-',
+          profileImageUrl: '',
         });
       } finally {
         setIsLoading(false);
@@ -72,14 +78,12 @@ export function RelativeSidebar({ isOpen = true, onClose }: RelativeSidebarProps
       await authService.logout();
       router.push(backToMagicLogin);
     } catch {
-      // Force navigate even if API fails
       router.push(backToMagicLogin);
     }
   };
 
   return (
     <>
-      {/* Overlay for mobile */}
       {isOpen && onClose && (
         <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
@@ -87,13 +91,11 @@ export function RelativeSidebar({ isOpen = true, onClose }: RelativeSidebarProps
         />
       )}
 
-      {/* Sidebar */}
       <aside
         className={`fixed top-0 left-0 h-full bg-linear-to-b from-[#1E88E5] to-[#42A5F5] z-50 transition-transform duration-300 w-80 flex flex-col ${
           isOpen ? 'translate-x-0 pointer-events-auto' : '-translate-x-full pointer-events-none'
         } lg:translate-x-0 lg:pointer-events-auto`}
       >
-        {/* Close button for mobile */}
         {onClose && (
           <button
             onClick={onClose}
@@ -103,7 +105,6 @@ export function RelativeSidebar({ isOpen = true, onClose }: RelativeSidebarProps
           </button>
         )}
 
-        {/* Header - Logo */}
         <Link href="/relative/dashboard" className="block">
         <div className="p-6 pb-4">
           <div className="flex items-center gap-3">
@@ -128,23 +129,29 @@ export function RelativeSidebar({ isOpen = true, onClose }: RelativeSidebarProps
         </div>
         </Link>
 
-        {/* Elder Info Section */}
         <div className="flex-1 px-6 py-8 flex flex-col items-center">
-          {/* Profile Avatar - Mock */}
           <div className="relative w-40 h-40 rounded-full bg-linear-to-br from-blue-300 to-blue-500 mb-6 overflow-hidden ring-4 ring-white/30 flex items-center justify-center">
             {isLoading ? (
               <div className="h-28 w-28 rounded-full bg-white/30 animate-pulse" />
+            ) : elderInfo.profileImageUrl ? (
+              <img 
+                src={elderInfo.profileImageUrl} 
+                alt={elderInfo.name} 
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                  setElderInfo(prev => ({ ...prev, profileImageUrl: '' }));
+                }}
+              />
             ) : (
               <User size={80} className="text-white" />
             )}
           </div>
 
-          {/* Name */}
           <h2 className="text-2xl font-bold text-white mb-2 text-center">
             {isLoading ? <span className="inline-block h-8 w-44 rounded bg-white/30 animate-pulse" /> : elderInfo.name}
           </h2>
 
-          {/* Gender & Age */}
           <p className="text-white/90 text-sm mb-8">
             {isLoading ? (
               <span className="inline-block h-5 w-36 rounded bg-white/30 animate-pulse" />
@@ -153,7 +160,6 @@ export function RelativeSidebar({ isOpen = true, onClose }: RelativeSidebarProps
             )}
           </p>
 
-          {/* Link to Profile */}
           <Link
             href="/relative/patient-info"
             className="text-white underline text-sm mb-6 hover:text-white/80 transition-colors"
@@ -161,13 +167,11 @@ export function RelativeSidebar({ isOpen = true, onClose }: RelativeSidebarProps
             {isLoading ? <span className="inline-block h-4 w-28 rounded bg-white/30 animate-pulse" /> : 'ประวัติผู้สูงอายุ'}
           </Link>
 
-          {/* Status Button */}
           <button className="bg-[#D4FDE7] text-green-700 font-light px-2 py-1 rounded-full transition-colors shadow-lg text-xs">
             {isLoading ? <span className="inline-block h-4 w-24 rounded bg-green-200 animate-pulse" /> : elderInfo.status}
           </button>
         </div>
 
-        {/* Logout */}
         <div className="px-6 pb-6">
           <button
             onClick={handleLogout}

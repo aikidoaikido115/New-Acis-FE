@@ -49,6 +49,7 @@ export interface MedicationHistory {
   actionAt?: string;
   patientName: string;
   medication: string;
+  meal: string;
   status: 'ให้แล้ว' | 'งด' | 'รอให้';
   note: string;
   givenBy: string;

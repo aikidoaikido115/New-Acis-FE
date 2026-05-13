@@ -18,6 +18,11 @@ export interface EmergencyContact {
   phone: string;
 }
 
+export interface EmergencyHospital {
+  name: string;
+  phone: string;
+}
+
 export interface IntakeLabel {
   label_id: string;
   label_name: string;
@@ -85,6 +90,7 @@ export interface Resident {
   // Emergency Info
   preferred_emergency_hospital?: string; // โรงพยาบาลกรณีฉุกเฉิน
   emergency_hospital_phone?: string;
+  emergency_hospitals?: EmergencyHospital[];
   emergency_contacts?: EmergencyContact[];
   resident_labels?: ResidentLabel[];
 
@@ -129,6 +135,7 @@ export interface CreateResidentRequest {
   // Emergency Info
   preferred_emergency_hospital?: string;
   emergency_hospital_phone?: string;
+  emergency_hospitals?: EmergencyHospital[];
   emergency_contacts?: EmergencyContact[];
   labels?: Array<{ label_name: string; note_text?: string }>;
 
@@ -167,7 +174,6 @@ export interface ResidentFormState {
   intakeLabel?: string;
 
   // Emergency Info
-  emergencyHospital: string;
-  emergencyHospitalPhone: string;
+  emergencyHospitals: EmergencyHospital[];
   emergencyContacts: EmergencyContact[];
 }
