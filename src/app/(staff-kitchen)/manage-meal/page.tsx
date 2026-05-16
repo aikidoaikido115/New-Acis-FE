@@ -254,23 +254,20 @@ export default function ManageMealPage() {
         }
       }
 
-      if (humanInTheLoop) {
+       if (humanInTheLoop) {
         await mealService.createMealPlanManual(payload);
       } else {
         const result = await mealService.createMealPlan(payload);
-        
-        if (result?.has_ai_warning) {
-          // แจ้งเตือนแบบ Error ชัดๆ ให้ผู้ใช้รับทราบ
+        if (result?.has_ai_warning && !backupMenuId) {
           showToast({
             title: "ตรวจพบเมนูเสี่ยงแพ้",
-            message: "กรุณาตรวจสอบเมนูอีกครั้ง เนื่องจากมีโอกาสเจอเมนูเสี่ยงแพ้",
+            message: "ระบบพบว่ามีผู้สูงอายุแพ้เมนูหลัก กรุณาเพิ่ม 'เมนูรอง' หรือปิดระบบ AI ตรวจสอบ",
             type: "info",
           });
           setIsSaving(false);
           return;
         }
       }
-
       showToast({
         title: "บันทึกสำเร็จ",
         message: `ระบบได้บันทึกข้อมูลการจัดเตรียมอาหาร${tab.label}เรียบร้อยแล้ว`,
