@@ -14,10 +14,8 @@ export function WarehouseView() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-3 md:p-6 w-full overflow-x-hidden">
-      {/* ใช้ grid grid-cols-1 ขังเนื้อหาทั้งหมดไม่ให้ทะลุ padding */}
       <div className="w-full min-w-0 grid grid-cols-1 space-y-4 md:space-y-6">
         
-        {/* Header */}
         <div className="flex flex-row items-center justify-between gap-2 w-full min-w-0">
           <h1 className="text-headline-6 sm:text-headline-5 font-bold text-gray-800 shrink-0">ยาและเวชภัณฑ์</h1>
 
