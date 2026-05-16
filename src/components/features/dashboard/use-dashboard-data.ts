@@ -121,13 +121,24 @@ export function useDashboardData() {
         const dateKey = toDateInputValue(activityDate);
         const schedules = await activityScheduleService.getByDate(dateKey);
         if (!mounted) return;
-        const mapped = (schedules || []).map((s) => ({
-          time: `${formatHHMM(s.start_time)}-${formatHHMM(s.end_time)}`,
-          title: s.activity?.activity_name || "กิจกรรม",
-          detail: s.activity?.activity_type || "-",
-          location: s.activity?.location || "-",
-          badge: scheduleBadge,
-        }));
+        
+        const mapped = (schedules || []).map((s: any) => {
+          const title = s.activity_name || s.activity?.activity_name || "กิจกรรม";
+          
+          const descriptionValue = s.description ?? s.activity?.description;
+          const locationValue = s.location ?? s.activity?.location;
+          
+          const description = descriptionValue && descriptionValue.trim() ? descriptionValue : "-";
+          const location = locationValue && locationValue.trim() ? locationValue : "-";
+
+          return {
+            time: `${formatHHMM(s.start_time)} - ${formatHHMM(s.end_time)}`,
+            title: title,
+            detail: `รายละเอียด: ${description}`,
+            location: `สถานที่: ${location}`,
+            badge: scheduleBadge,
+          };
+        });
         setScheduleItemsApi(mapped);
       } catch (err) {
         setScheduleItemsApi([]);
