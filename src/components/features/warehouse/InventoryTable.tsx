@@ -132,8 +132,8 @@ export function InventoryTable() {
       await loadItems();
       showToast({
         type: "success",
-        title: "ส่งคำขอสำเร็จ",
-        message: "ส่งคำขอเพิ่มเวชภัณฑ์ใหม่แล้ว รอการอนุมัติ",
+        title: "บันทึกสำเร็จ",
+        message: "เพิ่มเวชภัณฑ์ใหม่เรียบร้อยแล้ว",
       });
     } catch {
       alert("ไม่สามารถเพิ่มรายการเวชภัณฑ์ได้");
@@ -227,20 +227,24 @@ export function InventoryTable() {
     }
 
     try {
-      const updated = await warehouseService.adjustItem(itemId, {
+      await warehouseService.adjustItem(itemId, {
         mode: adjustMode,
         quantity: amount,
       });
 
-      setItems((prev) => prev.map((i) => (i.id === itemId ? updated : i)));
       clearAdjustmentValue(itemId);
+      await loadItems();
       showToast({
         type: "success",
-        title: "ส่งคำขอสำเร็จ",
+        title: "บันทึกสำเร็จ",
         message:
-          adjustMode === "restock"
-            ? "ส่งคำขอเติมเวชภัณฑ์แล้ว รอการอนุมัติ"
-            : "ส่งคำขอเบิกเวชภัณฑ์แล้ว รอการอนุมัติ",
+          canManageWarehouseItems
+            ? (adjustMode === "restock"
+                ? "เติมเวชภัณฑ์เรียบร้อยแล้ว"
+                : "เบิกเวชภัณฑ์เรียบร้อยแล้ว")
+            : (adjustMode === "restock"
+                ? "ส่งคำขอเติมเวชภัณฑ์แล้ว รอการอนุมัติ"
+                : "ส่งคำขอเบิกเวชภัณฑ์แล้ว รอการอนุมัติ"),
       });
     } catch {
       alert(
@@ -294,11 +298,15 @@ export function InventoryTable() {
       await loadItems();
       showToast({
         type: "success",
-        title: "ส่งคำขอสำเร็จ",
+        title: "บันทึกสำเร็จ",
         message:
-          adjustMode === "restock"
-            ? `ส่งคำขอเติมเวชภัณฑ์ ${validEntries.length} รายการแล้ว รอการอนุมัติ`
-            : `ส่งคำขอเบิกเวชภัณฑ์ ${validEntries.length} รายการแล้ว รอการอนุมัติ`,
+          canManageWarehouseItems
+            ? (adjustMode === "restock"
+                ? `เติมเวชภัณฑ์ ${validEntries.length} รายการเรียบร้อยแล้ว`
+                : `เบิกเวชภัณฑ์ ${validEntries.length} รายการเรียบร้อยแล้ว`)
+            : (adjustMode === "restock"
+                ? `ส่งคำขอเติมเวชภัณฑ์ ${validEntries.length} รายการแล้ว รอการอนุมัติ`
+                : `ส่งคำขอเบิกเวชภัณฑ์ ${validEntries.length} รายการแล้ว รอการอนุมัติ`),
       });
     } catch {
       alert(
@@ -319,7 +327,9 @@ export function InventoryTable() {
     );
 
   const saveButtonLabel =
-    adjustMode === "restock" ? "ส่งคำขอเติมของ" : "ส่งคำขอเบิกของ";
+    canManageWarehouseItems
+      ? (adjustMode === "restock" ? "บันทึกเติมของ" : "บันทึกเบิกของ")
+      : (adjustMode === "restock" ? "ส่งคำขอเติมของ" : "ส่งคำขอเบิกของ");
 
   const isSaveAllDisabled = !hasPendingAdjustments || (adjustMode === "withdraw" && hasInvalidWithdraw);
 
