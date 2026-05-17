@@ -108,17 +108,17 @@ export function HistoryTable({ history }: HistoryTableProps) {
               <div className="flex items-start justify-between gap-2">
                 <div className="text-xs text-gray-500">{formatHistoryDateTime(entry.actionAt) || entry.time}</div>
                 <div>
-                  {entry.status === "เนเธซเนเนเธฅเนเธง" ? (
+                  {entry.status === "ให้แล้ว" ? (
                     <span className="status-pill inline-flex px-2.5 py-1 bg-green-100 text-green-600 rounded-full text-xs font-medium">
-                      เนเธซเนเนเธฅเนเธง
+                      ให้แล้ว
                     </span>
-                  ) : entry.status === "เธฃเธญเนเธซเน" ? (
+                  ) : entry.status === "รอให้" ? (
                     <span className="status-pill inline-flex px-2.5 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium">
-                      เธฃเธญเนเธซเน
+                      รอให้
                     </span>
                   ) : (
                     <span className="status-pill inline-flex px-2.5 py-1 bg-red-100 text-red-600 rounded-full text-xs font-medium">
-                      เธเธ”
+                      งด
                     </span>
                   )}
                 </div>

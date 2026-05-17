@@ -152,8 +152,8 @@ export function CombinedMedsTable({
       <div className="space-y-3 md:hidden">
         {filteredRows.length === 0 ? (
           <div className="rounded-lg border border-[#D6DCE2] bg-[#E9EDF1] px-4 py-10 text-center">
-            <div className="text-sm text-gray-600">เนเธกเนเธเธเธฃเธฒเธขเธเธฒเธฃเธขเธฒเนเธเธเธฃเธฐเน€เธ เธ—เธ—เธตเนเน€เธฅเธทเธญเธ</div>
-            <div className="mt-1 text-xs text-gray-400">เธฅเธญเธเน€เธเธฅเธตเนเธขเธเธ•เธฑเธงเธเธฃเธญเธเธเธฃเธฐเน€เธ เธ— เธซเธฃเธทเธญเน€เธเธดเนเธกเธเนเธญเธกเธนเธฅเธขเธฒเนเธซเธกเน</div>
+            <div className="text-sm text-gray-600">ไม่พบรายการยาในประเภทที่เลือก</div>
+            <div className="mt-1 text-xs text-gray-400">ลองเปลี่ยนตัวกรองประเภท หรือเพิ่มข้อมูลยาใหม่</div>
           </div>
         ) : (
           filteredRows.map((med) => (
@@ -166,14 +166,14 @@ export function CombinedMedsTable({
                   <button
                     onClick={() => onEditMed(med.id)}
                     className="p-1 text-[#1290EB] hover:text-[#0D75C0] transition-colors"
-                    title="เนเธเนเนเธ"
+                    title="แก้ไข"
                   >
                     <Edit className="h-4 w-4" />
                   </button>
                   <button
                     onClick={() => onDeleteMed(med.id)}
                     className="p-1 text-[#FF3557] hover:text-[#D92644] transition-colors"
-                    title="เธฅเธ"
+                    title="ลบ"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
