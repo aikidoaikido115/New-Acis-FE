@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2, X } from "lucide-react";
+import Image from "next/image";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { AddWoundCareModal, WoundCareFormData } from "../modals/AddWoundCareModal";
@@ -26,6 +27,7 @@ export function WoundCareDetailTable({ patientId }: WoundCareDetailTableProps) {
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [sortOrder, setSortOrder] = useState<TimelineSortOrder>("newest");
   const [activeContactName, setActiveContactName] = useState<string | null>(null);
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const selectedDateKey = useMemo(() => formatBangkokDateKey(selectedDate || new Date()), [selectedDate]);
@@ -218,7 +220,7 @@ export function WoundCareDetailTable({ patientId }: WoundCareDetailTableProps) {
             const by = item.created_by_staff_name || item.created_by_staff_id || "-";
             return (
               <div key={id} className="border rounded-lg p-4 bg-white" style={{ borderColor: 'rgba(103, 103, 103, 0.48)' }}>
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div className="flex-1">
                     <h3 className="text-xs sm:text-sm font-semibold text-gray-800 mb-1">{item.location} | {item.wound_type}</h3>
                     <p className="text-xs sm:text-sm text-gray-600 mb-2">{item.note || item.treatment || "-"}</p>
@@ -237,6 +239,28 @@ export function WoundCareDetailTable({ patientId }: WoundCareDetailTableProps) {
                         "-"
                       )}
                     </p>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-start gap-1 sm:items-center sm:self-center">
+                    <span className="text-[11px] font-medium text-gray-400">รูปภาพ</span>
+                    {item.image_url ? (
+                      <button
+                        type="button"
+                        onClick={() => setPreviewImageUrl(item.image_url || null)}
+                        className="rounded border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        aria-label="ดูรูปภาพทำแผลขนาดใหญ่"
+                      >
+                        <Image
+                          src={item.image_url}
+                          alt="wound"
+                          width={48}
+                          height={48}
+                          unoptimized
+                          className="h-12 w-12 rounded object-cover"
+                        />
+                      </button>
+                    ) : (
+                      <span className="text-xs text-gray-400">-</span>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <button className="p-1.5 text-blue-500 hover:bg-blue-50 rounded transition-colors" onClick={() => handleOpenEditModal(item)}>
@@ -281,6 +305,36 @@ export function WoundCareDetailTable({ patientId }: WoundCareDetailTableProps) {
           contact={resolveContactInfo(activeContactName)}
           onClose={() => setActiveContactName(null)}
         />
+      ) : null}
+
+      {previewImageUrl ? (
+        <div
+          className="fixed inset-0 z-100 flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setPreviewImageUrl(null)}
+        >
+          <div
+            className="relative w-full max-w-3xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setPreviewImageUrl(null)}
+              className="absolute -top-10 right-0 text-white hover:text-gray-200"
+              aria-label="ปิดรูปภาพ"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-black">
+              <Image
+                src={previewImageUrl}
+                alt="wound preview"
+                fill
+                unoptimized
+                className="object-contain"
+              />
+            </div>
+          </div>
+        </div>
       ) : null}
 
       {confirmDialog}
