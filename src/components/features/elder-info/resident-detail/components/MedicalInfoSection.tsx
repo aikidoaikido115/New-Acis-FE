@@ -1,5 +1,5 @@
 "use client";
-import { Activity, AlertTriangle, Heart, Pill, Scissors, ShieldCheck } from "lucide-react";
+import { Activity, AlertTriangle, ClipboardList, Heart, Pill, Scissors, ShieldCheck } from "lucide-react";
 import type { Resident as ApiResident } from "@/types/resident";
 import type { PersonalDrug } from "@/services/personal-drug.service";
 import { MedicationTable } from "./MedicationTable";
@@ -72,7 +72,7 @@ export function MedicalInfoSection({
       <div className="mt-5 grid grid-cols-1 gap-6 md:grid-cols-2">
         <div>
           <div className="flex items-center gap-2 text-xs text-slate-500">
-            <Scissors className="h-4 w-4" />
+            <ClipboardList className="h-4 w-4" />
             <span>ประวัติการผ่าตัด</span>
           </div>
           <div className="mt-2 flex flex-wrap gap-2">

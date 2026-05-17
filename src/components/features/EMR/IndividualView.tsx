@@ -147,63 +147,74 @@ export function IndividualView() {
   };
 
   return (
-    <div>
+    // 1. ใส่สูตรขังกรอบหน้าจอขั้นสุด
+    <div className="grid grid-cols-1 w-full max-w-full overflow-x-hidden min-w-0">
+      
       {/* Filters Row */}
-      <div className="flex items-center gap-4 mb-6">
-        {/* Search Input */}
-        <div className="relative flex-1 max-w-md">
+      <div className="flex flex-col md:flex-row md:items-center gap-3 mb-6 w-full min-w-0">
+        
+        {/* แถวแรกบนจอมือถือ: Search Input */}
+        <div className="relative w-full md:flex-1 md:max-w-md min-w-0">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
             placeholder="ค้นหาชื่อ..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-body-small text-black placeholder:text-[rgba(204,204,204,1)]"
-          />
+            className="w-full pl-10 pr-4 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-xs sm:text-body-small text-black placeholder:text-gray-400 min-w-0 transition-colors shadow-sm"
+            />
         </div>
 
-        <span className="text-body-small text-gray-600">ชั้น</span>
+        {/* แถวสองบนจอมือถือ: ชั้น และ ประเภท (ใช้ grid แบ่ง 50/50 ไม่ให้ดันจอ) */}
+        <div className="grid grid-cols-2 md:flex md:flex-row md:items-center gap-3 w-full md:w-auto shrink-0 min-w-0">
+          <div className="flex flex-row items-center gap-2 min-w-0">
+            <span className="text-xs sm:text-body-small text-gray-600 shrink-0">ชั้น</span>
+            <div className="flex-1 md:w-32 min-w-0">
+              <Dropdown
+                options={[
+                  { value: "all", label: "ทุกชั้น" },
+                  ...floorOptions.map((floor) => ({
+                    value: String(floor),
+                    label: `ชั้น ${floor}`,
+                  })),
+                ]}
+                value={selectedFloor}
+                onChange={(value) => setSelectedFloor(value)}
+                placeholder="เลือกชั้น"
+              />
+            </div>
+          </div>
 
-        {/* Floor Dropdown */}
-        <Dropdown
-          options={[
-            { value: "all", label: "ทุกชั้น" },
-            ...floorOptions.map((floor) => ({
-              value: String(floor),
-              label: `ชั้น ${floor}`,
-            })),
-          ]}
-          value={selectedFloor}
-          onChange={(value) => setSelectedFloor(value)}
-          placeholder="เลือกชั้น"
-        />
+          <div className="flex flex-row items-center gap-2 min-w-0">
+            <span className="text-xs sm:text-body-small text-gray-600 shrink-0">ประเภท</span>
+            <div className="flex-1 md:w-40 min-w-0">
+              <Dropdown
+                options={careOptions}
+                value={selectedLabelId}
+                onChange={(value) => setSelectedLabelId(value)}
+                placeholder="เลือก"
+              />
+            </div>
+          </div>
+        </div>
 
-        <span className="text-body-small text-gray-600">ประเภท</span>
-
-        {/* Help Level Dropdown */}
-        <Dropdown
-          options={careOptions}
-          value={selectedLabelId}
-          onChange={(value) => setSelectedLabelId(value)}
-          placeholder="เลือก"
-        />
-
-        
       </div>
 
       {/* Data Table */}
       {isLoading ? (
         <SkeletonTable columns={4} rows={6} />
       ) : (
-        <div className="overflow-hidden rounded-lg" style={{ border: '1px solid rgba(103, 103, 103, 0.48)' }}>
-          <div className="overflow-x-auto">
-            <table className="w-full">
+        // 2. ล็อคตารางด้วย max-w-[calc(100vw-24px)] รักษาระยะขอบจอมือถือ
+        <div className="w-full max-w-[calc(100vw-24px)] md:max-w-full min-w-0 overflow-hidden rounded-lg" style={{ border: '1px solid rgba(103, 103, 103, 0.48)' }}>
+          <div className="w-full overflow-x-auto">
+            {/* บังคับ min-w-[500px] เพื่อให้ตารางเลื่อนได้เฉพาะในกรอบ */}
+            <table className="w-full min-w-[500px]">
               <thead>
                 <tr style={{ backgroundColor: 'rgba(239, 242, 247, 1)', borderBottom: '1px solid rgba(103, 103, 103, 0.48)' }}>
-                  <th className="text-left py-3 px-4 text-xs font-semibold" style={{ color: '#000' }}>ชื่อ-นามสกุล</th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold" style={{ color: '#000' }}>ชื่อเล่น</th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold" style={{ color: '#000' }}>ห้อง</th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold" style={{ color: '#000' }}>ประเภท</th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold whitespace-nowrap" style={{ color: '#000' }}>ชื่อ-นามสกุล</th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold whitespace-nowrap" style={{ color: '#000' }}>ชื่อเล่น</th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold whitespace-nowrap" style={{ color: '#000' }}>ห้อง</th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold whitespace-nowrap" style={{ color: '#000' }}>ประเภท</th>
                 </tr>
               </thead>
               <tbody>
@@ -234,10 +245,10 @@ export function IndividualView() {
                         className="bg-white hover:bg-gray-50 transition-colors cursor-pointer"
                         style={{ borderBottom: '1px solid rgba(103, 103, 103, 0.48)' }}
                       >
-                        <td className="py-3 px-4 text-xs sm:text-sm" style={{ color: '#000' }}>{fullName}</td>
-                        <td className="py-3 px-4 text-xs sm:text-sm" style={{ color: '#000' }}>{resident.nickname || "-"}</td>
-                        <td className="py-3 px-4 text-xs sm:text-sm" style={{ color: '#000' }}>{roomDisplay}</td>
-                        <td className="py-3 px-4 text-xs sm:text-sm" style={{ color: '#000' }}>{getCareLevelText(resident)}</td>
+                        <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap" style={{ color: '#000' }}>{fullName}</td>
+                        <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap" style={{ color: '#000' }}>{resident.nickname || "-"}</td>
+                        <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap" style={{ color: '#000' }}>{roomDisplay}</td>
+                        <td className="py-3 px-4 text-xs sm:text-sm whitespace-nowrap" style={{ color: '#000' }}>{getCareLevelText(resident)}</td>
                       </tr>
                     );
                   })
