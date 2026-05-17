@@ -19,7 +19,7 @@ import { CombinedMedsTable } from "./tables/CombinedMedsTable";
 import { HistoryTable } from "./tables/HistoryTable";
 import { Pagination } from "@/components/ui/pagination";
 import { Dropdown } from "@/components/ui/dropdown";
-import { AddMedicationModal } from "./modals";
+import { AddMedicationModal, EditMedicationModal } from "./modals";
 import { SkeletonCard, SkeletonTable } from "@/components/ui/skeleton";
 import type { AddMedicationFormData, EditMedicationFormData } from "./modals";
 import type { GiveAllFormData } from "./modals/GiveAllMedicationsModal";
@@ -363,6 +363,7 @@ export function MedicalManagementView() {
   const [detailsTab, setDetailsTab] = useState<"meds" | "history">("meds");
   const [currentPage, setCurrentPage] = useState(1);
   const [showAddMedicationModal, setShowAddMedicationModal] = useState(false);
+  const [editingMedicationFromCombined, setEditingMedicationFromCombined] = useState<RoutineMedication | null>(null);
   const [medsDisplayMode, setMedsDisplayMode] = useState<"split" | "combined">("split");
   const [pendingActionsByPatient, setPendingActionsByPatient] = useState<Record<string, number>>({});
   const [showCompletedPatients, setShowCompletedPatients] = useState(false);
@@ -841,6 +842,31 @@ export function MedicalManagementView() {
     [ensureDrugMasterId, refreshAfterMutation, selectedPatientId, showToast]
   );
 
+  const handleDeleteMedication = useCallback(
+    async (medicationId: string) => {
+      setIsMutating(true);
+      try {
+        await personalDrugService.deleteById(medicationId);
+        await refreshAfterMutation();
+
+        showToast({
+          type: "success",
+          title: "ลบรายการยาแล้ว",
+          message: "ลบรายการยาสำเร็จ",
+        });
+      } catch (error) {
+        showToast({
+          type: "error",
+          title: "ลบรายการยาไม่สำเร็จ",
+          message: extractErrorMessage(error, "ไม่สามารถลบรายการยาได้"),
+        });
+      } finally {
+        setIsMutating(false);
+      }
+    },
+    [refreshAfterMutation, showToast]
+  );
+
   const handleEditMedication = useCallback(
     async (medication: RoutineMedication, data: EditMedicationFormData) => {
       setIsMutating(true);
@@ -905,35 +931,11 @@ export function MedicalManagementView() {
     [ensureDrugMasterId, refreshAfterMutation, showToast]
   );
 
-  const handleDeleteMedication = useCallback(
-    async (medicationId: string) => {
-      setIsMutating(true);
-      try {
-        await personalDrugService.deleteById(medicationId);
-        await refreshAfterMutation();
-
-        showToast({
-          type: "success",
-          title: "ลบรายการยาแล้ว",
-          message: "ลบรายการยาสำเร็จ",
-        });
-      } catch (error) {
-        showToast({
-          type: "error",
-          title: "ลบรายการยาไม่สำเร็จ",
-          message: extractErrorMessage(error, "ไม่สามารถลบรายการยาได้"),
-        });
-      } finally {
-        setIsMutating(false);
-      }
-    },
-    [refreshAfterMutation, showToast]
-  );
-
   const handlePendingCountChange = useCallback((patientId: string, count: number) => {
     setPendingActionsByPatient((prev) => {
       if (count <= 0) {
-        const { [patientId]: _, ...rest } = prev;
+        const rest = { ...prev };
+        delete rest[patientId];
         return rest;
       }
       return { ...prev, [patientId]: count };
@@ -1110,7 +1112,7 @@ export function MedicalManagementView() {
     }));
 
     return allPatients.sort((a, b) => a.name.localeCompare(b.name));
-  }, [overviewPlans, residentById, roomById, selectedTimeSlot]);
+  }, [intakeLabels, overviewPlans, residentById, roomById, selectedTimeSlot]);
 
   const filteredPatients = useMemo(() => {
     return allPatientMedications.filter((patient) => {
@@ -1162,7 +1164,7 @@ export function MedicalManagementView() {
       drugAllergies: patient.drugAllergies || [],
       status: toStatusBadge(resident.resident_labels, intakeLabels),
     };
-  }, [allPatientMedications, selectedPatientId, residentById]);
+  }, [allPatientMedications, intakeLabels, selectedPatientId, residentById]);
 
   const routineMedications = useMemo(() => {
     return residentMedications.filter((item) => {
@@ -1588,12 +1590,8 @@ export function MedicalManagementView() {
               <CombinedMedsTable
                 routineMedications={routineMedications}
                 prnMedications={prnMedications}
-                onEditMed={() => {
-                  showToast({
-                    type: "info",
-                    title: "คำแนะนำ",
-                    message: "การแก้ไขข้อมูลยาในตอนนี้ให้ใช้มุมมองแยกประเภท",
-                  });
+                onEditMed={(medication) => {
+                  setEditingMedicationFromCombined(medication);
                 }}
                 onDeleteMed={(id) => {
                   void handleDeleteMedication(id);
@@ -1609,6 +1607,22 @@ export function MedicalManagementView() {
               void handleAddMedication(data);
             }}
           />
+
+          {editingMedicationFromCombined ? (
+            <EditMedicationModal
+              isOpen={true}
+              onClose={() => {
+                setEditingMedicationFromCombined(null);
+              }}
+              onSubmit={async (data) => {
+                await handleEditMedication(editingMedicationFromCombined, data);
+              }}
+              medication={editingMedicationFromCombined}
+              patientName={selectedPatient?.name || ""}
+              patientRoom={selectedPatient?.room || ""}
+            />
+          ) : null}
+
         </>
       ) : (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
