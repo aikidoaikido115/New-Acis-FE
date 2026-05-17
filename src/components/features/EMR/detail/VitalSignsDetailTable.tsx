@@ -1168,7 +1168,7 @@ export function VitalSignsDetailTable({
                 <button
                   type="button"
                   onClick={() => setShowPreviousPlaceholder((prev) => !prev)}
-                  className={`rounded border px-2 sm:px-3 py-1.5 text-[11px] sm:text-xs font-medium ${
+                  className={`rounded border px-2 sm:px-3 py-1.5 text-body-small font-medium ${
                     showPreviousPlaceholder
                       ? "border-amber-300 bg-amber-50 text-amber-700"
                       : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"

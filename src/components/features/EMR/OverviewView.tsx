@@ -66,7 +66,7 @@ export function OverviewView() {
   ];
 
   return (
-    <div className="space-y-4 w-full min-w-0 bg-white">
+    <div className="space-y-4 w-full min-w-0 ">
       
       <style>{`
         body, html, main, #__next, .layout-wrapper, footer {
@@ -98,11 +98,12 @@ export function OverviewView() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:flex-row lg:items-center gap-3 w-full min-w-0 pb-2 border-b border-gray-100 mb-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:flex-row lg:items-center gap-4 w-full min-w-0 pb-2 border-b border-gray-100 mb-2">
+            
             {/* ชั้น */}
-            <div className="flex flex-col gap-1 min-w-0 w-full lg:w-auto">
-              <span className="text-[11px] text-gray-500 font-medium px-1">ชั้น</span>
-              <div className="w-full lg:w-[120px]">
+            <div className="flex items-center gap-2 min-w-0 w-full lg:w-auto">
+              <span className="text-body-small text-gray-600 font-medium shrink-0">ชั้น</span>
+              <div className="flex-1 lg:w-[120px] min-w-0">
                 <Dropdown
                   options={[
                     { value: "all", label: "ทุกชั้น" },
@@ -116,9 +117,9 @@ export function OverviewView() {
             </div>
 
             {/* ประเภท */}
-            <div className="flex flex-col gap-1 min-w-0 w-full lg:w-auto">
-              <span className="text-[11px] text-gray-500 font-medium px-1">ประเภทผู้พัก</span>
-              <div className="w-full lg:w-[140px]">
+            <div className="flex items-center gap-2 min-w-0 w-full lg:w-auto">
+              <span className="text-body-small text-gray-600 font-medium shrink-0">ประเภท</span>
+              <div className="flex-1 lg:w-[140px] min-w-0">
                 <Dropdown
                   options={[
                     { value: "all", label: "ทั้งหมด" },
@@ -132,9 +133,9 @@ export function OverviewView() {
             </div>
 
             {/* สถานะ */}
-            <div className="flex flex-col gap-1 min-w-0 w-full lg:w-auto">
-              <span className="text-[11px] text-gray-500 font-medium px-1">สถานะข้อมูล</span>
-              <div className="w-full lg:w-[140px]">
+            <div className="flex items-center gap-2 min-w-0 w-full lg:w-auto">
+              <span className="text-body-small text-gray-600 font-medium shrink-0">สถานะ</span>
+              <div className="flex-1 lg:w-[140px] min-w-0">
                 <Dropdown
                   options={[
                     { value: "all", label: "ทั้งหมด" },
@@ -150,9 +151,8 @@ export function OverviewView() {
 
             {/* วันที่ */}
             {activeTab === "vital_signs" ? (
-              <div className="flex flex-col gap-1 min-w-0 w-full lg:w-auto lg:ml-auto">
-                <span className="text-[11px] text-gray-500 font-medium px-1">วันที่ประจำวัน</span>
-                <div className="w-full lg:w-[180px]">
+              <div className="flex items-center gap-2 min-w-0 w-full lg:w-auto lg:ml-auto">
+                <div className="flex-1 lg:w-[180px] min-w-0">
                   <DatePicker
                     value={selectedDate}
                     onChange={setSelectedDate}
@@ -169,7 +169,7 @@ export function OverviewView() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex-1 shrink-0 px-4 sm:px-6 py-2.5 text-[11px] sm:text-body-small font-medium transition-all rounded-full whitespace-nowrap ${
+                  className={`flex-1 shrink-0 px-4 sm:px-6 py-2.5 max-sm:text-[10px] text-body-small font-medium transition-all rounded-full whitespace-nowrap ${
                     activeTab === tab.id
                       ? "bg-white text-gray-900 shadow-sm"
                       : "bg-transparent text-gray-600 hover:text-gray-900"

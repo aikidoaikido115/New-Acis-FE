@@ -159,13 +159,13 @@ export function IndividualView() {
             placeholder="ค้นหาชื่อ..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-xs sm:text-body-small text-black placeholder:text-gray-400 min-w-0 transition-colors shadow-sm"
+            className="w-full pl-10 pr-4 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-body-small text-black placeholder:text-gray-400 min-w-0 transition-colors shadow-sm"
             />
         </div>
 
         <div className="grid grid-cols-2 md:flex md:flex-row md:items-center gap-3 w-full md:w-auto shrink-0 min-w-0">
           <div className="flex flex-row items-center gap-2 min-w-0">
-            <span className="text-xs sm:text-body-small text-gray-600 shrink-0">ชั้น</span>
+            <span className="text-body-small sm:text-body-small text-gray-600 shrink-0">ชั้น</span>
             <div className="flex-1 md:w-32 min-w-0">
               <Dropdown
                 options={[
@@ -183,7 +183,7 @@ export function IndividualView() {
           </div>
 
           <div className="flex flex-row items-center gap-2 min-w-0">
-            <span className="text-xs sm:text-body-small text-gray-600 shrink-0">ประเภท</span>
+            <span className="text-body-small sm:text-body-small text-gray-600 shrink-0">ประเภท</span>
             <div className="flex-1 md:w-40 min-w-0">
               <Dropdown
                 options={careOptions}

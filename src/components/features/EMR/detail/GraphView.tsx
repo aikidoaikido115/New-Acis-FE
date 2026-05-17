@@ -159,11 +159,11 @@ export function GraphView({ patientId, dateKey }: GraphViewProps) {
         <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-8 mb-6 w-full min-w-0">
           <div className="flex items-center gap-2">
             <div className="w-6 sm:w-8 h-1 bg-blue-500 shrink-0"></div>
-            <span className="text-xs sm:text-body-small font-medium text-gray-700 whitespace-nowrap">Heart Rate (bpm)</span>
+            <span className="text-body-small sm:text-body-small font-medium text-gray-700 whitespace-nowrap">Heart Rate (bpm)</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-6 sm:w-8 h-1 bg-red-500 shrink-0"></div>
-            <span className="text-xs sm:text-body-small font-medium text-gray-700 whitespace-nowrap">Temperature (°C)</span>
+            <span className="text-body-small sm:text-body-small font-medium text-gray-700 whitespace-nowrap">Temperature (°C)</span>
           </div>
         </div>
 
@@ -171,7 +171,8 @@ export function GraphView({ patientId, dateKey }: GraphViewProps) {
           <div className="w-full min-w-[450px] md:min-w-full">
             <svg 
               viewBox={`0 0 ${width} ${height}`} 
-              className="w-full h-auto block"
+              className="mx-auto block w-full h-auto"
+              style={{ maxWidth: `${width}px`, minWidth: '550px' }}
             >
               {/* Grid lines */}
               {[0, 1, 2, 3, 4].map((i) => {
