@@ -1,12 +1,5 @@
 import { notFound } from "next/navigation";
-import Image from "next/image";
-
-interface ManualSection {
-  heading: string;
-  content: string;
-  image?: string;
-  caption?: string;
-}
+import { ManualDetailContent, type ManualSection } from "@/components/features/user-manual/ManualDetailContent";
 
 interface ManualContent {
   title: string;
@@ -167,31 +160,7 @@ export default async function ManualDetailPage({ params }: PageProps) {
 
   return (
     <div className="max-w-4xl">
-      <div className="mb-8">
-        <h1 className="text-headline-4 font-bold text-gray-800 mb-2">{content.title}</h1>
-        <p className="text-gray-600">{content.description}</p>
-      </div>
-
-      <div className="bg-white rounded-2xl shadow-md p-8 space-y-8">
-        {content.sections.map((section, index) => (
-          <div key={index} className="space-y-3">
-            <h2 className="text-headline-6 font-semibold text-gray-800">{section.heading}</h2>
-            <div className="text-gray-700 leading-relaxed whitespace-pre-line">{section.content}</div>
-            {section.image && (
-              <div className="mt-4">
-                <Image
-                  src={section.image}
-                  alt={section.heading}
-                  width={800}
-                  height={600}
-                  className="rounded-lg border border-gray-200 w-full"
-                />
-                {section.caption && <p className="mt-2 text-sm text-gray-500">{section.caption}</p>}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
+      <ManualDetailContent title={content.title} description={content.description} sections={content.sections} />
     </div>
   );
 }
