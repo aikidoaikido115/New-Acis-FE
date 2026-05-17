@@ -7,9 +7,23 @@ import type { VitalSign } from "@/types/vital-sign";
 
 interface GraphViewProps {
   patientId: string;
+  dateKey?: string;
 }
 
-export function GraphView({ patientId }: GraphViewProps) {
+const formatDateKey = (value: string): string | null => {
+  if (!value) return null;
+  const trimmed = value.trim();
+  const isoMatch = trimmed.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (isoMatch) return isoMatch[1];
+  const parsed = new Date(trimmed);
+  if (Number.isNaN(parsed.getTime())) return null;
+  const year = parsed.getFullYear();
+  const month = String(parsed.getMonth() + 1).padStart(2, "0");
+  const day = String(parsed.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+export function GraphView({ patientId, dateKey }: GraphViewProps) {
   const [records, setRecords] = useState<VitalSign[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -26,10 +40,18 @@ export function GraphView({ patientId }: GraphViewProps) {
       setError(null);
       try {
         const data = await vitalSignService.getHistory(patientId);
-        const sorted = [...(data || [])]
-          .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-          .slice(-10);
-        setRecords(sorted);
+        const sorted = [...(data || [])].sort(
+          (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        );
+        if (dateKey) {
+          const filtered = sorted.filter((record) => {
+            const key = formatDateKey(record.measurement_date || record.created_at);
+            return key === dateKey;
+          });
+          setRecords(filtered);
+        } else {
+          setRecords(sorted.slice(-10));
+        }
       } catch {
         setError("ไม่สามารถโหลดข้อมูลกราฟได้");
       } finally {
@@ -38,7 +60,7 @@ export function GraphView({ patientId }: GraphViewProps) {
     };
 
     void loadData();
-  }, [patientId]);
+  }, [patientId, dateKey]);
 
   const chartData = useMemo(() => {
     const dates = records.map((record) => {

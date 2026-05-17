@@ -24,9 +24,9 @@ export function DailySummaryHeader({ onDateChange, selectedDate, lastUpdatedAt }
   };
 
   const displayLastUpdated = useMemo(() => {
-    if (!lastUpdatedAt) return '-';
+    if (!lastUpdatedAt) return null;
     const date = new Date(lastUpdatedAt);
-    if (Number.isNaN(date.getTime())) return '-';
+    if (Number.isNaN(date.getTime())) return null;
     const dd = String(date.getDate()).padStart(2, '0');
     const mm = String(date.getMonth() + 1).padStart(2, '0');
     const yyyy = String(date.getFullYear() + 543);
@@ -45,9 +45,11 @@ export function DailySummaryHeader({ onDateChange, selectedDate, lastUpdatedAt }
           className="w-full md:w-auto"
           placeholder="เลือกวันที่"
         />
-        <div className="text-sm text-gray-500 whitespace-nowrap mr-3">
-          อัปเดตล่าสุด: {displayLastUpdated}
-        </div>
+        {displayLastUpdated && (
+          <div className="text-sm text-gray-500 whitespace-nowrap mr-3">
+            อัปเดตล่าสุด: {displayLastUpdated}
+          </div>
+        )}
       </div>
     </div>
   );

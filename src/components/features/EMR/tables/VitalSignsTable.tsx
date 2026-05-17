@@ -1252,7 +1252,7 @@ export function VitalSignsTable({ selectedFloor = "all", selectedStatus = "all",
                 : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
             }`}
           >
-            {showPreviousPlaceholder ? "ซ่อนค่าเดิมในช่องว่าง" : "แสดงค่าเดิมในช่องว่าง"}
+            {showPreviousPlaceholder ? "ซ่อนค่าก่อนหน้าในช่องว่าง" : "แสดงค่าก่อนหน้าในช่องว่าง"}
           </button>
           <button
             type="button"
@@ -1444,7 +1444,7 @@ export function VitalSignsTable({ selectedFloor = "all", selectedStatus = "all",
                             disabled={!hasPrevious}
                             className="rounded border border-amber-300 bg-amber-50 px-2 py-1 text-[10px] font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-60"
                           >
-                            ดึงค่าเดิม
+                            ดึงค่าก่อนหน้า
                           </button>
                           <button
                             type="button"
@@ -1553,7 +1553,7 @@ export function VitalSignsTable({ selectedFloor = "all", selectedStatus = "all",
                     disabled={!hasPrevious}
                     className="mb-2 w-full rounded border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-60"
                   >
-                    ดึงค่าเดิม (เติมเฉพาะช่องว่าง)
+                    ดึงค่าก่อนหน้า (เติมเฉพาะช่องว่าง)
                   </button>
                   <button
                     type="button"

@@ -44,7 +44,7 @@ export function RoutineMedsTable({
     <>
       {/* Table */}
       <div className="overflow-x-auto rounded-2xl bg-[#E9EDF1] border border-[#D6DCE2]">
-        <table className="w-full">
+        <table className="w-full min-w-[700px]">
           <thead>
             <tr className="border-b border-[#CFD5DC]">
               <th className="text-left py-3 px-4 text-xs font-medium text-gray-500">ชื่อยา</th>

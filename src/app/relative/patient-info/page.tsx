@@ -278,7 +278,7 @@ export default function RelativePatientInfoPage() {
             <BackButton />
 
           <div className="max-w-full space-y-6">
-            <h1 className="text-2xl font-bold text-gray-800">ข้อมูลผู้สูงอายุ</h1>
+            <h1 className="text-2xl font-bold text-gray-800">ประวัติผู้สูงอายุ</h1>
 
             {isInitialLoading && <PatientInfoSkeleton />}
 

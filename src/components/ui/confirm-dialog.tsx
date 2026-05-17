@@ -62,6 +62,7 @@ export function useConfirmDialog() {
         title={state.options.title}
         size="sm"
         disableBackdropClose
+        zIndexClassName="z-[220]"
       >
         <div className="space-y-5">
           <p className="text-sm text-gray-700 whitespace-pre-wrap">{state.options.message}</p>
