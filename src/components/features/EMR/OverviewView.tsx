@@ -66,7 +66,14 @@ export function OverviewView() {
   ];
 
   return (
-    <div className="space-y-4 w-full">
+    <div className="space-y-4 w-full min-w-0 bg-white">
+      
+      <style>{`
+        body, html, main, #__next, .layout-wrapper, footer {
+          background-color: #ffffff !important;
+        }
+      `}</style>
+
       {isLoadingFilters ? (
         <div className="space-y-4 w-full">
           <div className="flex flex-wrap items-center justify-between gap-4">
@@ -91,103 +98,110 @@ export function OverviewView() {
         </div>
       ) : (
         <>
-      {/* Filters Row */}
-      <div className="flex flex-wrap items-center justify-between gap-4 w-full">
-          <div className="flex flex-wrap items-center gap-4">
-            <span className="text-body-small text-gray-600">ชั้น</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:flex-row lg:items-center gap-3 w-full min-w-0 pb-2 border-b border-gray-100 mb-2">
+            {/* ชั้น */}
+            <div className="flex flex-col gap-1 min-w-0 w-full lg:w-auto">
+              <span className="text-[11px] text-gray-500 font-medium px-1">ชั้น</span>
+              <div className="w-full lg:w-[120px]">
+                <Dropdown
+                  options={[
+                    { value: "all", label: "ทุกชั้น" },
+                    ...floorOptions.map((floor) => ({ value: String(floor), label: `ชั้น ${floor}` })),
+                  ]}
+                  value={selectedFloor}
+                  onChange={(value) => setSelectedFloor(value)}
+                  placeholder="ชั้น"
+                />
+              </div>
+            </div>
 
-            {/* Floor Dropdown */}
-            <Dropdown
-              options={[
-                { value: "all", label: "ทุกชั้น" },
-                ...floorOptions.map((floor) => ({
-                  value: String(floor),
-                  label: `ชั้น ${floor}`,
-                })),
-              ]}
-              value={selectedFloor}
-              onChange={(value) => setSelectedFloor(value)}
-              placeholder="เลือกชั้น"
-            />
+            {/* ประเภท */}
+            <div className="flex flex-col gap-1 min-w-0 w-full lg:w-auto">
+              <span className="text-[11px] text-gray-500 font-medium px-1">ประเภทผู้พัก</span>
+              <div className="w-full lg:w-[140px]">
+                <Dropdown
+                  options={[
+                    { value: "all", label: "ทั้งหมด" },
+                    ...intakeLabels.map((label) => ({ value: label.label_id, label: label.label_name })),
+                  ]}
+                  value={selectedLabelId}
+                  onChange={(value) => setSelectedLabelId(value)}
+                  placeholder="เลือก"
+                />
+              </div>
+            </div>
 
-            <span className="text-body-small text-gray-600">ประเภท</span>
+            {/* สถานะ */}
+            <div className="flex flex-col gap-1 min-w-0 w-full lg:w-auto">
+              <span className="text-[11px] text-gray-500 font-medium px-1">สถานะข้อมูล</span>
+              <div className="w-full lg:w-[140px]">
+                <Dropdown
+                  options={[
+                    { value: "all", label: "ทั้งหมด" },
+                    { value: "normal", label: "ปกติ" },
+                    { value: "abnormal", label: "ต้องติดตาม" },
+                  ]}
+                  value={selectedStatus}
+                  onChange={(value) => setSelectedStatus(value as VitalSignStatus)}
+                  placeholder="เลือก"
+                />
+              </div>
+            </div>
 
-            {/* Help Level Dropdown */}
-            <Dropdown
-              options={[
-                { value: "all", label: "ทั้งหมด" },
-                ...intakeLabels.map((label) => ({
-                  value: label.label_id,
-                  label: label.label_name,
-                })),
-              ]}
-              value={selectedLabelId}
-              onChange={(value) => setSelectedLabelId(value)}
-              placeholder="เลือก"
-            />
-
-            <span className="text-body-small text-gray-600">สถานะ</span>
-
-            {/* Status Dropdown */}
-            <Dropdown
-              options={[
-                { value: "all", label: "ทั้งหมด" },
-                { value: "normal", label: "ปกติ" },
-                { value: "abnormal", label: "ต้องติดตาม" },
-              ]}
-              value={selectedStatus}
-              onChange={(value) => setSelectedStatus(value as VitalSignStatus)}
-              placeholder="เลือก"
-            />
+            {/* วันที่ */}
+            {activeTab === "vital_signs" ? (
+              <div className="flex flex-col gap-1 min-w-0 w-full lg:w-auto lg:ml-auto">
+                <span className="text-[11px] text-gray-500 font-medium px-1">วันที่ประจำวัน</span>
+                <div className="w-full lg:w-[180px]">
+                  <DatePicker
+                    value={selectedDate}
+                    onChange={setSelectedDate}
+                    placeholder="เลือกวันที่"
+                  />
+                </div>
+              </div>
+            ) : null}
           </div>
 
-          {/* Date Picker (เฉพาะ Vital Signs) ดันไปขวาสุดด้วย ml-auto */}
-          {activeTab === "vital_signs" ? (
-            <div className="w-[200px] ml-auto shrink-0">
-              <DatePicker
-                value={selectedDate}
-                onChange={setSelectedDate}
-                placeholder="เลือกวันที่"
-                className="w-full"
-              />
+          <div className="w-full overflow-x-auto scrollbar-none mb-2">
+            <div className="flex w-max min-w-full bg-gray-100 rounded-full p-1" style={{ border: '1px solid rgba(103, 103, 103, 0.48)' }}>
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex-1 shrink-0 px-4 sm:px-6 py-2.5 text-[11px] sm:text-body-small font-medium transition-all rounded-full whitespace-nowrap ${
+                    activeTab === tab.id
+                      ? "bg-white text-gray-900 shadow-sm"
+                      : "bg-transparent text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  {tab.id === "relative_note" ? (
+                    <>
+                      <span className="hidden lg:inline">บันทึกสำหรับญาติ</span>
+                      <span className="lg:hidden">บันทึกญาติ</span>
+                    </>
+                  ) : (
+                    tab.label
+                  )}
+                </button>
+              ))}
             </div>
-          ) : null}
-      </div>
+          </div>
 
-      {/* Sub-tabs Navigation */}
-      <div className="w-full">
-        <div className="flex flex-nowrap overflow-x-auto bg-gray-100 rounded-full p-1 scrollbar-none w-full" style={{ border: '1px solid rgba(103, 103, 103, 0.48)' }}>
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 shrink-0 px-4 sm:px-6 py-2.5 text-xs sm:text-body-small font-medium transition-all rounded-full whitespace-nowrap ${
-                  activeTab === tab.id
-                    ? "bg-white text-gray-900 shadow-sm"
-                    : "bg-transparent text-gray-600 hover:text-gray-900"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-        </div>
-      </div>
-
-      {/* Table Content */}
-      <div className="w-full min-w-0">
-        {activeTab === "vital_signs" && (
-          <VitalSignsTable
-            selectedFloor={selectedFloor}
-            selectedStatus={selectedStatus}
-            selectedLabelIds={selectedLabelIds}
-            selectedDate={selectedDate}
-          />
-        )}
-        {activeTab === "doctor_order" && <DoctorOrderTable />}
-        {activeTab === "nurse_note" && <NurseNoteTable />}
-        {activeTab === "wound_care" && <WoundCareTable />}
-        {activeTab === "relative_note" && <RelativeNoteTable />}
-      </div>
+          <div className="w-full min-w-0">
+            {activeTab === "vital_signs" && (
+              <VitalSignsTable
+                selectedFloor={selectedFloor}
+                selectedStatus={selectedStatus}
+                selectedLabelIds={selectedLabelIds}
+                selectedDate={selectedDate}
+              />
+            )}
+            {activeTab === "doctor_order" && <DoctorOrderTable />}
+            {activeTab === "nurse_note" && <NurseNoteTable />}
+            {activeTab === "wound_care" && <WoundCareTable />}
+            {activeTab === "relative_note" && <RelativeNoteTable />}
+          </div>
         </>
       )}
     </div>
