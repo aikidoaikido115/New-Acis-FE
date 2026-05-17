@@ -19,7 +19,7 @@ import { CombinedMedsTable } from "./tables/CombinedMedsTable";
 import { HistoryTable } from "./tables/HistoryTable";
 import { Pagination } from "@/components/ui/pagination";
 import { Dropdown } from "@/components/ui/dropdown";
-import { AddMedicationModal } from "./modals";
+import { AddMedicationModal, EditMedicationModal } from "./modals";
 import { SkeletonCard, SkeletonTable } from "@/components/ui/skeleton";
 import type { AddMedicationFormData, EditMedicationFormData } from "./modals";
 import type { GiveAllFormData } from "./modals/GiveAllMedicationsModal";
@@ -363,6 +363,7 @@ export function MedicalManagementView() {
   const [detailsTab, setDetailsTab] = useState<"meds" | "history">("meds");
   const [currentPage, setCurrentPage] = useState(1);
   const [showAddMedicationModal, setShowAddMedicationModal] = useState(false);
+  const [editingMedicationFromCombined, setEditingMedicationFromCombined] = useState<RoutineMedication | null>(null);
   const [medsDisplayMode, setMedsDisplayMode] = useState<"split" | "combined">("split");
   const [pendingActionsByPatient, setPendingActionsByPatient] = useState<Record<string, number>>({});
   const [showCompletedPatients, setShowCompletedPatients] = useState(false);
@@ -1588,12 +1589,8 @@ export function MedicalManagementView() {
               <CombinedMedsTable
                 routineMedications={routineMedications}
                 prnMedications={prnMedications}
-                onEditMed={() => {
-                  showToast({
-                    type: "info",
-                    title: "คำแนะนำ",
-                    message: "การแก้ไขข้อมูลยาในตอนนี้ให้ใช้มุมมองแยกประเภท",
-                  });
+                onEditMed={(medication) => {
+                  setEditingMedicationFromCombined(medication);
                 }}
                 onDeleteMed={(id) => {
                   void handleDeleteMedication(id);
@@ -1609,6 +1606,21 @@ export function MedicalManagementView() {
               void handleAddMedication(data);
             }}
           />
+
+          {editingMedicationFromCombined ? (
+            <EditMedicationModal
+              isOpen={true}
+              onClose={() => {
+                setEditingMedicationFromCombined(null);
+              }}
+              onSubmit={async (data) => {
+                await handleEditMedication(editingMedicationFromCombined, data);
+              }}
+              medication={editingMedicationFromCombined}
+              patientName={selectedPatient?.name || ""}
+              patientRoom={selectedPatient?.room || ""}
+            />
+          ) : null}
         </>
       ) : (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">

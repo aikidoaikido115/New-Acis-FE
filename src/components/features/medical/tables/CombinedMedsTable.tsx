@@ -14,7 +14,7 @@ type CombinedMedication = RoutineMedication & {
 interface CombinedMedsTableProps {
   routineMedications: RoutineMedication[];
   prnMedications: RoutineMedication[];
-  onEditMed: (medId: string) => void;
+  onEditMed: (medication: CombinedMedication) => void;
   onDeleteMed: (medId: string) => void;
 }
 
@@ -127,7 +127,7 @@ export function CombinedMedsTable({
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => onEditMed(med.id)}
+                        onClick={() => onEditMed(med)}
                         className="p-1 text-[#1290EB] hover:text-[#0D75C0] transition-colors"
                         title="แก้ไข"
                       >
@@ -164,7 +164,7 @@ export function CombinedMedsTable({
                 </span>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => onEditMed(med.id)}
+                    onClick={() => onEditMed(med)}
                     className="p-1 text-[#1290EB] hover:text-[#0D75C0] transition-colors"
                     title="แก้ไข"
                   >
