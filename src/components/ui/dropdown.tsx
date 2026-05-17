@@ -57,7 +57,7 @@ export function Dropdown({ options, value, onChange, placeholder = "เลือ
       top,
       left: safeLeft,
       width,
-      zIndex: 60,
+      zIndex: 200,
     });
   };
 
