@@ -842,6 +842,31 @@ export function MedicalManagementView() {
     [ensureDrugMasterId, refreshAfterMutation, selectedPatientId, showToast]
   );
 
+  const handleDeleteMedication = useCallback(
+    async (medicationId: string) => {
+      setIsMutating(true);
+      try {
+        await personalDrugService.deleteById(medicationId);
+        await refreshAfterMutation();
+
+        showToast({
+          type: "success",
+          title: "ลบรายการยาแล้ว",
+          message: "ลบรายการยาสำเร็จ",
+        });
+      } catch (error) {
+        showToast({
+          type: "error",
+          title: "ลบรายการยาไม่สำเร็จ",
+          message: extractErrorMessage(error, "ไม่สามารถลบรายการยาได้"),
+        });
+      } finally {
+        setIsMutating(false);
+      }
+    },
+    [refreshAfterMutation, showToast]
+  );
+
   const handleEditMedication = useCallback(
     async (medication: RoutineMedication, data: EditMedicationFormData) => {
       setIsMutating(true);
@@ -906,35 +931,11 @@ export function MedicalManagementView() {
     [ensureDrugMasterId, refreshAfterMutation, showToast]
   );
 
-  const handleDeleteMedication = useCallback(
-    async (medicationId: string) => {
-      setIsMutating(true);
-      try {
-        await personalDrugService.deleteById(medicationId);
-        await refreshAfterMutation();
-
-        showToast({
-          type: "success",
-          title: "ลบรายการยาแล้ว",
-          message: "ลบรายการยาสำเร็จ",
-        });
-      } catch (error) {
-        showToast({
-          type: "error",
-          title: "ลบรายการยาไม่สำเร็จ",
-          message: extractErrorMessage(error, "ไม่สามารถลบรายการยาได้"),
-        });
-      } finally {
-        setIsMutating(false);
-      }
-    },
-    [refreshAfterMutation, showToast]
-  );
-
   const handlePendingCountChange = useCallback((patientId: string, count: number) => {
     setPendingActionsByPatient((prev) => {
       if (count <= 0) {
-        const { [patientId]: _, ...rest } = prev;
+        const rest = { ...prev };
+        delete rest[patientId];
         return rest;
       }
       return { ...prev, [patientId]: count };
@@ -1111,7 +1112,7 @@ export function MedicalManagementView() {
     }));
 
     return allPatients.sort((a, b) => a.name.localeCompare(b.name));
-  }, [overviewPlans, residentById, roomById, selectedTimeSlot]);
+  }, [intakeLabels, overviewPlans, residentById, roomById, selectedTimeSlot]);
 
   const filteredPatients = useMemo(() => {
     return allPatientMedications.filter((patient) => {
@@ -1163,7 +1164,7 @@ export function MedicalManagementView() {
       drugAllergies: patient.drugAllergies || [],
       status: toStatusBadge(resident.resident_labels, intakeLabels),
     };
-  }, [allPatientMedications, selectedPatientId, residentById]);
+  }, [allPatientMedications, intakeLabels, selectedPatientId, residentById]);
 
   const routineMedications = useMemo(() => {
     return residentMedications.filter((item) => {
@@ -1621,6 +1622,7 @@ export function MedicalManagementView() {
               patientRoom={selectedPatient?.room || ""}
             />
           ) : null}
+
         </>
       ) : (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
