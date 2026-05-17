@@ -1054,14 +1054,14 @@ export function VitalSignsDetailTable({
         </div>
       </div>
 
-      <div className="print-hide space-y-3">
+      <div className="print-hide space-y-3 w-full min-w-0">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full lg:w-auto overflow-x-auto pb-1 scrollbar-none">
             {timeSlots.map((slot) => (
               <button
                 key={slot.id}
                 onClick={() => void handleSelectTimeSlot(slot.id)}
-                className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all ${
+                className={`shrink-0 flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all ${
                   selectedTime === slot.id
                     ? "bg-blue-500 text-white shadow-sm"
                     : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-200"
@@ -1072,8 +1072,9 @@ export function VitalSignsDetailTable({
               </button>
             ))}
           </div>
+          
           {!isAllSlots ? (
-            <div className="flex items-center gap-2">
+            <div className="hidden lg:flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setShowPreviousPlaceholder((prev) => !prev)}
@@ -1097,7 +1098,7 @@ export function VitalSignsDetailTable({
           ) : null}
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
             <Dropdown
               options={[
@@ -1107,7 +1108,7 @@ export function VitalSignsDetailTable({
               ]}
               value={statusFilter}
               onChange={(value) => setStatusFilter(value as HistoryStatusFilter)}
-              className="w-36"
+              className="w-32 sm:w-36"
             />
 
             <Dropdown
@@ -1134,7 +1135,7 @@ export function VitalSignsDetailTable({
                 setSortField(next as SortField);
                 setSortDirection("asc");
               }}
-              className="w-36"
+              className="w-32 sm:w-36"
             />
 
             <button
@@ -1152,7 +1153,7 @@ export function VitalSignsDetailTable({
               {sortField ? (sortDirection === "asc" ? "น้อยไปมาก" : "มากไปน้อย") : sortOrder === "newest" ? "ล่าสุดก่อน" : "เก่าก่อน"}
             </button>
 
-            <div className="flex items-center gap-1 rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-700">
+            <div className="hidden sm:flex items-center gap-1 rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-700">
               <span>กำลังเรียงตาม:</span>
               <span className="font-semibold text-slate-900">{isPrintMode ? "ช่วงเวลา" : getSortLabel(sortField)}</span>
               {sortField ? (
@@ -1161,14 +1162,41 @@ export function VitalSignsDetailTable({
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={handleExport}
-            className="print-hide inline-flex items-center gap-2 rounded-lg bg-[#0093EF] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#0080D0]"
-          >
-            <Printer className="h-4 w-4" />
-            พิมพ์ / Export PDF
-          </button>
+          <div className="flex flex-wrap items-center justify-start xl:justify-end gap-2 w-full xl:w-auto mt-2 xl:mt-0">
+            {!isAllSlots ? (
+              <div className="flex lg:hidden items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowPreviousPlaceholder((prev) => !prev)}
+                  className={`rounded border px-2 sm:px-3 py-1.5 text-[11px] sm:text-xs font-medium ${
+                    showPreviousPlaceholder
+                      ? "border-amber-300 bg-amber-50 text-amber-700"
+                      : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  {showPreviousPlaceholder ? "ซ่อนค่าก่อนหน้า" : "แสดงค่าก่อนหน้า"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handlePullPrevious}
+                  disabled={isSlotLoading || !hasPreviousSlotValue}
+                  className="rounded border border-amber-300 bg-amber-50 px-2 sm:px-3 py-1.5 text-[11px] sm:text-xs font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-60"
+                >
+                  ดึงค่าก่อนหน้า
+                </button>
+              </div>
+            ) : null}
+
+            <button
+              type="button"
+              onClick={handleExport}
+              className="print-hide inline-flex items-center gap-1.5 sm:gap-2 rounded-lg bg-[#0093EF] px-3 sm:px-4 py-1.5 sm:py-2 text-[11px] sm:text-sm font-semibold text-white shadow-sm hover:bg-[#0080D0] shrink-0"
+            >
+              <Printer className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">พิมพ์ / Export PDF</span>
+              <span className="sm:hidden">Print PDF</span>
+            </button>
+          </div>
         </div>
       </div>
 

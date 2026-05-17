@@ -167,9 +167,7 @@ export function GraphView({ patientId, dateKey }: GraphViewProps) {
           </div>
         </div>
 
-        {/* กล่องสไลด์ (Scroll แนวนอนสำหรับจอมือถือเล็ก) */}
         <div className="w-full min-w-0 overflow-x-auto pb-4 scrollbar-none">
-          {/* ปรับตรงนี้: ให้จอกลางยืดพอดีจอ (md:min-w-full) และจอเล็กเหลือ 450px */}
           <div className="w-full min-w-[450px] md:min-w-full">
             <svg 
               viewBox={`0 0 ${width} ${height}`} 

@@ -147,13 +147,11 @@ export function IndividualView() {
   };
 
   return (
-    // 1. ใส่สูตรขังกรอบหน้าจอขั้นสุด
     <div className="grid grid-cols-1 w-full max-w-full overflow-x-hidden min-w-0">
       
       {/* Filters Row */}
       <div className="flex flex-col md:flex-row md:items-center gap-3 mb-6 w-full min-w-0">
         
-        {/* แถวแรกบนจอมือถือ: Search Input */}
         <div className="relative w-full md:flex-1 md:max-w-md min-w-0">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
@@ -165,7 +163,6 @@ export function IndividualView() {
             />
         </div>
 
-        {/* แถวสองบนจอมือถือ: ชั้น และ ประเภท (ใช้ grid แบ่ง 50/50 ไม่ให้ดันจอ) */}
         <div className="grid grid-cols-2 md:flex md:flex-row md:items-center gap-3 w-full md:w-auto shrink-0 min-w-0">
           <div className="flex flex-row items-center gap-2 min-w-0">
             <span className="text-xs sm:text-body-small text-gray-600 shrink-0">ชั้น</span>
@@ -204,10 +201,8 @@ export function IndividualView() {
       {isLoading ? (
         <SkeletonTable columns={4} rows={6} />
       ) : (
-        // 2. ล็อคตารางด้วย max-w-[calc(100vw-24px)] รักษาระยะขอบจอมือถือ
         <div className="w-full max-w-[calc(100vw-24px)] md:max-w-full min-w-0 overflow-hidden rounded-lg" style={{ border: '1px solid rgba(103, 103, 103, 0.48)' }}>
           <div className="w-full overflow-x-auto">
-            {/* บังคับ min-w-[500px] เพื่อให้ตารางเลื่อนได้เฉพาะในกรอบ */}
             <table className="w-full min-w-[500px]">
               <thead>
                 <tr style={{ backgroundColor: 'rgba(239, 242, 247, 1)', borderBottom: '1px solid rgba(103, 103, 103, 0.48)' }}>

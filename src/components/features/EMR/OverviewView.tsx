@@ -66,11 +66,11 @@ export function OverviewView() {
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 w-full">
       {isLoadingFilters ? (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-4 flex-wrap">
+        <div className="space-y-4 w-full">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-4">
               <Skeleton className="h-4 w-12" />
               <Skeleton className="h-10 w-28" />
               <Skeleton className="h-4 w-14" />
@@ -81,7 +81,7 @@ export function OverviewView() {
             <Skeleton className="h-10 w-[200px]" />
           </div>
 
-          <div className="flex gap-2 rounded-full p-1 bg-gray-100 border border-gray-200">
+          <div className="flex gap-2 rounded-full p-1 bg-gray-100 border border-gray-200 w-full">
             {Array.from({ length: 5 }).map((_, index) => (
               <Skeleton key={index} className="h-10 flex-1 rounded-full" />
             ))}
@@ -92,8 +92,8 @@ export function OverviewView() {
       ) : (
         <>
       {/* Filters Row */}
-      <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4 w-full">
+          <div className="flex flex-wrap items-center gap-4">
             <span className="text-body-small text-gray-600">ชั้น</span>
 
             {/* Floor Dropdown */}
@@ -141,35 +141,40 @@ export function OverviewView() {
             />
           </div>
 
-          {/* Date Picker (เฉพาะ Vital Signs) */}
+          {/* Date Picker (เฉพาะ Vital Signs) ดันไปขวาสุดด้วย ml-auto */}
           {activeTab === "vital_signs" ? (
-            <DatePicker
-              value={selectedDate}
-              onChange={setSelectedDate}
-              placeholder="เลือกวันที่"
-            />
+            <div className="w-[200px] ml-auto shrink-0">
+              <DatePicker
+                value={selectedDate}
+                onChange={setSelectedDate}
+                placeholder="เลือกวันที่"
+                className="w-full"
+              />
+            </div>
           ) : null}
       </div>
 
       {/* Sub-tabs Navigation */}
-      <div className="flex bg-gray-100 rounded-full p-1" style={{ border: '1px solid rgba(103, 103, 103, 0.48)' }}>
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 px-6 py-2.5 text-body-small font-medium transition-all rounded-full ${
-                activeTab === tab.id
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "bg-transparent text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+      <div className="w-full">
+        <div className="flex flex-nowrap overflow-x-auto bg-gray-100 rounded-full p-1 scrollbar-none w-full" style={{ border: '1px solid rgba(103, 103, 103, 0.48)' }}>
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex-1 shrink-0 px-4 sm:px-6 py-2.5 text-xs sm:text-body-small font-medium transition-all rounded-full whitespace-nowrap ${
+                  activeTab === tab.id
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "bg-transparent text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+        </div>
       </div>
 
       {/* Table Content */}
-      <div>
+      <div className="w-full min-w-0">
         {activeTab === "vital_signs" && (
           <VitalSignsTable
             selectedFloor={selectedFloor}

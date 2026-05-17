@@ -152,9 +152,9 @@ export default function PatientDetailPage() {
   ];
 
   return (
-    // 1. ใส่โครงขังหน้าจอขั้นสุด ไม่ให้มีอะไรยืดทะลุขอบ
-    <div className="min-h-screen bg-gray-50 p-3 sm:p-6 w-full max-w-full overflow-hidden min-w-0">
-      <div className="w-full space-y-4 sm:space-y-6 min-w-0">
+    <div className="min-h-screen bg-gray-50 p-3 sm:p-6 w-full max-w-[100vw] overflow-x-hidden flex flex-col">
+      <div className="w-full max-w-full space-y-4 sm:space-y-6 min-w-0">
+        
         <button
           onClick={() => router.back()}
           className="print-hide flex items-center gap-2 text-blue-500 hover:text-blue-700 transition-colors w-fit"
@@ -163,11 +163,9 @@ export default function PatientDetailPage() {
           <span className="text-sm sm:text-body-small font-medium">ย้อนกลับ</span>
         </button>
 
-        {/* 2. หัวข้อ และ DatePicker ให้ตัดบรรทัดบนมือถือ */}
         <div className="print-hide flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full min-w-0">
           <h1 className="text-headline-6 sm:text-headline-5 font-bold text-gray-800">เวชระเบียน</h1>
-
-          <div className="w-full sm:w-[220px]">
+          <div className="w-[200px] sm:w-[220px] sm:ml-auto">
             <DatePicker
               value={selectedDate}
               onChange={(date) => setSelectedDate(date || new Date())}
@@ -177,7 +175,6 @@ export default function PatientDetailPage() {
           </div>
         </div>
 
-        {/* 3. การ์ดประวัติ (แปลงเป็นแนวตั้งบนมือถือ) */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 sm:p-6 relative w-full min-w-0 overflow-hidden">
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
@@ -186,9 +183,7 @@ export default function PatientDetailPage() {
           ) : error ? (
             <div className="py-8 text-center text-sm text-red-500">{error}</div>
           ) : (
-            // เปลี่ยน flex-row เป็น flex-col md:flex-row 
             <div className="flex flex-col md:flex-row items-start gap-5 sm:gap-6 w-full min-w-0 pt-8 md:pt-0">
-              
               {/* Avatar */}
               <div className="shrink-0 self-center md:self-start">
                 {resident?.profile_image ? (
@@ -214,7 +209,7 @@ export default function PatientDetailPage() {
                 </div>
 
                 {allergies.length > 0 && (
-                  <div>
+                  <div className="hidden md:block">
                     <div className="flex items-center justify-center md:justify-start gap-1 mb-2">
                       <AlertTriangle className="w-4 h-4 text-red-600" />
                       <span className="text-xs sm:text-body-small font-medium text-red-600">แพ้ยา</span>
@@ -232,71 +227,93 @@ export default function PatientDetailPage() {
 
               {/* คอลัมน์ประวัติการรักษา */}
               <div className="flex flex-col gap-3 sm:gap-4 flex-1 w-full min-w-0 border-t md:border-t-0 border-gray-100 pt-4 md:pt-0">
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <ClipboardList className="w-4 h-4 text-gray-700" />
-                    <span className="text-xs sm:text-body-small font-medium text-gray-700">ประวัติการผ่าตัด</span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {surgicalHistoryItems.length > 0 ? surgicalHistoryItems.map((surgery, index) => (
-                      <span key={index} className="px-2 sm:px-3 py-1 bg-transparent border border-green-500 text-green-600 rounded-full text-[11px] sm:text-body-small">
-                        {surgery}
-                      </span>
-                    )) : <span className="text-xs sm:text-body-small text-gray-500">ไม่มีข้อมูล</span>}
-                  </div>
-                </div>
+                
+                <div className="grid grid-cols-2 md:grid-cols-1 gap-4 w-full">
+                  
+                  <div className="flex flex-col gap-3 sm:gap-4">
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <ClipboardList className="w-4 h-4 text-gray-700" />
+                        <span className="text-xs sm:text-body-small font-medium text-gray-700">ประวัติการผ่าตัด</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {surgicalHistoryItems.length > 0 ? surgicalHistoryItems.map((surgery, index) => (
+                          <span key={index} className="px-2 sm:px-3 py-1 bg-transparent border border-green-500 text-green-600 rounded-full text-[11px] sm:text-body-small">
+                            {surgery}
+                          </span>
+                        )) : <span className="text-xs sm:text-body-small text-gray-500">ไม่มีข้อมูล</span>}
+                      </div>
+                    </div>
 
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Stethoscope className="w-4 h-4 text-gray-700" />
-                    <span className="text-xs sm:text-body-small font-medium text-gray-700">โรคประจำตัว</span>
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Stethoscope className="w-4 h-4 text-gray-700" />
+                        <span className="text-xs sm:text-body-small font-medium text-gray-700">โรคประจำตัว</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {chronicDiseases.length > 0 ? chronicDiseases.map((disease, index) => (
+                          <span key={index} className="px-2 sm:px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-[11px] sm:text-body-small font-medium">
+                            {disease}
+                          </span>
+                        )) : <span className="text-xs sm:text-body-small text-gray-500">ไม่มีข้อมูล</span>}
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {chronicDiseases.length > 0 ? chronicDiseases.map((disease, index) => (
-                      <span key={index} className="px-2 sm:px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-[11px] sm:text-body-small font-medium">
-                        {disease}
-                      </span>
-                    )) : <span className="text-xs sm:text-body-small text-gray-500">ไม่มีข้อมูล</span>}
-                  </div>
+
+                  {allergies.length > 0 && (
+                    <div className="block md:hidden">
+                      <div className="flex items-center gap-1 mb-2">
+                        <AlertTriangle className="w-4 h-4 text-red-600" />
+                        <span className="text-xs sm:text-body-small font-medium text-red-600">แพ้ยา</span>
+                      </div>
+                      <div className="flex flex-col items-start gap-2">
+                        {allergies.map((allergy, index) => (
+                          <span key={index} className="px-2 sm:px-3 py-1 bg-red-100 text-red-600 rounded-full text-[11px] font-medium">
+                            {allergy}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                 </div>
               </div>
 
-              {/* ป้ายสถานะ (Badge) */}
               <div className="absolute top-3 right-3 sm:top-4 sm:right-4 md:top-6 md:right-6">
                 <div className="inline-flex items-center gap-2 bg-orange-100 text-orange-600 rounded-full px-2 sm:px-3 py-1 text-[10px] sm:text-body-small font-medium shadow-sm">
                   <span>{statusText}</span>
                 </div>
               </div>
-
             </div>
           )}
         </div>
 
-        {/* 4. แท็บเมนู (เลื่อนซ้ายขวาได้เหมือนเดิม) */}
-        <div className="print-hide flex overflow-x-auto bg-gray-100 rounded-full p-1 scrollbar-none min-w-0 w-full" style={{ border: "1px solid rgba(103, 103, 103, 0.48)" }}>
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 px-4 sm:px-6 py-2.5 text-[11px] sm:text-body-small font-medium transition-all rounded-full whitespace-nowrap shrink-0 ${activeTab === tab.id
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "bg-transparent text-gray-600 hover:text-gray-900"
+        <div className="print-hide w-full max-w-full overflow-x-auto scrollbar-none rounded-full" style={{ border: "1px solid rgba(103, 103, 103, 0.48)" }}>
+          <div className="flex w-max min-w-full bg-gray-100 rounded-full p-1">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex-1 shrink-0 px-4 sm:px-6 py-2.5 text-[11px] sm:text-body-small font-medium transition-all rounded-full whitespace-nowrap ${
+                  activeTab === tab.id
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "bg-transparent text-gray-600 hover:text-gray-900"
                 }`}
-            >
-              {tab.id === "relative_note" ? (
-                <>
-                  <span className="hidden lg:inline">บันทึกสำหรับญาติ</span>
-                  <span className="lg:hidden">บันทึกญาติ</span>
-                </>
-              ) : (
-                tab.label
-              )}
-            </button>
-          ))}
+              >
+                {tab.id === "relative_note" ? (
+                  <>
+                    <span className="hidden lg:inline">บันทึกสำหรับญาติ</span>
+                    <span className="lg:hidden">บันทึกญาติ</span>
+                  </>
+                ) : (
+                  tab.label
+                )}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* เนื้อหาในแท็บ */}
-        <div className="w-full min-w-0">
+        <div className="w-full min-w-0 max-w-full overflow-hidden">
           {activeTab === "vital_signs" && (
             <VitalSignsDetailTable
               patientId={residentId}
