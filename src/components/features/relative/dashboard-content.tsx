@@ -96,7 +96,11 @@ export function RelativeDashboardContent({
           <DailyHealthSummary residentId={residentId} selectedDate={selectedDate} />
 
           {/* Daily Activities */}
-          <DailyActivities participations={participations} lastUpdatedAt={lastUpdatedAt} />
+          <DailyActivities
+            participations={participations}
+            lastUpdatedAt={lastUpdatedAt}
+            isLoading={isLoading}
+          />
 
           {/* Additional Notes */}
           <AdditionalNotes
