@@ -39,7 +39,7 @@ function isSuperuserOrHigher(role?: string): boolean {
 export function InventoryTable() {
   const { user } = useAuth();
   const { showToast } = useToast();
-  const canAddWarehouseItems = isSuperuserOrHigher(user?.role_name);
+  const canManageWarehouseItems = isSuperuserOrHigher(user?.role_name);
   const [items, setItems] = useState<WarehouseItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -110,7 +110,7 @@ export function InventoryTable() {
 
   // Handlers
   const handleAddItem = async (newItemData: Omit<WarehouseItem, "id">) => {
-    if (!canAddWarehouseItems) {
+    if (!canManageWarehouseItems) {
       showToast({
         type: "error",
         title: "ไม่มีสิทธิ์ดำเนินการ",
@@ -141,6 +141,15 @@ export function InventoryTable() {
   };
 
   const handleEditItem = async (updated: WarehouseItem) => {
+    if (!canManageWarehouseItems) {
+      showToast({
+        type: "error",
+        title: "ไม่มีสิทธิ์ดำเนินการ",
+        message: "เฉพาะหัวหน้าพยาบาลหรือผู้ดูแลระบบเท่านั้น",
+      });
+      return;
+    }
+
     try {
       await warehouseService.updateItem(updated.id, {
         code: updated.code,
@@ -162,10 +171,20 @@ export function InventoryTable() {
   };
 
   const handleDeleteItem = async (itemId: string) => {
+    if (!canManageWarehouseItems) {
+      showToast({
+        type: "error",
+        title: "ไม่มีสิทธิ์ดำเนินการ",
+        message: "เฉพาะหัวหน้าพยาบาลหรือผู้ดูแลระบบเท่านั้น",
+      });
+      return;
+    }
+
     try {
       await warehouseService.deleteItem(itemId);
       resetPage();
       await loadItems();
+      setDeleteItem(null);
       showToast({
         type: "success",
         title: "ส่งคำขอสำเร็จ",
@@ -367,7 +386,7 @@ export function InventoryTable() {
 
           {/* กลุ่มขวา: ปุ่ม เพิ่ม, เติม, เบิก */}
           <div className="flex flex-row items-center gap-1 sm:gap-2 w-full md:w-auto shrink-0 mt-1 md:mt-0 min-w-0">
-            {canAddWarehouseItems && (
+            {canManageWarehouseItems && (
               <button
                 onClick={() => setShowAdd(true)}
                 className="flex-1 md:flex-none flex items-center justify-center gap-1 sm:gap-2 px-1 sm:px-4 py-2 bg-blue-500 text-white rounded-lg text-xs sm:text-body-small font-medium hover:bg-blue-600 transition-colors min-w-0"
@@ -557,15 +576,17 @@ export function InventoryTable() {
                         ) : (
                           <div className="flex items-center justify-center gap-2">
                             <button
-                              onClick={() => setEditItem(item)}
-                              className="p-1.5 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
+                              onClick={() => canManageWarehouseItems && setEditItem(item)}
+                              disabled={!canManageWarehouseItems}
+                              className={`p-1.5 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors ${!canManageWarehouseItems ? "hidden" : ""}`}
                               title="แก้ไข"
                             >
                               <Edit className="w-4 h-4" />
                             </button>
                             <button
-                              onClick={() => setDeleteItem(item)}
-                              className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+                              onClick={() => canManageWarehouseItems && setDeleteItem(item)}
+                              disabled={!canManageWarehouseItems}
+                              className={`p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors ${!canManageWarehouseItems ? "hidden" : ""}`}
                               title="ลบ"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -611,7 +632,7 @@ export function InventoryTable() {
       </div>
 
       {/* Modals */}
-      {showAdd && canAddWarehouseItems && (
+      {showAdd && canManageWarehouseItems && (
         <AddItemModal
           existingItems={items}
           onClose={() => setShowAdd(false)}
