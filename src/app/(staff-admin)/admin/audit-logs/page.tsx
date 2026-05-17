@@ -402,23 +402,29 @@ export default function AdminAuditLogsPage() {
   };
 
   return (
-    <div className="flex flex-col gap-6 p-4 sm:p-6 lg:p-8">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-headline-5 font-bold text-gray-800">ประวัติการใช้งานระบบ</h2>
-          <p className="mt-1 text-sm text-slate-500">ติดตามว่าใครทำรายการอะไรในระบบและเมื่อไร</p>
+    <div className="grid grid-cols-1 gap-4 sm:gap-6 p-3 sm:p-6 lg:p-8 w-full max-w-full overflow-x-hidden min-w-0">
+      
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full min-w-0">
+        <div className="min-w-0">
+          <h2 className="text-headline-6 sm:text-headline-5 font-bold text-gray-800 truncate">ประวัติการใช้งานระบบ</h2>
+          <p className="mt-1 text-xs sm:text-sm text-slate-500 truncate">ติดตามว่าใครทำรายการอะไรในระบบและเมื่อไร</p>
         </div>
 
-        <div className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-700">
+        <div className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-700 w-fit shrink-0">
           บันทึกทั้งหมด {auditLogs.length} รายการ
         </div>
       </div>
 
-      <AdminSectionTabs />
+      {/* Tabs */}
+      <div className="w-full min-w-0">
+        <AdminSectionTabs />
+      </div>
 
-      <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="grid gap-3 border-b border-slate-200 px-4 py-4 sm:px-6 lg:grid-cols-3">
-          <div className="relative lg:col-span-2">
+      <section className="rounded-2xl border border-slate-200 bg-white shadow-sm w-full max-w-[calc(100vw-24px)] sm:max-w-full min-w-0 overflow-hidden flex flex-col">
+        
+        <div className="flex flex-col lg:flex-row gap-3 border-b border-slate-200 px-4 py-4 sm:px-6 w-full min-w-0">
+          <div className="relative w-full lg:flex-1 min-w-0">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
@@ -428,87 +434,94 @@ export default function AdminAuditLogsPage() {
                 setCurrentPage(1);
               }}
               placeholder="ค้นหาจากผู้ดำเนินการ รายการ หรือข้อมูลที่เกี่ยวข้อง"
-              className="h-10 w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-sm text-slate-700 outline-none transition focus:border-blue-400"
+              className="h-10 w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-sm text-slate-700 outline-none transition focus:border-blue-400 min-w-0"
             />
           </div>
 
-          <Dropdown
-            value={severityFilter}
-            onChange={(value) => {
-              setSeverityFilter(value as SeverityFilter);
-              setCurrentPage(1);
-            }}
-            options={SEVERITY_FILTER_OPTIONS}
-            className="h-10"
-          />
+          <div className="w-full lg:w-44 shrink-0 min-w-0">
+            <Dropdown
+              value={severityFilter}
+              onChange={(value) => {
+                setSeverityFilter(value as SeverityFilter);
+                setCurrentPage(1);
+              }}
+              options={SEVERITY_FILTER_OPTIONS}
+              className="h-10 w-full"
+            />
+          </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead className="bg-slate-50 text-left text-slate-600">
-              <tr>
-                <th className="px-4 py-3 font-medium sm:px-6">
-                  <button type="button" onClick={() => handleSort("createdAt")} className="inline-flex items-center gap-1.5">
-                    วันเวลา
-                    <ArrowUpDown className="h-3.5 w-3.5" />
-                  </button>
-                </th>
-                <th className="px-4 py-3 font-medium">
-                  <button type="button" onClick={() => handleSort("actor")} className="inline-flex items-center gap-1.5">
-                    ผู้ดำเนินการ
-                    <ArrowUpDown className="h-3.5 w-3.5" />
-                  </button>
-                </th>
-                <th className="px-4 py-3 font-medium">การดำเนินการ</th>
-                <th className="px-4 py-3 font-medium">ข้อมูลที่เกี่ยวข้อง</th>
-                <th className="px-4 py-3 font-medium sm:px-6">
-                  <button type="button" onClick={() => handleSort("severity")} className="inline-flex items-center gap-1.5">
-                    ระดับความสำคัญ
-                    <ArrowUpDown className="h-3.5 w-3.5" />
-                  </button>
-                </th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {isLoading && (
+        <div className="w-full min-w-0 overflow-hidden">
+          <div className="w-full overflow-x-auto">
+            <table className="w-full min-w-[700px] text-sm">
+              <thead className="bg-slate-50 text-left text-slate-600">
                 <tr>
-                  <td colSpan={5} className="px-6 py-10 text-center">
-                    <LoadingSpinner />
-                  </td>
+                  <th className="px-3 sm:px-6 py-3 font-medium whitespace-nowrap">
+                    <button type="button" onClick={() => handleSort("createdAt")} className="inline-flex items-center gap-1.5 hover:text-blue-600">
+                      วันเวลา
+                      <ArrowUpDown className="h-3.5 w-3.5" />
+                    </button>
+                  </th>
+                  <th className="px-3 sm:px-4 py-3 font-medium whitespace-nowrap">
+                    <button type="button" onClick={() => handleSort("actor")} className="inline-flex items-center gap-1.5 hover:text-blue-600">
+                      ผู้ดำเนินการ
+                      <ArrowUpDown className="h-3.5 w-3.5" />
+                    </button>
+                  </th>
+                  <th className="px-3 sm:px-4 py-3 font-medium whitespace-nowrap">การดำเนินการ</th>
+                  <th className="px-3 sm:px-4 py-3 font-medium whitespace-nowrap">ข้อมูลที่เกี่ยวข้อง</th>
+                  <th className="px-3 sm:px-6 py-3 font-medium whitespace-nowrap">
+                    <button type="button" onClick={() => handleSort("severity")} className="inline-flex items-center gap-1.5 hover:text-blue-600">
+                      ระดับความสำคัญ
+                      <ArrowUpDown className="h-3.5 w-3.5" />
+                    </button>
+                  </th>
                 </tr>
-              )}
+              </thead>
 
-              {paginatedLogs.map((entry) => {
-                const severityStyle = AUDIT_SEVERITY_STYLES[entry.severity];
-
-                return (
-                  <tr key={entry.id} className="border-t border-slate-100 text-slate-700">
-                    <td className="px-4 py-3 text-xs text-slate-500 sm:px-6">{formatDateTime(entry.createdAt)}</td>
-                    <td className="px-4 py-3">{entry.actorDisplay}</td>
-                    <td className="px-4 py-3">{entry.actionLabel}</td>
-                    <td className="px-4 py-3">{entry.targetDisplay}</td>
-                    <td className="px-4 py-3 sm:px-6">
-                      <span className={cn("inline-flex rounded-full px-2.5 py-1 text-xs font-medium", severityStyle.className)}>
-                        {severityStyle.label}
-                      </span>
+              <tbody>
+                {isLoading && (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-10 text-center">
+                      <LoadingSpinner />
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                )}
 
-          {!isLoading && paginatedLogs.length === 0 && (
-            <div className="px-6 py-10 text-center text-sm text-slate-500">
-              ไม่พบประวัติการใช้งานตามเงื่อนไขที่เลือก
-            </div>
-          )}
+                {paginatedLogs.map((entry) => {
+                  const severityStyle = AUDIT_SEVERITY_STYLES[entry.severity];
+
+                  return (
+                    <tr key={entry.id} className="border-t border-slate-100 text-slate-700 hover:bg-slate-50 transition-colors">
+                      <td className="px-3 sm:px-6 py-3 text-[11px] sm:text-xs text-slate-500 whitespace-nowrap">{formatDateTime(entry.createdAt)}</td>
+                      <td className="px-3 sm:px-4 py-3 font-medium text-gray-800 whitespace-nowrap">{entry.actorDisplay}</td>
+                      <td className="px-3 sm:px-4 py-3 whitespace-nowrap">{entry.actionLabel}</td>
+                      <td className="px-3 sm:px-4 py-3 max-w-[200px] truncate" title={entry.targetDisplay}>
+                        {entry.targetDisplay}
+                      </td>
+                      <td className="px-3 sm:px-6 py-3 whitespace-nowrap">
+                        <span className={cn("inline-flex rounded-full px-2.5 py-1 text-[11px] sm:text-xs font-medium", severityStyle.className)}>
+                          {severityStyle.label}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+
+            {!isLoading && paginatedLogs.length === 0 && (
+              <div className="px-6 py-10 text-center text-sm text-slate-500">
+                ไม่พบประวัติการใช้งานตามเงื่อนไขที่เลือก
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 px-4 py-3 text-xs text-slate-500 sm:px-6">
-          <span>แสดง {startItem}-{endItem} จาก {filteredAndSortedLogs.length} รายการ</span>
-          <span>เรียงตาม {getSortLabel(sortField)} ({sortDirection === "asc" ? "น้อยไปมาก" : "มากไปน้อย"})</span>
+        {/* Footer */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-t border-slate-200 px-4 py-3 text-xs text-slate-500 sm:px-6 w-full min-w-0">
+          <span className="shrink-0">แสดง {startItem}-{endItem} จาก {filteredAndSortedLogs.length} รายการ</span>
+          <span className="truncate max-w-full">เรียงตาม {getSortLabel(sortField)} ({sortDirection === "asc" ? "น้อยไปมาก" : "มากไปน้อย"})</span>
         </div>
       </section>
 
