@@ -280,12 +280,44 @@ export default function ManageMealPage() {
       }));
       setAiWarningMessage("");
     } catch (err: unknown) {
-      const message = typeof (err as { message?: string })?.message === "string"
+      const rawMessage = typeof (err as { message?: string })?.message === "string"
         ? (err as { message: string }).message
         : "บันทึกข้อมูลไม่สำเร็จ";
+
+      const translateErrorMessage = (msg: string): string => {
+        const lowerMsg = msg.toLowerCase();
+        
+        if (lowerMsg.includes("both main and backup menus are not safe for allergy group")) {
+          return "ทั้งเมนูหลักและเมนูรองไม่ปลอดภัยสำหรับผู้ที่มีประวัติแพ้อาหารกลุ่มนี้ กรุณาเปลี่ยนเมนูใหม่";
+        }
+
+        if (lowerMsg.includes("backup menu is not safe for allergy group")) {
+          const parts = msg.split(":");
+          const reason = parts.length > 1 ? parts[1].trim() : "กรุณาเปลี่ยนเมนูรองใหม่";
+          return `เมนูรองไม่ปลอดภัยสำหรับผู้ที่มีประวัติแพ้อาหาร: ${reason}`;
+        }
+
+        if (lowerMsg.includes("main menu is not safe") || lowerMsg.includes("main menu may not be safe")) {
+          const parts = msg.split(":");
+          const reason = parts.length > 1 ? parts[1].trim() : "กรุณาเพิ่มเมนูรอง หรือเปลี่ยนเมนูหลักใหม่";
+          return `เมนูหลักไม่ปลอดภัยสำหรับผู้ที่มีประวัติแพ้อาหาร: ${reason}`;
+        }
+
+        if (lowerMsg.includes("unauthorized")) {
+          return "เซสชั่นหมดอายุหรือไม่ได้รับอนุญาต กรุณาเข้าสู่ระบบใหม่";
+        }
+        if (lowerMsg.includes("internal server error")) {
+          return "ระบบหลังบ้านเกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง";
+        }
+
+        return msg; 
+      };
+
+      const translatedMessage = translateErrorMessage(rawMessage);
+
       showToast({
         title: "เกิดข้อผิดพลาด",
-        message: message,
+        message: translatedMessage,
         type: "error",
       });
     } finally {
