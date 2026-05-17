@@ -1279,7 +1279,7 @@ export function MedicalManagementView() {
   };
 
   const renderMainView = () => (
-    <div className="space-y-6 ">
+    <div className="space-y-6">
       <div>
         <h1 className="text-headline-5 font-bold text-gray-800">จัดการยา</h1>
       </div>
@@ -1302,11 +1302,11 @@ export function MedicalManagementView() {
           ))}
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="min-w-40 px-6 py-3 bg-white border border-gray-300 rounded-lg text-center text-body-large font-semibold text-yellow-600">
+        <div className="grid w-full grid-cols-1 gap-3 sm:w-auto sm:grid-cols-2">
+          <div className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-center text-body-large font-semibold text-yellow-600 sm:min-w-40 sm:px-6">
             รอให้ยา <span className="ml-1">{pendingCount}</span>
           </div>
-          <div className="min-w-40 px-6 py-3 bg-white border border-gray-300 rounded-lg text-center text-body-large font-semibold text-green-600">
+          <div className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-center text-body-large font-semibold text-green-600 sm:min-w-40 sm:px-6">
             ให้ยาแล้ว <span className="ml-1">{completedCount}</span>
           </div>
         </div>
@@ -1314,7 +1314,7 @@ export function MedicalManagementView() {
 
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4 flex-1 flex-wrap">
-          <div className="relative flex-1 max-w-md min-w-60">
+          <div className="relative w-full sm:flex-1 sm:max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
@@ -1339,7 +1339,7 @@ export function MedicalManagementView() {
             ]}
             value={selectedFloor}
             onChange={(value) => setSelectedFloor(value)}
-            className="w-32"
+            className="w-full sm:w-32"
           />
 
           <span className="text-body-small text-gray-600">ประเภท</span>
@@ -1354,7 +1354,7 @@ export function MedicalManagementView() {
             ]}
             value={selectedLabelId}
             onChange={(value) => setSelectedLabelId(value)}
-            className="w-48"
+            className="w-full sm:w-48"
           />
 
           <label className="flex items-center gap-2 text-body-small text-gray-600">
@@ -1441,16 +1441,16 @@ export function MedicalManagementView() {
         <span className="text-body-small font-medium">ย้อนกลับ</span>
       </button>
 
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-headline-5 font-bold text-gray-800">ข้อมูลและประวัติการให้ยา</h1>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex bg-gray-100 rounded-lg p-1">
+        <div className="w-full sm:w-auto">
+          <div className="flex w-full bg-gray-100 rounded-lg p-1 sm:w-auto">
             <button
               onClick={() => setDetailsTab("meds")}
-              className={`px-4 py-2 rounded-md text-body-small font-medium transition-colors ${
+              className={`flex-1 px-4 py-2 rounded-md text-body-small font-medium transition-colors sm:flex-none ${
                 detailsTab === "meds"
                   ? "bg-blue-500 text-white"
                   : "bg-transparent text-gray-600 hover:text-gray-900"
@@ -1463,7 +1463,7 @@ export function MedicalManagementView() {
                 setDetailsTab("history");
                 setCurrentPage(1);
               }}
-              className={`px-4 py-2 rounded-md text-body-small font-medium transition-colors ${
+              className={`flex-1 px-4 py-2 rounded-md text-body-small font-medium transition-colors sm:flex-none ${
                 detailsTab === "history"
                   ? "bg-blue-500 text-white"
                   : "bg-transparent text-gray-600 hover:text-gray-900"
@@ -1494,8 +1494,8 @@ export function MedicalManagementView() {
 
       {detailsTab === "meds" ? (
         <>
-          <div className="flex items-center justify-between gap-4">
-            <div className="relative flex-1 max-w-md">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+            <div className="relative w-full sm:flex-1 sm:max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
@@ -1508,19 +1508,19 @@ export function MedicalManagementView() {
             <button
               onClick={() => setShowAddMedicationModal(true)}
               disabled={!selectedPatientId || isMutating}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg text-body-small font-medium hover:bg-blue-600 transition-colors whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed"
+              className="flex w-full items-center justify-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg text-body-small font-medium hover:bg-blue-600 transition-colors whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed sm:w-auto"
             >
               <Plus className="w-4 h-4" />
               <span>เพิ่มยาใหม่</span>
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
             <span className="text-body-small text-gray-600">มุมมองตารางยา:</span>
             <button
               type="button"
               onClick={() => setMedsDisplayMode("split")}
-              className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
+              className={`w-full px-3 py-1.5 rounded-lg text-xs sm:w-auto sm:text-sm font-medium transition-colors ${
                 medsDisplayMode === "split"
                   ? "bg-blue-500 text-white"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
@@ -1531,7 +1531,7 @@ export function MedicalManagementView() {
             <button
               type="button"
               onClick={() => setMedsDisplayMode("combined")}
-              className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
+              className={`w-full px-3 py-1.5 rounded-lg text-xs sm:w-auto sm:text-sm font-medium transition-colors ${
                 medsDisplayMode === "combined"
                   ? "bg-blue-500 text-white"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
@@ -1548,7 +1548,7 @@ export function MedicalManagementView() {
             </div>
           ) : medsDisplayMode === "split" ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
                 <h3 className="text-headline-7 font-semibold text-gray-800 mb-4">ยาประจำ</h3>
                 <RoutineMedsTable
                   medications={routineMedications}
@@ -1565,7 +1565,7 @@ export function MedicalManagementView() {
                 />
               </div>
 
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
                 <h3 className="text-headline-7 font-semibold text-gray-800 mb-4">ยาตามอาการ / ชั่วคราว</h3>
                 <RoutineMedsTable
                   medications={prnMedications}
@@ -1583,7 +1583,7 @@ export function MedicalManagementView() {
               </div>
             </div>
           ) : (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
               <h3 className="text-headline-7 font-semibold text-gray-800 mb-4">ตารางยารวม</h3>
               <CombinedMedsTable
                 routineMedications={routineMedications}
@@ -1611,7 +1611,7 @@ export function MedicalManagementView() {
           />
         </>
       ) : (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <NoteTimelineControls
               selectedDate={historySelectedDate}
@@ -1666,8 +1666,8 @@ export function MedicalManagementView() {
         </div>
       </div>
 
-      <div className="print-hide flex flex-wrap items-center gap-4">
-        <div className="relative flex-1 max-w-md min-w-60">
+      <div className="print-hide grid grid-cols-1 gap-3 md:flex md:flex-wrap md:items-center md:gap-4">
+        <div className="relative w-full md:flex-1 md:max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
@@ -1698,7 +1698,7 @@ export function MedicalManagementView() {
             setSelectedFloor(value);
             setCurrentPage(1);
           }}
-          className="w-32"
+          className="w-full md:w-32"
         />
 
         <span className="text-body-small text-gray-600">สถานะ</span>
@@ -1715,10 +1715,10 @@ export function MedicalManagementView() {
             setSelectedStatus(value);
             setCurrentPage(1);
           }}
-          className="w-32"
+          className="w-full md:w-32"
         />
 
-        <div className="ml-auto">
+        <div className="w-full md:ml-auto md:w-auto">
           <NoteTimelineControls
             selectedDate={historySelectedDate}
             onDateChange={(date) => {
@@ -1732,9 +1732,9 @@ export function MedicalManagementView() {
             }}
           />
         </div>
-        <div className="ml-auto flex items-center gap-4">
+        <div className="flex w-full items-center gap-4 md:ml-auto md:w-auto">
           <button
-            className="print-hide flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg text-body-small font-medium hover:bg-blue-600 transition-colors whitespace-nowrap"
+            className="print-hide flex w-full items-center justify-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg text-body-small font-medium hover:bg-blue-600 transition-colors whitespace-nowrap md:w-auto"
             onClick={handleExport}
           >
             <Printer className="w-4 h-4" />
@@ -1743,7 +1743,7 @@ export function MedicalManagementView() {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
         {isLoadingHistory ? (
           <div className="mb-4">
             <SkeletonTable columns={7} rows={5} />
@@ -1756,7 +1756,7 @@ export function MedicalManagementView() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6">
       <div className="max-w-full">
         {currentView === "main" && renderMainView()}
         {currentView === "details" && renderDetailsView()}

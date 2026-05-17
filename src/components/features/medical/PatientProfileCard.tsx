@@ -25,8 +25,8 @@ export function PatientProfileCard({
   status,
 }: PatientProfileCardProps) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 relative">
-      <div className="flex flex-row items-start gap-6">
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 sm:p-6 relative">
+      <div className="flex flex-col items-start gap-4 sm:gap-6 lg:flex-row">
         {/* Avatar */}
         <div className="shrink-0">
           {profileImage ? (
@@ -35,16 +35,16 @@ export function PatientProfileCard({
               alt={name}
               width={96}
               height={96}
-              className="w-24 h-24 rounded-full border-4 border-blue-400 object-cover"
+              className="h-20 w-20 rounded-full border-4 border-blue-400 object-cover sm:h-24 sm:w-24"
             />
           ) : (
-            <div className="w-24 h-24 rounded-full border-4 border-blue-400 bg-linear-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-headline-4 font-bold">
+            <div className="h-20 w-20 rounded-full border-4 border-blue-400 bg-linear-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-headline-4 font-bold sm:h-24 sm:w-24">
               {name.charAt(0)}
             </div>
           )}
         </div>
 
-        <div className="flex flex-col gap-4 flex-1">
+        <div className="flex min-w-0 flex-1 flex-col gap-4">
           <div>
             <h2 className="text-headline-6 font-bold text-gray-800">{name}</h2>
             <p className="text-body-small text-gray-500">{room}</p>
@@ -89,7 +89,7 @@ export function PatientProfileCard({
           )}
         </div>
 
-        <div className="flex flex-col gap-4 flex-1">
+        <div className="flex min-w-0 flex-1 flex-col gap-4">
           {surgicalHistory.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-2">
@@ -130,7 +130,7 @@ export function PatientProfileCard({
         </div>
 
         {status && (
-          <div className="absolute top-4 right-4">
+          <div className="absolute right-3 top-3 sm:right-4 sm:top-4">
             <div className="inline-flex items-center gap-2 bg-orange-100 text-orange-600 rounded-full px-3 py-1 text-body-small font-medium">
               <span>{status}</span>
             </div>

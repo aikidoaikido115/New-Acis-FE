@@ -52,12 +52,12 @@ export function CombinedMedsTable({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
         <span className="text-xs sm:text-sm font-medium text-gray-600">ประเภท:</span>
         <button
           type="button"
           onClick={() => setMedTypeFilter("all")}
-          className={`rounded-full px-3 py-1 text-xs sm:text-sm font-medium transition-colors ${
+          className={`w-full rounded-full px-3 py-1.5 text-xs sm:w-auto sm:text-sm font-medium transition-colors ${
             medTypeFilter === "all"
               ? "bg-blue-500 text-white"
               : "bg-gray-100 text-gray-700 hover:bg-gray-200"
@@ -68,7 +68,7 @@ export function CombinedMedsTable({
         <button
           type="button"
           onClick={() => setMedTypeFilter("routine")}
-          className={`rounded-full px-3 py-1 text-xs sm:text-sm font-medium transition-colors ${
+          className={`w-full rounded-full px-3 py-1.5 text-xs sm:w-auto sm:text-sm font-medium transition-colors ${
             medTypeFilter === "routine"
               ? "bg-blue-500 text-white"
               : "bg-gray-100 text-gray-700 hover:bg-gray-200"
@@ -79,7 +79,7 @@ export function CombinedMedsTable({
         <button
           type="button"
           onClick={() => setMedTypeFilter("prn")}
-          className={`rounded-full px-3 py-1 text-xs sm:text-sm font-medium transition-colors ${
+          className={`w-full rounded-full px-3 py-1.5 text-xs sm:w-auto sm:text-sm font-medium transition-colors ${
             medTypeFilter === "prn"
               ? "bg-blue-500 text-white"
               : "bg-gray-100 text-gray-700 hover:bg-gray-200"
@@ -89,8 +89,8 @@ export function CombinedMedsTable({
         </button>
       </div>
 
-      <div className="overflow-x-auto rounded-2xl bg-[#E9EDF1] border border-[#D6DCE2]">
-        <table className="w-full">
+      <div className="hidden overflow-x-auto rounded-2xl bg-[#E9EDF1] border border-[#D6DCE2] md:block">
+        <table className="w-full min-w-[860px]">
           <thead>
             <tr className="border-b border-[#CFD5DC]">
               <th className="text-left py-3 px-4 text-xs font-medium text-gray-500">ประเภท</th>
@@ -147,6 +147,47 @@ export function CombinedMedsTable({
             )}
           </tbody>
         </table>
+      </div>
+
+      <div className="space-y-3 md:hidden">
+        {filteredRows.length === 0 ? (
+          <div className="rounded-lg border border-[#D6DCE2] bg-[#E9EDF1] px-4 py-10 text-center">
+            <div className="text-sm text-gray-600">เนเธกเนเธเธเธฃเธฒเธขเธเธฒเธฃเธขเธฒเนเธเธเธฃเธฐเน€เธ เธ—เธ—เธตเนเน€เธฅเธทเธญเธ</div>
+            <div className="mt-1 text-xs text-gray-400">เธฅเธญเธเน€เธเธฅเธตเนเธขเธเธ•เธฑเธงเธเธฃเธญเธเธเธฃเธฐเน€เธ เธ— เธซเธฃเธทเธญเน€เธเธดเนเธกเธเนเธญเธกเธนเธฅเธขเธฒเนเธซเธกเน</div>
+          </div>
+        ) : (
+          filteredRows.map((med) => (
+            <div key={`${med.medType}-${med.id}`} className="rounded-lg border border-[#D6DCE2] bg-[#E9EDF1] p-3">
+              <div className="flex items-start justify-between gap-2">
+                <span className="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-gray-700 border border-gray-300">
+                  {med.medTypeLabel}
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => onEditMed(med.id)}
+                    className="p-1 text-[#1290EB] hover:text-[#0D75C0] transition-colors"
+                    title="เนเธเนเนเธ"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => onDeleteMed(med.id)}
+                    className="p-1 text-[#FF3557] hover:text-[#D92644] transition-colors"
+                    title="เธฅเธ"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+              <div className="mt-2 space-y-1 text-sm text-gray-800">
+                <div><span className="text-gray-500">ชื่อยา:</span> {med.name}</div>
+                <div><span className="text-gray-500">ปริมาณ/ขนาด:</span> {med.dose}</div>
+                <div><span className="text-gray-500">ความถี่/วัน:</span> {med.frequency}</div>
+                <div><span className="text-gray-500">หมายเหตุ:</span> {med.note}</div>
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
