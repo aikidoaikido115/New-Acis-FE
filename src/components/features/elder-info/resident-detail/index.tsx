@@ -220,7 +220,7 @@ export function ResidentDetailModal({ isOpen, onClose, residentId }: ResidentDet
 
         @media print {
           @page {
-            size: A4 portrait; /* กลับมาเป็น A4 ปกติ มือถือจะได้ไม่งง */
+            size: 1024px 1448px; 
             margin: 5mm;
           }
 
@@ -229,8 +229,7 @@ export function ResidentDetailModal({ isOpen, onClose, residentId }: ResidentDet
             padding: 0 !important;
             background: #ffffff !important;
             display: block !important;
-            height: auto !important; 
-            overflow: visible !important; 
+            min-width: 1024px !important;
           }
 
           :global(body.print-resident-modal *) {
@@ -251,22 +250,20 @@ export function ResidentDetailModal({ isOpen, onClose, residentId }: ResidentDet
             inset: auto !important;
             margin: 0 !important;
             padding: 0 !important;
-            width: 100% !important; /* ให้ยืดตามกระดาษจริง */
+            width: 1024px !important;
             max-width: none !important;
             height: auto !important;
-            overflow: visible !important;
             border: none !important;
             box-shadow: none !important;
           }
 
           .resident-detail-print {
-            position: relative !important; 
-            top: auto !important;
-            left: auto !important;
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
             margin: 0 !important;
             padding: 0 !important;
-            width: 100% !important; /* ให้ยืดตามกระดาษจริง */
-            height: auto !important;
+            width: 1024px !important; 
             max-height: none !important;
             overflow: visible !important;
             -webkit-print-color-adjust: exact !important;
@@ -292,7 +289,6 @@ export function ResidentDetailModal({ isOpen, onClose, residentId }: ResidentDet
 
           section {
             page-break-inside: avoid;
-            break-inside: avoid;
           }
         }
       `}</style>
