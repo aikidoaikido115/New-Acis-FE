@@ -26,6 +26,9 @@ export interface ActivityFormData {
   date: string;
   startTime: string;
   endTime: string;
+  isRecurring: boolean;
+  repeatEndDate: string;
+  repeatDays: number[];
   location: string;
   description: string;
 }
@@ -46,6 +49,16 @@ const TIME_OPTIONS = Array.from({ length: (22 - 6 + 1) * 2 }, (_, index) => {
   const value = `${String(hours).padStart(2, "0")}:${minutes}`;
   return { value, label: value };
 });
+
+const REPEAT_DAY_OPTIONS = [
+  { value: 1, label: "จ" },
+  { value: 2, label: "อ" },
+  { value: 3, label: "พ" },
+  { value: 4, label: "พฤ" },
+  { value: 5, label: "ศ" },
+  { value: 6, label: "ส" },
+  { value: 7, label: "อา" },
+];
 
 function formatDateForValue(date: Date): string {
   const day = String(date.getDate()).padStart(2, "0");
@@ -91,6 +104,9 @@ export function ActivityFormModal({
       date: resolvedDate,
       startTime: values?.startTime || "",
       endTime: values?.endTime || "",
+      isRecurring: values?.isRecurring || false,
+      repeatEndDate: values?.repeatEndDate || resolvedDate,
+      repeatDays: values?.repeatDays || [],
       location: values?.location || "",
       description: values?.description || "",
     };
@@ -105,6 +121,16 @@ export function ActivityFormModal({
 
   const handleChange = (field: keyof ActivityFormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const toggleRepeatDay = (value: number) => {
+    setFormData((prev) => {
+      const exists = prev.repeatDays.includes(value);
+      const nextDays = exists
+        ? prev.repeatDays.filter((day) => day !== value)
+        : [...prev.repeatDays, value].sort((a, b) => a - b);
+      return { ...prev, repeatDays: nextDays };
+    });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -136,6 +162,23 @@ export function ActivityFormModal({
       // Check if date is more than 1 day in the past
       if (normalizedSelected < normalizedYesterday) {
         alert("ไม่สามารถสร้างกิจกรรมย้อนหลังเกิน 1 วันได้");
+        return;
+      }
+    }
+
+    if (mode === "create" && formData.isRecurring) {
+      if (formData.repeatDays.length === 0) {
+        alert("กรุณาเลือกวันทำซ้ำอย่างน้อย 1 วัน");
+        return;
+      }
+      if (!formData.repeatEndDate) {
+        alert("กรุณาเลือกวันสิ้นสุด");
+        return;
+      }
+      const startDate = parseLocalDate(formData.date);
+      const endDate = parseLocalDate(formData.repeatEndDate);
+      if (startDate && endDate && endDate < startDate) {
+        alert("วันสิ้นสุดต้องไม่ก่อนวันเริ่มต้น");
         return;
       }
     }
@@ -292,6 +335,69 @@ export function ActivityFormModal({
                 />
               </div>
             </div>
+
+            {mode === "create" && (
+              <div className="rounded-xl border border-slate-200 bg-slate-50/40 p-4">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-slate-700">ทำซ้ำกิจกรรม</label>
+                  <label className="inline-flex items-center gap-2 text-sm text-slate-600">
+                    <input
+                      type="checkbox"
+                      checked={formData.isRecurring}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          isRecurring: e.target.checked,
+                          repeatEndDate: prev.repeatEndDate || prev.date,
+                          repeatDays: e.target.checked ? prev.repeatDays : [],
+                        }))
+                      }
+                    />
+                    เปิดใช้
+                  </label>
+                </div>
+
+                {formData.isRecurring && (
+                  <div className="mt-4 space-y-4">
+                    <div>
+                      <p className="mb-2 text-xs font-medium text-slate-500">เลือกวันทำซ้ำ</p>
+                      <div className="flex flex-wrap gap-2">
+                        {REPEAT_DAY_OPTIONS.map((day) => {
+                          const active = formData.repeatDays.includes(day.value);
+                          return (
+                            <button
+                              key={day.value}
+                              type="button"
+                              onClick={() => toggleRepeatDay(day.value)}
+                              className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                                active
+                                  ? "bg-emerald-600 text-white"
+                                  : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-100"
+                              }`}
+                            >
+                              {day.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                        วันสิ้นสุด <span className="text-red-500">*</span>
+                      </label>
+                      <DatePicker
+                        value={parseLocalDate(formData.repeatEndDate)}
+                        onChange={(date) =>
+                          handleChange("repeatEndDate", date ? formatDateForValue(date) : "")
+                        }
+                        placeholder="เลือกวันสิ้นสุด"
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* สถานที่ */}
             <div>

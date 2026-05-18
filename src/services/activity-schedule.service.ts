@@ -1,7 +1,10 @@
 import apiClient, { ApiResponse } from '@/lib/axios.ts/api-client';
 import type {
   ActivitySchedule,
+  CancelActivityScheduleRequest,
   CreateActivityScheduleRequest,
+  CreateRecurringActivityScheduleRequest,
+  RestoreActivityScheduleRequest,
   UpdateActivityScheduleRequest,
 } from '@/types/activity-schedule';
 
@@ -56,7 +59,48 @@ const toDateKey = (value?: string) => {
   return `${year}-${month}-${day}`;
 };
 
-const buildSchedulePayload = <T extends CreateActivityScheduleRequest | UpdateActivityScheduleRequest>(payload: T) => ({
+const parseDateKey = (value: string) => {
+  const [year, month, day] = value.split('-').map(Number);
+  if (!year || !month || !day) return null;
+  return new Date(year, month - 1, day);
+};
+
+const formatDateKeyLocal = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const toDayOfWeekNumber = (date: Date) => {
+  const jsDay = date.getDay();
+  return jsDay === 0 ? 7 : jsDay;
+};
+
+const listRecurringDateKeys = (startDate: string, endDate: string, repeatDays: number[]) => {
+  const start = parseDateKey(startDate);
+  const end = parseDateKey(endDate);
+  if (!start || !end || end < start) return [] as string[];
+
+  const repeatSet = new Set(repeatDays.filter((day) => day >= 1 && day <= 7));
+  if (repeatSet.size === 0) return [] as string[];
+
+  const cursor = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  const endDateOnly = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+  const result: string[] = [];
+
+  while (cursor <= endDateOnly) {
+    if (repeatSet.has(toDayOfWeekNumber(cursor))) {
+      result.push(formatDateKeyLocal(cursor));
+    }
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return result;
+};
+
+// ปรับให้เป็น any เพื่อให้แนบ activity_name, description ผ่านไปที่ /sync ได้
+const buildSchedulePayload = (payload: any) => ({
   ...payload,
   ...(payload.date ? { date: toLocalIsoDate(payload.date) } : {}),
   ...(payload.start_time
@@ -67,62 +111,96 @@ const buildSchedulePayload = <T extends CreateActivityScheduleRequest | UpdateAc
 
 class ActivityScheduleService {
   /**
-   * Get all activity schedules
-   * GET /api/activity-schedules
+   * ดึงข้อมูลผ่าน /sync เพื่อให้ได้ข้อมูล Activity แนบมาด้วย
    */
-  async getAll(): Promise<ActivitySchedule[]> {
-    const response = await apiClient.get<ApiResponse<ActivitySchedule[]>>('/api/activity-schedules');
+  async getAll(): Promise<any[]> {
+    const response = await apiClient.get<ApiResponse<any[]>>('/api/activity-schedules/sync');
+    return response.data.result;
+  }
+
+  async getByDate(date?: string): Promise<any[]> {
+    const url = date ? `/api/activity-schedules/sync?date=${date}` : '/api/activity-schedules/sync';
+    const response = await apiClient.get<ApiResponse<any[]>>(url);
+    return response.data.result;
+  }
+
+  async getById(id: string): Promise<any> {
+    const response = await apiClient.get<ApiResponse<any>>(`/api/activity-schedules/sync/${id}`);
     return response.data.result;
   }
 
   /**
-   * Get activity schedules (optional date filter)
-   * GET /api/activity-schedules
+   * บันทึกข้อมูลผ่าน /sync (รับข้อมูลทั้งเวลาและชื่อกิจกรรม)
    */
-  async getByDate(date?: string): Promise<ActivitySchedule[]> {
-    const response = await this.getAll();
-    if (!date) return response;
-    return response.filter((item) => toDateKey(item.date) === date);
-  }
-
-  /**
-   * Create activity schedule
-   * POST /api/activity-schedules
-   */
-  async create(payload: CreateActivityScheduleRequest): Promise<ActivitySchedule> {
+  async create(payload: any): Promise<ActivitySchedule> {
     const response = await apiClient.post<ApiResponse<ActivitySchedule>>(
-      '/api/activity-schedules',
+      '/api/activity-schedules/sync',
       buildSchedulePayload(payload)
     );
     return response.data.result;
   }
 
   /**
-   * Update activity schedule
-   * PATCH /api/activity-schedules/{id}
+   * อัปเดตข้อมูลผ่าน /sync (รับข้อมูลทั้งเวลาและชื่อกิจกรรม)
    */
-  async update(id: string, payload: UpdateActivityScheduleRequest): Promise<ActivitySchedule> {
+  async update(id: string, payload: any): Promise<ActivitySchedule> {
     const response = await apiClient.patch<ApiResponse<ActivitySchedule>>(
-      `/api/activity-schedules/${id}`,
+      `/api/activity-schedules/sync/${id}`,
       buildSchedulePayload(payload)
     );
     return response.data.result;
   }
 
-  /**
-   * Delete activity schedule
-   * DELETE /api/activity-schedules/{id}
-   */
   async remove(id: string): Promise<void> {
     await apiClient.delete<ApiResponse<null>>(`/api/activity-schedules/${id}`);
   }
 
-  /**
-   * Get activity schedule by ID
-    * GET /api/activity-schedules/{id}
-   */
-  async getById(id: string): Promise<ActivitySchedule> {
-    const response = await apiClient.get<ApiResponse<ActivitySchedule>>(`/api/activity-schedules/${id}`);
+  async createRecurring(payload: CreateRecurringActivityScheduleRequest): Promise<ActivitySchedule[]> {
+    try {
+      const response = await apiClient.post<ApiResponse<ActivitySchedule[]>>(
+        '/api/activity-schedules/recurring',
+        payload
+      );
+      return response.data.result;
+    } catch (error: any) {
+      const status = error?.response?.status ?? error?.status;
+      if (status !== 404 && status !== 405) {
+        throw error;
+      }
+
+      const dateKeys = listRecurringDateKeys(payload.start_date, payload.end_date, payload.repeat_days);
+      if (dateKeys.length === 0) {
+        throw new Error('ไม่พบวันที่ตรงกับรูปแบบการทำซ้ำ');
+      }
+
+      const created = await Promise.all(
+        dateKeys.map((date) =>
+          this.create({
+            activity_name: payload.activity_name,
+            activity_type: payload.activity_type,
+            date,
+            start_time: payload.start_time,
+            end_time: payload.end_time,
+          })
+        )
+      );
+      return created;
+    }
+  }
+
+  async cancel(payload: CancelActivityScheduleRequest): Promise<{ updated: number }> {
+    const response = await apiClient.patch<ApiResponse<{ updated: number }>>(
+      '/api/activity-schedules/cancel',
+      payload
+    );
+    return response.data.result;
+  }
+
+  async restore(payload: RestoreActivityScheduleRequest): Promise<{ updated: number }> {
+    const response = await apiClient.patch<ApiResponse<{ updated: number }>>(
+      '/api/activity-schedules/restore',
+      payload
+    );
     return response.data.result;
   }
 }

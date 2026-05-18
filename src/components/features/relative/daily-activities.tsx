@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Clock, MapPin, ImageIcon, X, Download, Search } from "lucide-react";
 import type { ActivityParticipation } from "@/types/activity-participation";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface Activity {
   id: string;
@@ -18,13 +19,22 @@ interface DailyActivitiesProps {
   activities?: Activity[];
   participations?: ActivityParticipation[];
   lastUpdatedAt?: string;
+  isLoading?: boolean;
 }
 
-export function DailyActivities({ activities, participations, lastUpdatedAt }: DailyActivitiesProps) {
+export function DailyActivities({ activities, participations, lastUpdatedAt, isLoading = false }: DailyActivitiesProps) {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const formatTime = (value?: string): string => {
     if (!value) return "-";
+
+    const date = new Date(value);
+    if (!Number.isNaN(date.getTime())) {
+      const hours = String(date.getHours()).padStart(2, "0");
+      const minutes = String(date.getMinutes()).padStart(2, "0");
+      return `${hours}:${minutes}`;
+    }
+
     const match = value.match(/(\d{2}):(\d{2})(?::\d{2})?/);
     if (match) return `${match[1]}:${match[2]}`;
     return "-";
@@ -59,6 +69,8 @@ export function DailyActivities({ activities, participations, lastUpdatedAt }: D
       description: p.activity_schedule?.activity?.description,
       location: p.activity_schedule?.activity?.location,
       participated: p.is_participating,
+      scheduleStatus: p.activity_schedule?.status,
+      isCancelled: p.activity_schedule?.status === "cancelled",
       images: (p.img_urls || []).map((img) => img.url).filter(Boolean),
       lastUpdatedAt: lastUpdatedAt,
     }));
@@ -80,7 +92,21 @@ export function DailyActivities({ activities, participations, lastUpdatedAt }: D
           </h2>
         </div>
         
-        {dailyActivities.length === 0 ? (
+        {isLoading ? (
+          <div className="space-y-4">
+            {Array.from({ length: 2 }).map((_, idx) => (
+              <div key={idx} className="flex flex-col md:flex-row gap-4 p-4 border border-gray-200 rounded-lg bg-white">
+                <Skeleton className="w-full md:w-48 h-32 rounded-lg shrink-0" />
+                <div className="flex-1 space-y-3">
+                  <Skeleton className="h-7 w-44 rounded" />
+                  <Skeleton className="h-6 w-56 rounded" />
+                  <Skeleton className="h-4 w-full rounded" />
+                  <Skeleton className="h-4 w-2/3 rounded" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : dailyActivities.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-gray-500">
             <span className="mb-4">
               <svg width="123" height="123" viewBox="0 0 123 123" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -94,7 +120,8 @@ export function DailyActivities({ activities, participations, lastUpdatedAt }: D
           <div className="space-y-4">
             {dailyActivities.map((item) => {
               const hasImages = item.images && item.images.length > 0;
-              const isParticipated = item.participated === true;
+              const isCancelled = item.isCancelled === true;
+              const isParticipated = !isCancelled && item.participated === true;
 
               return (
                 <div
@@ -139,11 +166,13 @@ export function DailyActivities({ activities, participations, lastUpdatedAt }: D
                       </span>
                       {item.participated !== undefined && (
                         <span className={`text-xs px-3 py-1.5 rounded font-semibold ${
-                          item.participated 
-                            ? "bg-green-100 text-green-700" 
+                          isCancelled
+                            ? "bg-red-100 text-red-700"
+                            : item.participated
+                            ? "bg-green-100 text-green-700"
                             : "bg-gray-100 text-gray-600"
                         }`}>
-                          {item.participated ? "เข้าร่วม" : "ไม่เข้าร่วม"}
+                          {isCancelled ? "ศูนย์งดกิจกรรม" : item.participated ? "เข้าร่วม" : "ไม่เข้าร่วม"}
                         </span>
                       )}
                     </div>

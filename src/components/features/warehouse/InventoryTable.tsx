@@ -39,7 +39,7 @@ function isSuperuserOrHigher(role?: string): boolean {
 export function InventoryTable() {
   const { user } = useAuth();
   const { showToast } = useToast();
-  const canAddWarehouseItems = isSuperuserOrHigher(user?.role_name);
+  const canManageWarehouseItems = isSuperuserOrHigher(user?.role_name);
   const [items, setItems] = useState<WarehouseItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -110,7 +110,7 @@ export function InventoryTable() {
 
   // Handlers
   const handleAddItem = async (newItemData: Omit<WarehouseItem, "id">) => {
-    if (!canAddWarehouseItems) {
+    if (!canManageWarehouseItems) {
       showToast({
         type: "error",
         title: "ไม่มีสิทธิ์ดำเนินการ",
@@ -132,8 +132,8 @@ export function InventoryTable() {
       await loadItems();
       showToast({
         type: "success",
-        title: "ส่งคำขอสำเร็จ",
-        message: "ส่งคำขอเพิ่มเวชภัณฑ์ใหม่แล้ว รอการอนุมัติ",
+        title: "บันทึกสำเร็จ",
+        message: "เพิ่มเวชภัณฑ์ใหม่เรียบร้อยแล้ว",
       });
     } catch {
       alert("ไม่สามารถเพิ่มรายการเวชภัณฑ์ได้");
@@ -141,6 +141,15 @@ export function InventoryTable() {
   };
 
   const handleEditItem = async (updated: WarehouseItem) => {
+    if (!canManageWarehouseItems) {
+      showToast({
+        type: "error",
+        title: "ไม่มีสิทธิ์ดำเนินการ",
+        message: "เฉพาะหัวหน้าพยาบาลหรือผู้ดูแลระบบเท่านั้น",
+      });
+      return;
+    }
+
     try {
       await warehouseService.updateItem(updated.id, {
         code: updated.code,
@@ -162,10 +171,20 @@ export function InventoryTable() {
   };
 
   const handleDeleteItem = async (itemId: string) => {
+    if (!canManageWarehouseItems) {
+      showToast({
+        type: "error",
+        title: "ไม่มีสิทธิ์ดำเนินการ",
+        message: "เฉพาะหัวหน้าพยาบาลหรือผู้ดูแลระบบเท่านั้น",
+      });
+      return;
+    }
+
     try {
       await warehouseService.deleteItem(itemId);
       resetPage();
       await loadItems();
+      setDeleteItem(null);
       showToast({
         type: "success",
         title: "ส่งคำขอสำเร็จ",
@@ -208,20 +227,24 @@ export function InventoryTable() {
     }
 
     try {
-      const updated = await warehouseService.adjustItem(itemId, {
+      await warehouseService.adjustItem(itemId, {
         mode: adjustMode,
         quantity: amount,
       });
 
-      setItems((prev) => prev.map((i) => (i.id === itemId ? updated : i)));
       clearAdjustmentValue(itemId);
+      await loadItems();
       showToast({
         type: "success",
-        title: "ส่งคำขอสำเร็จ",
+        title: "บันทึกสำเร็จ",
         message:
-          adjustMode === "restock"
-            ? "ส่งคำขอเติมเวชภัณฑ์แล้ว รอการอนุมัติ"
-            : "ส่งคำขอเบิกเวชภัณฑ์แล้ว รอการอนุมัติ",
+          canManageWarehouseItems
+            ? (adjustMode === "restock"
+                ? "เติมเวชภัณฑ์เรียบร้อยแล้ว"
+                : "เบิกเวชภัณฑ์เรียบร้อยแล้ว")
+            : (adjustMode === "restock"
+                ? "ส่งคำขอเติมเวชภัณฑ์แล้ว รอการอนุมัติ"
+                : "ส่งคำขอเบิกเวชภัณฑ์แล้ว รอการอนุมัติ"),
       });
     } catch {
       alert(
@@ -275,11 +298,15 @@ export function InventoryTable() {
       await loadItems();
       showToast({
         type: "success",
-        title: "ส่งคำขอสำเร็จ",
+        title: "บันทึกสำเร็จ",
         message:
-          adjustMode === "restock"
-            ? `ส่งคำขอเติมเวชภัณฑ์ ${validEntries.length} รายการแล้ว รอการอนุมัติ`
-            : `ส่งคำขอเบิกเวชภัณฑ์ ${validEntries.length} รายการแล้ว รอการอนุมัติ`,
+          canManageWarehouseItems
+            ? (adjustMode === "restock"
+                ? `เติมเวชภัณฑ์ ${validEntries.length} รายการเรียบร้อยแล้ว`
+                : `เบิกเวชภัณฑ์ ${validEntries.length} รายการเรียบร้อยแล้ว`)
+            : (adjustMode === "restock"
+                ? `ส่งคำขอเติมเวชภัณฑ์ ${validEntries.length} รายการแล้ว รอการอนุมัติ`
+                : `ส่งคำขอเบิกเวชภัณฑ์ ${validEntries.length} รายการแล้ว รอการอนุมัติ`),
       });
     } catch {
       alert(
@@ -291,14 +318,18 @@ export function InventoryTable() {
   };
 
   const columnActionTitle =
-    adjustMode === "restock"
-      ? "เติมของ"
-      : adjustMode === "withdraw"
-        ? "เบิกของ"
-        : "แก้ไขข้อมูล";
+    adjustMode === "restock" ? (
+      <><span className="sm:hidden">เติม</span><span className="hidden sm:inline">เติมของ</span></>
+    ) : adjustMode === "withdraw" ? (
+      <><span className="sm:hidden">เบิก</span><span className="hidden sm:inline">เบิกของ</span></>
+    ) : (
+      <><span className="sm:hidden">แก้ไข</span><span className="hidden sm:inline">แก้ไขข้อมูล</span></>
+    );
 
   const saveButtonLabel =
-    adjustMode === "restock" ? "ส่งคำขอเติมของ" : "ส่งคำขอเบิกของ";
+    canManageWarehouseItems
+      ? (adjustMode === "restock" ? "บันทึกเติมของ" : "บันทึกเบิกของ")
+      : (adjustMode === "restock" ? "ส่งคำขอเติมของ" : "ส่งคำขอเบิกของ");
 
   const isSaveAllDisabled = !hasPendingAdjustments || (adjustMode === "withdraw" && hasInvalidWithdraw);
 
@@ -326,79 +357,88 @@ export function InventoryTable() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="w-full min-w-0 space-y-4 grid grid-cols-1">
+      
       {/* Action Bar */}
-      <div>
-        <div className="flex flex-wrap items-center gap-3 rounded-lg bg-[rgba(204,204,204,0.14)] p-3">
-          {/* Search */}
-          <div className="relative flex-1 min-w-[200px] max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="ค้นหาเวชภัณฑ์..."
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                resetPage();
-              }}
-              className="w-full pl-10 pr-4 py-2 border border-gray-400 bg-white shadow-sm rounded-lg placeholder:text-[#CCCCCC] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-body-small text-black"
-            />
+      <div className="w-full min-w-0">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-[rgba(204,204,204,0.14)] p-3 w-full min-w-0">
+          
+          {/* กลุ่มซ้าย: ค้นหา และ ตัวกรอง */}
+          <div className="flex flex-row items-center gap-2 w-full md:w-auto flex-1 min-w-0">
+            <div className="relative w-full md:max-w-[320px] min-w-0">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="ค้นหา..."
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  resetPage();
+                }}
+                className="w-full pl-8 pr-2 py-2 border border-gray-400 bg-white shadow-sm rounded-lg placeholder:text-[#CCCCCC] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-xs sm:text-body-small text-black min-w-0"
+              />
+            </div>
+
+            <button
+              onClick={() => setShowFilter((v) => !v)}
+              className={`flex justify-center items-center gap-1 sm:gap-2 px-3 py-2 border rounded-lg text-xs sm:text-body-small font-medium transition-colors shrink-0 ${
+                showFilter
+                  ? "border-blue-500 text-blue-600 bg-blue-50"
+                  : "text-gray-700 hover:bg-gray-50"
+              }`}
+              style={showFilter ? undefined : { borderColor: "rgba(204, 204, 204, 1)", backgroundColor: "rgba(204, 204, 204, 0.16)" }}
+            >
+              <Filter className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
+              <span className="sm:hidden">กรอง</span>
+              <span className="hidden sm:inline">ตัวกรอง</span>
+            </button>
           </div>
 
-          {/* Filter Toggle */}
-          <button
-            onClick={() => setShowFilter((v) => !v)}
-            className={`flex items-center gap-2 px-4 py-2 border rounded-lg text-body-small font-medium transition-colors ${
-              showFilter
-                ? "border-blue-500 text-blue-600 bg-blue-50"
-                : "text-gray-700 hover:bg-gray-50"
-            }`}
-            style={showFilter ? undefined : { borderColor: "rgba(204, 204, 204, 1)", backgroundColor: "rgba(204, 204, 204, 0.16)" }}
-          >
-            <Filter className="w-4 h-4" />
-            ตัวกรอง
-          </button>
+          {/* กลุ่มขวา: ปุ่ม เพิ่ม, เติม, เบิก */}
+          <div className="flex flex-row items-center gap-1 sm:gap-2 w-full md:w-auto shrink-0 mt-1 md:mt-0 min-w-0">
+            {canManageWarehouseItems && (
+              <button
+                onClick={() => setShowAdd(true)}
+                className="flex-1 md:flex-none flex items-center justify-center gap-1 sm:gap-2 px-1 sm:px-4 py-2 bg-blue-500 text-white rounded-lg text-xs sm:text-body-small font-medium hover:bg-blue-600 transition-colors min-w-0"
+              >
+                <Plus className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
+                <span className="sm:hidden truncate">เพิ่ม</span>
+                <span className="hidden sm:inline whitespace-nowrap">เพิ่มรายการเวชภัณฑ์</span>
+              </button>
+            )}
 
-          <div className="flex-1" />
-
-          {/* Action Buttons */}
-          {canAddWarehouseItems ? (
             <button
-              onClick={() => setShowAdd(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg text-body-small font-medium hover:bg-blue-600 transition-colors"
+              onClick={() => setMode("restock")}
+              className={`flex-1 md:flex-none flex items-center justify-center gap-1 sm:gap-2 px-1 sm:px-4 py-2 rounded-lg text-xs sm:text-body-small font-medium transition-colors min-w-0 ${
+                adjustMode === "restock"
+                  ? "bg-emerald-700 text-white"
+                  : "bg-emerald-600 text-white hover:bg-emerald-700"
+              }`}
             >
-              <Plus className="w-4 h-4" />
-              เพิ่มรายการเวชภัณฑ์
+              <PackagePlus className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
+              <span className="sm:hidden truncate">เติม</span>
+              <span className="hidden sm:inline whitespace-nowrap">เติมของ</span>
             </button>
-          ) : null}
-          <button
-            onClick={() => setMode("restock")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-body-small font-medium transition-colors ${
-              adjustMode === "restock"
-                ? "bg-emerald-700 text-white"
-                : "bg-emerald-600 text-white hover:bg-emerald-700"
-            }`}
-          >
-            <PackagePlus className="w-4 h-4" />
-            เติมของ
-          </button>
-          <button
-            onClick={() => setMode("withdraw")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-body-small font-medium transition-colors ${
-              adjustMode === "withdraw"
-                ? "bg-red-600 text-white"
-                : "bg-red-500 text-white hover:bg-red-600"
-            }`}
-          >
-            <PackageMinus className="w-4 h-4" />
-            เบิกของ
-          </button>
+            
+            <button
+              onClick={() => setMode("withdraw")}
+              className={`flex-1 md:flex-none flex items-center justify-center gap-1 sm:gap-2 px-1 sm:px-4 py-2 rounded-lg text-xs sm:text-body-small font-medium transition-colors min-w-0 ${
+                adjustMode === "withdraw"
+                  ? "bg-red-600 text-white"
+                  : "bg-red-500 text-white hover:bg-red-600"
+              }`}
+            >
+              <PackageMinus className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
+              <span className="sm:hidden truncate">เบิก</span>
+              <span className="hidden sm:inline whitespace-nowrap">เบิกของ</span>
+            </button>
+          </div>
         </div>
 
         {/* Filter Panel */}
         {showFilter && (
-          <div className="mt-4 rounded-lg bg-[rgba(204,204,204,0.14)] p-3 flex flex-wrap items-center gap-3">
-            <span className="text-body-small text-gray-600 font-medium">ประเภทเวชภัณฑ์:</span>
+          <div className="mt-3 rounded-lg bg-[rgba(204,204,204,0.14)] p-3 flex flex-wrap items-center gap-2 w-full">
+            <span className="text-xs sm:text-body-small text-gray-600 font-medium w-full sm:w-auto">ประเภทเวชภัณฑ์:</span>
             {(["all", "MED", "EQU", "CON"] as const).map((cat) => (
               <button
                 key={cat}
@@ -406,7 +446,7 @@ export function InventoryTable() {
                   setSelectedCategory(cat);
                   resetPage();
                 }}
-                className={`px-3 py-1.5 rounded-full text-body-small font-medium transition-colors ${
+                className={`px-3 py-1.5 rounded-full text-xs sm:text-body-small font-medium transition-colors whitespace-nowrap ${
                   selectedCategory === cat
                     ? "bg-blue-500 text-white"
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
@@ -419,152 +459,157 @@ export function InventoryTable() {
         )}
       </div>
 
-      {/* Table */}
-      <div className="overflow-hidden rounded-lg" style={{ border: '1px solid rgba(103, 103, 103, 0.48)' }}>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr style={{ backgroundColor: 'rgba(239, 242, 247, 1)', borderBottom: '1px solid rgba(103, 103, 103, 0.48)' }}>
-                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700 w-32">
-                  รหัสเวชภัณฑ์
-                </th>
-                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700 w-48">
-                  ชื่อเวชภัณฑ์
-                </th>
-                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700">
-                  รายละเอียด
-                </th>
-                <th className="text-center py-3 px-4 text-xs font-semibold text-gray-700 w-24">
-                  จำนวน
-                </th>
-                <th className="text-center py-3 px-4 text-xs font-semibold text-gray-700 w-24">
-                  หน่วย
-                </th>
-                <th className="text-center py-3 px-4 text-xs font-semibold text-gray-700 w-28">
-                  <span
-                    style={{
-                      color:
-                        adjustMode === "restock"
-                          ? "rgba(63, 140, 100, 1)"
-                          : adjustMode === "withdraw"
-                            ? "rgba(248, 63, 84, 1)"
-                            : "rgba(126, 143, 164, 1)" }}
-                  >
-                    {columnActionTitle}
-                  </span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                <tr>
-                  <td colSpan={6} className="py-12 px-4 text-center">
-                    <LoadingSpinner />
-                  </td>
+      <div className="w-full min-w-0">
+        <div className="w-full overflow-hidden rounded-lg" style={{ border: '1px solid rgba(103, 103, 103, 0.48)' }}>
+          <div className="w-full overflow-x-auto">
+            <table className="w-full min-w-[700px]">
+              <thead>
+                <tr style={{ backgroundColor: 'rgba(239, 242, 247, 1)', borderBottom: '1px solid rgba(103, 103, 103, 0.48)' }}>
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700 w-32 whitespace-nowrap">
+                    <span className="sm:hidden">รหัส</span>
+                    <span className="hidden sm:inline">รหัสเวชภัณฑ์</span>
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700 w-48 whitespace-nowrap">
+                    <span className="sm:hidden">ชื่อ</span>
+                    <span className="hidden sm:inline">ชื่อเวชภัณฑ์</span>
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700">
+                    รายละเอียด
+                  </th>
+                  <th className="text-center py-3 px-4 text-xs font-semibold text-gray-700 w-24">
+                    จำนวน
+                  </th>
+                  <th className="text-center py-3 px-4 text-xs font-semibold text-gray-700 w-24">
+                    หน่วย
+                  </th>
+                  <th className="text-center py-3 px-4 text-xs font-semibold text-gray-700 w-28">
+                    <span
+                      style={{
+                        color:
+                          adjustMode === "restock"
+                            ? "rgba(63, 140, 100, 1)"
+                            : adjustMode === "withdraw"
+                              ? "rgba(248, 63, 84, 1)"
+                              : "rgba(126, 143, 164, 1)" }}
+                    >
+                      {columnActionTitle}
+                    </span>
+                  </th>
                 </tr>
-              ) : error ? (
-                <tr>
-                  <td colSpan={6} className="py-12 px-4 text-center text-sm text-red-500">
-                    {error}
-                  </td>
-                </tr>
-              ) : paginated.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-12 px-4 text-center">
-                    <div className="text-sm text-gray-600">ไม่พบรายการเวชภัณฑ์</div>
-                    <div className="text-xs text-gray-400 mt-1">ลองเปลี่ยนคำค้นหา หรือเพิ่มรายการเวชภัณฑ์ใหม่</div>
-                  </td>
-                </tr>
-              ) : (
-                paginated.map((item) => (
-                  <tr
-                    key={item.id}
-                    className="bg-white hover:bg-gray-50 transition-colors align-middle"
-                    style={{ borderBottom: '1px solid rgba(103, 103, 103, 0.48)' }}
-                  >
-                    <td className="py-3 px-4 text-xs sm:text-sm text-gray-700 font-medium">{item.code}</td>
-                    <td className="py-3 px-4">
-                      <div className="flex flex-col">
-                        <span className="text-xs sm:text-sm text-gray-800 font-medium">{item.name}</span>
-                        {getPendingRequestCount(item) > 0 ? (
-                          <span className="mt-1 inline-flex w-fit rounded-full bg-yellow-100 px-2 py-0.5 text-[10px] font-semibold text-yellow-700">
-                            รออนุมัติ {getPendingRequestCount(item)} รายการ
-                          </span>
-                        ) : null}
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 text-xs sm:text-sm text-gray-500 max-w-xs truncate">
-                      {item.description}
-                    </td>
-                    <td className="py-3 px-4 text-xs sm:text-sm text-gray-700 text-center">
-                      {(() => {
-                        const quantityState = getQuantityState(item);
-
-                        return (
-                          <span className={`font-semibold ${quantityState?.className ?? "text-gray-700"}`} title={quantityState?.label}>
-                            {item.quantity}
-                          </span>
-                        );
-                      })()}
-                    </td>
-                    <td className="py-3 px-4 text-xs sm:text-sm text-gray-700 text-center">{item.unit}</td>
-                    <td className="py-3 px-4">
-                      {adjustMode ? (
-                        <div className="flex flex-col items-center gap-1">
-                          <div className="flex items-center justify-center gap-2">
-                            <input
-                              type="number"
-                              min={0}
-                              value={pendingAdjustments[item.id] ?? 0}
-                              onChange={(e) => setAdjustmentValue(item.id, Number(e.target.value || 0))}
-                              className={`h-10 w-34 rounded-lg border bg-white px-3 text-center text-headline-6 font-medium text-gray-700 outline-none ${
-                                isWithdrawInvalid(item)
-                                  ? "border-red-400 text-red-600"
-                                  : "border-gray-300"
-                              }`}
-                            />
-
-                            {(pendingAdjustments[item.id] ?? 0) > 0 ? (
-                              <button
-                                type="button"
-                                onClick={() => applyAdjustmentToItem(item.id, pendingAdjustments[item.id] ?? 0)}
-                                disabled={isWithdrawInvalid(item)}
-                                className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-600 text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-gray-300"
-                                title="ยืนยัน"
-                              >
-                                <Check className="h-4 w-4" />
-                              </button>
-                            ) : null}
-                          </div>
-
-                          {isWithdrawInvalid(item) ? (
-                            <p className="text-overline text-red-500">เบิกของเกินจำนวนที่มีในคลัง</p>
-                          ) : null}
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            onClick={() => setEditItem(item)}
-                            className="p-1.5 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
-                            title="แก้ไข"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => setDeleteItem(item)}
-                            className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
-                            title="ลบ"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      )}
+              </thead>
+              <tbody>
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={6} className="py-12 px-4 text-center">
+                      <LoadingSpinner />
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : error ? (
+                  <tr>
+                    <td colSpan={6} className="py-12 px-4 text-center text-sm text-red-500">
+                      {error}
+                    </td>
+                  </tr>
+                ) : paginated.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-12 px-4 text-center">
+                      <div className="text-sm text-gray-600">ไม่พบรายการเวชภัณฑ์</div>
+                      <div className="text-xs text-gray-400 mt-1">ลองเปลี่ยนคำค้นหา หรือเพิ่มรายการเวชภัณฑ์ใหม่</div>
+                    </td>
+                  </tr>
+                ) : (
+                  paginated.map((item) => (
+                    <tr
+                      key={item.id}
+                      className="bg-white hover:bg-gray-50 transition-colors align-middle"
+                      style={{ borderBottom: '1px solid rgba(103, 103, 103, 0.48)' }}
+                    >
+                      <td className="py-3 px-4 text-xs sm:text-sm text-gray-700 font-medium">{item.code}</td>
+                      <td className="py-3 px-4">
+                        <div className="flex flex-col w-max">
+                          <span className="text-xs sm:text-sm text-gray-800 font-medium">{item.name}</span>
+                          {getPendingRequestCount(item) > 0 ? (
+                            <span className="mt-1 inline-flex w-fit rounded-full bg-yellow-100 px-2 py-0.5 text-[10px] font-semibold text-yellow-700">
+                              รออนุมัติ {getPendingRequestCount(item)} รายการ
+                            </span>
+                          ) : null}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-xs sm:text-sm text-gray-500 max-w-[120px] sm:max-w-xs truncate">
+                        {item.description}
+                      </td>
+                      <td className="py-3 px-4 text-xs sm:text-sm text-gray-700 text-center">
+                        {(() => {
+                          const quantityState = getQuantityState(item);
+
+                          return (
+                            <span className={`font-semibold ${quantityState?.className ?? "text-gray-700"}`} title={quantityState?.label}>
+                              {item.quantity}
+                            </span>
+                          );
+                        })()}
+                      </td>
+                      <td className="py-3 px-4 text-xs sm:text-sm text-gray-700 text-center">{item.unit}</td>
+                      <td className="py-3 px-4">
+                        {adjustMode ? (
+                          <div className="flex flex-col items-center gap-1">
+                            <div className="flex items-center justify-center gap-2">
+                              <input
+                                type="number"
+                                min={0}
+                                value={pendingAdjustments[item.id] ?? 0}
+                                onChange={(e) => setAdjustmentValue(item.id, Number(e.target.value || 0))}
+                                className={`h-10 w-24 min-w-[80px] rounded-lg border bg-white px-3 text-center text-headline-6 font-medium text-gray-700 outline-none ${
+                                  isWithdrawInvalid(item)
+                                    ? "border-red-400 text-red-600"
+                                    : "border-gray-300"
+                                }`}
+                              />
+
+                              {(pendingAdjustments[item.id] ?? 0) > 0 ? (
+                                <button
+                                  type="button"
+                                  onClick={() => applyAdjustmentToItem(item.id, pendingAdjustments[item.id] ?? 0)}
+                                  disabled={isWithdrawInvalid(item)}
+                                  className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-600 text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+                                  title="ยืนยัน"
+                                >
+                                  <Check className="h-4 w-4" />
+                                </button>
+                              ) : null}
+                            </div>
+
+                            {isWithdrawInvalid(item) ? (
+                              <p className="text-overline text-red-500">เบิกของเกินจำนวนที่มีในคลัง</p>
+                            ) : null}
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => canManageWarehouseItems && setEditItem(item)}
+                              disabled={!canManageWarehouseItems}
+                              className={`p-1.5 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors ${!canManageWarehouseItems ? "hidden" : ""}`}
+                              title="แก้ไข"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => canManageWarehouseItems && setDeleteItem(item)}
+                              disabled={!canManageWarehouseItems}
+                              className={`p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors ${!canManageWarehouseItems ? "hidden" : ""}`}
+                              title="ลบ"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -597,7 +642,7 @@ export function InventoryTable() {
       </div>
 
       {/* Modals */}
-      {showAdd && canAddWarehouseItems && (
+      {showAdd && canManageWarehouseItems && (
         <AddItemModal
           existingItems={items}
           onClose={() => setShowAdd(false)}

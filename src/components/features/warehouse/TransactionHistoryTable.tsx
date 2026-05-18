@@ -29,7 +29,7 @@ const STATUS_STYLES: Record<ApprovalStatus, string> = {
   ไม่อนุมัติ: "bg-red-100 text-red-600" };
 
 const datePickerFieldClassName =
-  "w-[150px] [&>button]:w-full [&>button]:justify-between [&>button]:border-[#CCCCCC] [&>button]:bg-[rgba(204,204,204,0.16)] [&>button]:font-normal";
+  "w-full [&>button]:w-full [&>button]:justify-between [&>button]:border-[#CCCCCC] [&>button]:bg-[rgba(204,204,204,0.16)] [&>button]:font-normal";
 
 const formatIsoDate = (date: Date): string => {
   const year = date.getFullYear();
@@ -292,12 +292,14 @@ export function TransactionHistoryTable() {
   const columnCount = canApproveWarehouseTransactions ? 9 : 8;
 
   return (
-    <div className="space-y-4">
+    <div className="w-full min-w-0 space-y-4 grid grid-cols-1">
+      
       {/* Filter Bar */}
-      <div>
-        <div className="flex flex-wrap items-center gap-3 rounded-lg bg-[rgba(204,204,204,0.14)] p-3">
+      <div className="w-full min-w-0">
+        <div className="grid grid-cols-2 md:flex md:flex-row md:flex-wrap items-center gap-2 md:gap-3 rounded-lg bg-[rgba(204,204,204,0.14)] p-3 w-full min-w-0">
+          
           {/* Start Date */}
-          <div className="w-[150px]">
+          <div className="w-full md:w-[150px] min-w-0">
             <DatePicker
               value={parseDateValue(startDate)}
               onChange={(date) => {
@@ -310,7 +312,7 @@ export function TransactionHistoryTable() {
           </div>
 
           {/* End Date */}
-          <div className="w-[150px]">
+          <div className="w-full md:w-[150px] min-w-0">
             <DatePicker
               value={parseDateValue(endDate)}
               onChange={(date) => {
@@ -323,67 +325,71 @@ export function TransactionHistoryTable() {
           </div>
 
           {/* Search Item */}
-          <div className="relative">
+          <div className="relative w-full md:w-44 min-w-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
               placeholder="ค้นหาชื่อเวชภัณฑ์..."
               value={searchItem}
               onChange={(e) => { setSearchItem(e.target.value); resetPage(); }}
-              className="pl-10 pr-4 py-2 border border-gray-400 bg-white shadow-sm rounded-lg placeholder:text-[#CCCCCC] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-body-small text-black w-44"
+              className="w-full pl-9 pr-2 py-2 border border-gray-400 bg-white shadow-sm rounded-lg placeholder:text-[#CCCCCC] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-xs md:text-body-small text-black min-w-0"
             />
           </div>
 
           {/* Search User */}
-          <div className="relative">
+          <div className="relative w-full md:w-44 min-w-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
               placeholder="ค้นหาผู้ทำรายการ..."
               value={searchUser}
               onChange={(e) => { setSearchUser(e.target.value); resetPage(); }}
-              className="pl-10 pr-4 py-2 border border-gray-400 bg-white shadow-sm rounded-lg placeholder:text-[#CCCCCC] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-body-small text-black w-44"
+              className="w-full pl-9 pr-2 py-2 border border-gray-400 bg-white shadow-sm rounded-lg placeholder:text-[#CCCCCC] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-xs md:text-body-small text-black min-w-0"
             />
           </div>
 
           {/* Status Dropdown */}
-          <Dropdown
-            options={[
-              { value: "", label: "สถานะการอนุมัติ" },
-              { value: "รออนุมัติ", label: "รออนุมัติ" },
-              { value: "อนุมัติ", label: "อนุมัติ" },
-              { value: "ไม่อนุมัติ", label: "ไม่อนุมัติ" },
-            ]}
-            value={selectedStatus}
-            onChange={(value) => {
-              setSelectedStatus(value as "" | ApprovalStatus);
-              resetPage();
-            }}
-            className="w-44"
-          />
+          <div className="w-full md:w-44 min-w-0">
+            <Dropdown
+              options={[
+                { value: "", label: "สถานะการอนุมัติ" },
+                { value: "รออนุมัติ", label: "รออนุมัติ" },
+                { value: "อนุมัติ", label: "อนุมัติ" },
+                { value: "ไม่อนุมัติ", label: "ไม่อนุมัติ" },
+              ]}
+              value={selectedStatus}
+              onChange={(value) => {
+                setSelectedStatus(value as "" | ApprovalStatus);
+                resetPage();
+              }}
+              className="w-full"
+            />
+          </div>
 
           {/* Type Dropdown */}
-          <Dropdown
-            options={[
-              { value: "", label: "ประเภทรายการ" },
-              { value: "เพิ่มสินค้าใหม่", label: "เพิ่มเวชภัณฑ์ใหม่" },
-              { value: "เติมสินค้า", label: "เติมเวชภัณฑ์" },
-              { value: "เบิกสินค้า", label: "เบิกเวชภัณฑ์" },
-              { value: "นำออก", label: "นำออก" },
-            ]}
-            value={selectedType}
-            onChange={(value) => {
-              setSelectedType(value as "" | TransactionType);
-              resetPage();
-            }}
-            className="w-44"
-          />
+          <div className="w-full md:w-44 min-w-0">
+            <Dropdown
+              options={[
+                { value: "", label: "ประเภทรายการ" },
+                { value: "เพิ่มสินค้าใหม่", label: "เพิ่มเวชภัณฑ์ใหม่" },
+                { value: "เติมสินค้า", label: "เติมเวชภัณฑ์" },
+                { value: "เบิกสินค้า", label: "เบิกเวชภัณฑ์" },
+                { value: "นำออก", label: "นำออก" },
+              ]}
+              value={selectedType}
+              onChange={(value) => {
+                setSelectedType(value as "" | TransactionType);
+                resetPage();
+              }}
+              className="w-full"
+            />
+          </div>
         </div>
       </div>
 
       {/* Bulk Action Bar */}
       {canApproveWarehouseTransactions && checkedCount > 0 && (
-        <div className="rounded-lg px-4 py-2 flex items-center gap-3" style={{ backgroundColor: 'rgba(103, 103, 103, 0.24)' }}>
+        <div className="rounded-lg px-4 py-2 flex items-center gap-3 w-full" style={{ backgroundColor: 'rgba(103, 103, 103, 0.24)' }}>
           <span className="text-body-small text-black font-medium">
             เลือก {checkedCount} รายการ
           </span>
@@ -405,131 +411,150 @@ export function TransactionHistoryTable() {
         </div>
       )}
 
-      {/* Table */}
-      <div className="overflow-hidden rounded-lg" style={{ border: '1px solid rgba(103, 103, 103, 0.48)' }}>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr style={{ backgroundColor: 'rgba(239, 242, 247, 1)', borderBottom: '1px solid rgba(103, 103, 103, 0.48)' }}>
-                {canApproveWarehouseTransactions ? (
-                  <th className="py-3 px-4 w-10">
-                    <input
-                      type="checkbox"
-                      checked={allChecked}
-                      ref={(el) => {
-                        if (el) el.indeterminate = someChecked && !allChecked;
-                      }}
-                      onChange={toggleAll}
-                      disabled={pendingPageIds.length === 0}
-                      className="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500 cursor-pointer"
-                      aria-label="เลือกทั้งหมด"
-                    />
+      {/* Table Area */}
+      <div className="w-full min-w-0">
+        <div className="w-full overflow-hidden rounded-lg" style={{ border: '1px solid rgba(103, 103, 103, 0.48)' }}>
+          <div className="w-full overflow-x-auto">
+            <table className="w-full min-w-[800px]">
+              <thead>
+                <tr style={{ backgroundColor: 'rgba(239, 242, 247, 1)', borderBottom: '1px solid rgba(103, 103, 103, 0.48)' }}>
+                  {canApproveWarehouseTransactions ? (
+                    <th className="py-3 px-4 w-10">
+                      <input
+                        type="checkbox"
+                        checked={allChecked}
+                        ref={(el) => {
+                          if (el) el.indeterminate = someChecked && !allChecked;
+                        }}
+                        onChange={toggleAll}
+                        disabled={pendingPageIds.length === 0}
+                        className="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500 cursor-pointer"
+                        aria-label="เลือกทั้งหมด"
+                      />
+                    </th>
+                  ) : null}
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700 w-36 whitespace-nowrap">
+                    รหัสการแก้ไข
                   </th>
-                ) : null}
-                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700 w-36">
-                  รหัสการแก้ไข
-                </th>
-                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700 w-36">
-                  ประเภท
-                </th>
-                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700 w-28">
-                  รหัสเวชภัณฑ์
-                </th>
-                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700">
-                  ชื่อเวชภัณฑ์
-                </th>
-                <th className="text-center py-3 px-4 text-xs font-semibold text-gray-700 w-24">
-                  จำนวน
-                </th>
-                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700 w-28">
-                  ผู้ทำรายการ
-                </th>
-                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700 w-40">
-                  วันที่แก้ไข
-                </th>
-                <th className="text-center py-3 px-4 text-xs font-semibold text-gray-700 w-28">
-                  การอนุมัติ
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                <tr>
-                  <td colSpan={columnCount} className="py-12 px-4 text-center">
-                    <LoadingSpinner />
-                  </td>
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700 w-36 whitespace-nowrap">
+                    ประเภท
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700 w-28 whitespace-nowrap">
+                    รหัสเวชภัณฑ์
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700 whitespace-nowrap">
+                    ชื่อเวชภัณฑ์
+                  </th>
+                  <th className="text-center py-3 px-4 text-xs font-semibold text-gray-700 w-24">
+                    จำนวน
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700 w-28 whitespace-nowrap">
+                    ผู้ทำรายการ
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-700 w-40 whitespace-nowrap">
+                    วันที่แก้ไข
+                  </th>
+                  <th className="text-center py-3 px-4 text-xs font-semibold text-gray-700 w-28 whitespace-nowrap">
+                    การอนุมัติ
+                  </th>
                 </tr>
-              ) : error ? (
-                <tr>
-                  <td colSpan={columnCount} className="py-12 px-4 text-center text-sm text-red-500">
-                    {error}
-                  </td>
-                </tr>
-              ) : paginated.length === 0 ? (
-                <tr>
-                  <td colSpan={columnCount} className="py-12 px-4 text-center">
-                    <div className="text-sm text-gray-600">ไม่พบประวัติการทำรายการ</div>
-                    <div className="text-xs text-gray-400 mt-1">ยังไม่มีข้อมูลธุรกรรมตามเงื่อนไขที่เลือก</div>
-                  </td>
-                </tr>
-              ) : (
-                paginated.map((tx) => (
-                  <tr
-                    key={tx.id}
-                    className={`hover:bg-gray-50 transition-colors align-middle ${
-                      checkedMap[tx.id] ? "bg-blue-50" : "bg-white"
-                    }`}
-                    style={{ borderBottom: '1px solid rgba(103, 103, 103, 0.48)' }}
-                  >
-                    {canApproveWarehouseTransactions ? (
-                      <td className="py-3 px-4">
-                        {tx.approvalStatus === "รออนุมัติ" ? (
-                          <input
-                            type="checkbox"
-                            checked={!!checkedMap[tx.id]}
-                            onChange={() => toggleOne(tx.id)}
-                            className="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500 cursor-pointer"
-                            aria-label={`เลือกรายการ ${tx.code}`}
-                          />
-                        ) : (
-                          <span className="block h-4 w-4" aria-hidden="true" />
-                        )}
-                      </td>
-                    ) : null}
-                    <td className="py-3 px-4 text-xs sm:text-sm text-gray-700 font-medium">{tx.code}</td>
-                    <td className="py-3 px-4 text-xs sm:text-sm text-gray-700">{formatWarehouseTransactionType(tx.type)}</td>
-                    <td className="py-3 px-4 text-xs sm:text-sm text-gray-700">{tx.itemCode}</td>
-                    <td className="py-3 px-4 text-xs sm:text-sm text-gray-800 font-medium">{tx.itemName}</td>
-                    <td className="py-3 px-4 text-xs sm:text-sm text-gray-700 text-center">{tx.quantity}</td>
-                    <td className="py-3 px-4 text-xs sm:text-sm text-blue-600 underline">
-                      <button
-                        type="button"
-                        onClick={() => setActiveContactName(tx.operator)}
-                        className="hover:text-blue-800"
-                      >
-                        {tx.operator}
-                      </button>
-                    </td>
-                    <td className="py-3 px-4 text-xs sm:text-sm text-gray-700">{tx.date}</td>
-                    <td className="py-3 px-4 text-center">
-                      {tx.approvalStatus === "รออนุมัติ" ? (
-                        <ApprovalBadge status={tx.approvalStatus} />
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => void openTransactionDetail(tx.id)}
-                          className="inline-flex rounded-full"
-                          disabled={detailLoadingId === tx.id}
-                        >
-                          <ApprovalBadge status={tx.approvalStatus} />
-                        </button>
-                      )}
+              </thead>
+              <tbody>
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={columnCount} className="py-12 px-4 text-center">
+                      <LoadingSpinner />
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : error ? (
+                  <tr>
+                    <td colSpan={columnCount} className="py-12 px-4 text-center text-sm text-red-500">
+                      {error}
+                    </td>
+                  </tr>
+                ) : paginated.length === 0 ? (
+                  <tr>
+                    <td colSpan={columnCount} className="py-12 px-4 text-center">
+                      <div className="text-sm text-gray-600">ไม่พบประวัติการทำรายการ</div>
+                      <div className="text-xs text-gray-400 mt-1">ยังไม่มีข้อมูลธุรกรรมตามเงื่อนไขที่เลือก</div>
+                    </td>
+                  </tr>
+                ) : (
+                  paginated.map((tx) => {
+                    const isPending = tx.approvalStatus === "รออนุมัติ";
+                    const isClickableRow = canApproveWarehouseTransactions && isPending;
+
+                    return (
+                      <tr
+                        key={tx.id}
+                        onClick={() => {
+                          if (isClickableRow) {
+                            toggleOne(tx.id);
+                          }
+                        }}
+                        className={`transition-colors align-middle ${
+                          checkedMap[tx.id] ? "bg-blue-50" : "bg-white"
+                        } ${isClickableRow ? "cursor-pointer hover:bg-gray-50" : "hover:bg-gray-50"}`}
+                        style={{ borderBottom: '1px solid rgba(103, 103, 103, 0.48)' }}
+                      >
+                        {canApproveWarehouseTransactions ? (
+                          <td className="py-3 px-4">
+                            {isPending ? (
+                              <input
+                                type="checkbox"
+                                checked={!!checkedMap[tx.id]}
+                                onChange={() => toggleOne(tx.id)}
+                                onClick={(e) => e.stopPropagation()}
+                                className="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500 cursor-pointer"
+                                aria-label={`เลือกรายการ ${tx.code}`}
+                              />
+                            ) : (
+                              <span className="block h-4 w-4" aria-hidden="true" />
+                            )}
+                          </td>
+                        ) : null}
+                        <td className="py-3 px-4 text-xs sm:text-sm text-gray-700 font-medium whitespace-nowrap">{tx.code}</td>
+                        <td className="py-3 px-4 text-xs sm:text-sm text-gray-700 whitespace-nowrap">{formatWarehouseTransactionType(tx.type)}</td>
+                        <td className="py-3 px-4 text-xs sm:text-sm text-gray-700 whitespace-nowrap">{tx.itemCode}</td>
+                        <td className="py-3 px-4 text-xs sm:text-sm text-gray-800 font-medium min-w-[150px]">{tx.itemName}</td>
+                        <td className="py-3 px-4 text-xs sm:text-sm text-gray-700 text-center">{tx.quantity}</td>
+                        <td className="py-3 px-4 text-xs sm:text-sm text-blue-600 underline whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveContactName(tx.operator);
+                            }}
+                            className="hover:text-blue-800 relative z-10"
+                          >
+                            {tx.operator}
+                          </button>
+                        </td>
+                        <td className="py-3 px-4 text-xs sm:text-sm text-gray-700 whitespace-nowrap">{tx.date}</td>
+                        <td className="py-3 px-4 text-center">
+                          {isPending ? (
+                            <ApprovalBadge status={tx.approvalStatus} />
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openTransactionDetail(tx.id);
+                              }}
+                              className="inline-flex rounded-full relative z-10"
+                              disabled={detailLoadingId === tx.id}
+                            >
+                              <ApprovalBadge status={tx.approvalStatus} />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 

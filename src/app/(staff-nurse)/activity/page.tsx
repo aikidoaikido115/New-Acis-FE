@@ -1,9 +1,11 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Calendar, Pencil, Plus, Trash2, Copy } from "lucide-react";
+import { Ban, Calendar, Pencil, Plus, RotateCcw, Trash2, Copy } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ActivityCalendar } from "@/components/features/activity/activity-calendar";
 import { ActivityFormModal, type ActivityFormData } from "@/components/features/activity/activity-form-modal";
+import { CancelActivityModal } from "@/components/features/activity/CancelActivityModal";
+import { RestoreActivityModal } from "@/components/features/activity/RestoreActivityModal";
 import { Modal } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
 import { activityService } from "@/services/activity.service";
@@ -11,6 +13,7 @@ import { activityScheduleService } from "@/services/activity-schedule.service";
 import { activityParticipationService } from "@/services/activity-participation.service";
 import { ContactInformationModal } from "@/components/shared/contact/ContactInformationModal";
 import { resolveContactInfo } from "@/components/shared/contact/contactDirectory";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { Activity } from "@/types/activity";
 import type { ActivitySchedule } from "@/types/activity-schedule";
 
@@ -58,12 +61,41 @@ function EmptyActivityCard({ selectedDate, onAddActivity }: EmptyActivityCardPro
   );
 }
 
+function ActivityScheduleSkeletonCard() {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="border-b border-slate-200 px-6 py-4">
+        <Skeleton className="h-5 w-64" />
+      </div>
+      <div className="px-6 py-4 space-y-4">
+        {Array.from({ length: 3 }).map((_, idx) => (
+          <div key={idx} className="flex gap-4 border-b border-slate-100 pb-4 last:border-b-0">
+            <div className="hidden w-16 sm:flex flex-col items-center gap-2">
+              <Skeleton className="h-4 w-10" />
+              <Skeleton className="h-4 w-4 rounded-full" />
+              <Skeleton className="h-12 w-px" />
+            </div>
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-2/3" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 interface ActivityScheduleCardProps {
   selectedDate: Date;
   items: ActivitySchedule[];
+  activities: Activity[];
   onAddActivity: () => void;
   onEdit: (schedule: ActivitySchedule) => void;
   onDelete: (schedule: ActivitySchedule) => void;
+  onCancel: (schedule: ActivitySchedule) => void;
+  onRestore: (schedule: ActivitySchedule) => void;
   onCopy: (schedule: ActivitySchedule, activity?: Activity) => void;
   onCheckIn: (schedule: ActivitySchedule, activity: Activity | undefined, mode: "checkin" | "history") => void;
   resolveActivity: (schedule: ActivitySchedule) => Activity | undefined;
@@ -73,9 +105,12 @@ interface ActivityScheduleCardProps {
 function ActivityScheduleCard({
   selectedDate,
   items,
+  activities,
   onAddActivity,
   onEdit,
   onDelete,
+  onCancel,
+  onRestore,
   onCopy,
   onCheckIn,
   resolveActivity,
@@ -87,6 +122,7 @@ function ActivityScheduleCard({
   const monthName = MONTHS[selectedDate.getMonth()];
   
   const resolveCheckInState = (schedule: ActivitySchedule) => {
+    if (schedule.status === "cancelled") return "cancelled";
     const rawStart = schedule.start_time || schedule.date;
     if (!rawStart) return "active";
     const start = new Date(rawStart);
@@ -113,10 +149,13 @@ function ActivityScheduleCard({
       <div className="px-6">
         <div className="max-h-[42vh] overflow-y-auto pr-2 lg:max-h-[56vh] divide-y divide-slate-100">
         {items.map((item, index) => {
-          const activity = resolveActivity(item);
+          const cachedActivity = activities.find((activity) => activity.activity_id === item.activity_id);
+          const activity = cachedActivity || resolveActivity(item);
           const isLast = index === items.length - 1;
-          const description = activity?.description && activity.description.trim() ? activity.description : "-";
-          const location = activity?.location && activity.location.trim() ? activity.location : "-";
+          const descriptionValue = item.description ?? activity?.description;
+          const locationValue = item.location ?? activity?.location;
+          const description = descriptionValue && descriptionValue.trim() ? descriptionValue : "-";
+          const location = locationValue && locationValue.trim() ? locationValue : "-";
           
           const resolveUpdatedBy = () => {
           const staffObj = (activity as any)?.staff || (activity as any)?.Staff;
@@ -145,9 +184,10 @@ function ActivityScheduleCard({
         };
           const updatedByName = resolveUpdatedBy();
           const checkInState = resolveCheckInState(item);
+          const isCancelled = item.status === "cancelled";
           
           return (
-            <div key={item.as_id} className="flex gap-4 py-4">
+            <div key={item.as_id || index} className="flex gap-4 py-4">
               {!isSmallScreen && (
                 <div className="flex w-16 flex-col items-center">
                   <span className="text-xs font-semibold text-slate-600">
@@ -163,9 +203,14 @@ function ActivityScheduleCard({
                     <p className="text-xs text-slate-500">
                       [{formatTime(item.start_time)} - {formatTime(item.end_time)}]
                     </p>
-                    <p className="text-base font-semibold text-slate-800">
+                    <p className={`text-base font-semibold ${isCancelled ? "text-slate-500 line-through" : "text-slate-800"}`}>
                       {activity?.activity_name || "-"}
                     </p>
+                    {isCancelled && (
+                      <span className="inline-flex w-fit rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700">
+                        งดกิจกรรม
+                      </span>
+                    )}
                     <p className="text-sm text-slate-600">รายละเอียด: {description}</p>
                     <p className="text-sm text-slate-500">สถานที่: {location}</p>
                   </div>
@@ -173,6 +218,25 @@ function ActivityScheduleCard({
                     <span className="hidden sm:inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600">
                       {activity?.activity_type || "-"}
                     </span>
+                    {isCancelled ? (
+                      <button
+                        type="button"
+                        onClick={() => onRestore(item)}
+                        className="rounded-lg p-1 text-emerald-600 transition hover:bg-emerald-50 hover:text-emerald-700"
+                        aria-label="ยกเลิกงดกิจกรรม"
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => onCancel(item)}
+                        className="rounded-lg p-1 text-amber-600 transition hover:bg-amber-50 hover:text-amber-700"
+                        aria-label="งดกิจกรรม"
+                      >
+                        <Ban className="h-4 w-4" />
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => onEdit(item)}
@@ -214,7 +278,16 @@ function ActivityScheduleCard({
                       "-"
                     )}
                   </p>
-                  {checkInState === "active" ? (
+                  {checkInState === "cancelled" ? (
+                    <button
+                      type="button"
+                      className="rounded-md bg-slate-200 px-5 py-2 text-xs font-semibold text-slate-500 cursor-not-allowed"
+                      aria-disabled="true"
+                      title="งดกิจกรรม"
+                    >
+                      งดกิจกรรม
+                    </button>
+                  ) : checkInState === "active" ? (
                     <button
                       type="button"
                       className="rounded-md bg-[#0093EF] px-5 py-2 text-xs font-semibold text-white transition hover:bg-blue-500"
@@ -327,12 +400,18 @@ export default function ActivityPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [scheduleItems, setScheduleItems] = useState<ActivitySchedule[]>([]);
+  const [isLoadingActivities, setIsLoadingActivities] = useState(true);
+  const [isLoadingSchedules, setIsLoadingSchedules] = useState(true);
   const [schedulesByMonth, setSchedulesByMonth] = useState<Record<string, number>>({}); 
   const [editingSchedule, setEditingSchedule] = useState<ActivitySchedule | null>(null);
   const [prefillValues, setPrefillValues] = useState<Partial<ActivityFormData> | undefined>(undefined);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ActivitySchedule | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState<ActivitySchedule | null>(null);
+  const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false);
+  const [restoreTarget, setRestoreTarget] = useState<ActivitySchedule | null>(null);
   
   const [activeContactName, setActiveContactName] = useState<string | null>(null);
 
@@ -363,6 +442,7 @@ export default function ActivityPage() {
   }, []); // รันครั้งเดียวตอนโหลด
 
   const loadActivities = useCallback(async () => {
+    setIsLoadingActivities(true);
     try {
       const data = await activityService.getAll();
       setActivities(data);
@@ -372,6 +452,8 @@ export default function ActivityPage() {
         title: "โหลดกิจกรรมไม่สำเร็จ",
         message: error?.message || "ไม่สามารถโหลดรายการกิจกรรมจากระบบได้",
       });
+    } finally {
+      setIsLoadingActivities(false);
     }
   }, [showToast]);
 
@@ -381,6 +463,7 @@ export default function ActivityPage() {
 
   const loadSchedules = useCallback(
     async (dateKey: string) => {
+      setIsLoadingSchedules(true);
       try {
         const data = await activityScheduleService.getByDate(dateKey);
         setScheduleItems(data);
@@ -395,6 +478,8 @@ export default function ActivityPage() {
           title: "โหลดตารางกิจกรรมไม่สำเร็จ",
           message: error?.message || "ไม่สามารถโหลดตารางกิจกรรมได้",
         });
+      } finally {
+        setIsLoadingSchedules(false);
       }
     },
     [showToast]
@@ -466,77 +551,104 @@ export default function ActivityPage() {
   );
 
   const handleSubmitActivity = async (data: ActivityFormData) => {
-  const payload = {
-    activity_name: data.name.trim(),
-    activity_type: data.type.trim(),
-    description: data.description.trim() ? data.description.trim() : null,
-    location: data.location.trim() ? data.location.trim() : null,
-  };
-
-  try {
-    let activityId = data.activityId;
-
-    if (activityId) {
-      await activityService.update(activityId, payload);
-    } else {
-      const newActivity = await activityService.create(payload);
-      activityId = newActivity.activity_id;
-    }
-
-    const schedulePayload = {
-      activity_id: activityId,
-      date: data.date,
-      start_time: data.startTime,
-      end_time: data.endTime,
+    const payload = {
+      activity_name: data.name.trim(),
+      activity_type: data.type.trim(),
+      description: data.description.trim() ? data.description.trim() : null,
+      location: data.location.trim() ? data.location.trim() : null,
     };
 
-    if (editingSchedule) {
-      await activityScheduleService.update(editingSchedule.as_id, schedulePayload);
-    } else {
-      await activityScheduleService.create(schedulePayload);
-    }
-
-    const nextDate = parseLocalDate(data.date) || selectedDate;
-    const dateKey = toDateKey(nextDate);
-
-    await Promise.all([
-      loadActivities(),        // โหลดรายการกิจกรรมทั้งหมดใหม่ (เพื่อให้ได้ชื่อ Staff ล่าสุด)
-      loadSchedules(dateKey)   // โหลดตารางของวันนั้นใหม่
-    ]);
-
     try {
-      const freshSchedules = await activityScheduleService.getAll();
-      const schedulesMap: Record<string, number> = {};
-      freshSchedules.forEach((s) => {
-        const k = toDateKey(new Date(s.date));
-        schedulesMap[k] = (schedulesMap[k] ?? 0) + 1;
+      let activityId = data.activityId;
+      let resolvedActivityName = data.name.trim();
+      let resolvedActivityType = data.type.trim();
+
+      // 1. อัปเดต/สร้าง ข้อมูลกิจกรรมหลัก (Activity) ก่อน
+      if (activityId) {
+        await activityService.update(activityId, payload);
+        const matchedActivity = activities.find((activity) => activity.activity_id === activityId);
+        resolvedActivityName = matchedActivity?.activity_name || resolvedActivityName;
+        resolvedActivityType = matchedActivity?.activity_type || resolvedActivityType;
+      } else {
+        const newActivity = await activityService.create(payload);
+        activityId = newActivity.activity_id;
+        resolvedActivityName = newActivity.activity_name;
+        resolvedActivityType = newActivity.activity_type;
+      }
+
+      // 2. จัดเตรียมข้อมูลวันเวลาสำหรับตาราง (Schedule)
+      const schedulePayload = {
+        activity_id: activityId,
+        activity_name: resolvedActivityName,
+        activity_type: resolvedActivityType,
+        description: payload.description,
+        location: payload.location,
+        date: data.date,
+        start_time: data.startTime,
+        end_time: data.endTime,
+      };
+
+      // 3. บันทึกลงตารางเวลาตามโหมด
+      if (editingSchedule) {
+        await activityScheduleService.update(editingSchedule.as_id, schedulePayload);
+      } else if (data.isRecurring) {
+        await activityScheduleService.createRecurring({
+          activity_id: activityId,
+          activity_name: resolvedActivityName,
+          activity_type: resolvedActivityType,
+          start_date: data.date,
+          end_date: data.repeatEndDate || data.date,
+          start_time: data.startTime,
+          end_time: data.endTime,
+          repeat_days: data.repeatDays,
+        });
+      } else {
+        await activityScheduleService.create(schedulePayload);
+      }
+
+      // 4. ดึงข้อมูลใหม่มาแสดงผล
+      const nextDate = parseLocalDate(data.date) || selectedDate;
+      const dateKey = toDateKey(nextDate);
+
+      await Promise.all([
+        loadActivities(),
+        loadSchedules(dateKey)
+      ]);
+
+      try {
+        const freshSchedules = await activityScheduleService.getAll();
+        const schedulesMap: Record<string, number> = {};
+        freshSchedules.forEach((s) => {
+          const k = toDateKey(new Date(s.date));
+          schedulesMap[k] = (schedulesMap[k] ?? 0) + 1;
+        });
+        setSchedulesByMonth(schedulesMap);
+      } catch { /* ignore */ }
+
+      showToast({
+        type: "success",
+        title: editingSchedule ? "แก้ไขสำเร็จ" : "บันทึกสำเร็จ",
+        message: editingSchedule ? "แก้ไขตารางกิจกรรมเรียบร้อยแล้ว" : "บันทึกตารางกิจกรรมเรียบร้อยแล้ว",
       });
-      setSchedulesByMonth(schedulesMap);
-    } catch { /* ignore */ }
 
-    showToast({
-      type: "success",
-      title: editingSchedule ? "แก้ไขสำเร็จ" : "บันทึกสำเร็จ",
-      message: editingSchedule ? "แก้ไขตารางกิจกรรมเรียบร้อยแล้ว" : "บันทึกตารางกิจกรรมเรียบร้อยแล้ว",
-    });
+      if (nextDate.getTime() !== selectedDate.getTime()) {
+        setSelectedDate(nextDate);
+      }
+      
+      setIsModalOpen(false);
+      setEditingSchedule(null);
 
-    if (nextDate.getTime() !== selectedDate.getTime()) {
-      setSelectedDate(nextDate);
+    } catch (error: any) {
+      showToast({
+        type: "error",
+        title: "บันทึกไม่สำเร็จ",
+        message: error?.message || "เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์",
+      });
     }
-    
-    setIsModalOpen(false);
-    setEditingSchedule(null);
+  };
 
-  } catch (error: any) {
-    showToast({
-      type: "error",
-      title: "บันทึกไม่สำเร็จ",
-      message: error?.message || "เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์",
-    });
-  }
-};
   const resolveActivity = useCallback(
-    (schedule: ActivitySchedule) => schedule.activity || activities.find((activity) => activity.activity_id === schedule.activity_id),
+    (schedule: ActivitySchedule) => activities.find((activity) => activity.activity_id === schedule.activity_id) || schedule.activity,
     [activities]
   );
 
@@ -564,6 +676,26 @@ export default function ActivityPage() {
   const handleRequestDelete = (schedule: ActivitySchedule) => {
     setDeleteTarget(schedule);
     setIsDeleteModalOpen(true);
+  };
+
+  const handleRequestCancel = (schedule: ActivitySchedule) => {
+    setCancelTarget(schedule);
+    setIsCancelModalOpen(true);
+  };
+
+  const handleRequestRestore = (schedule: ActivitySchedule) => {
+    setRestoreTarget(schedule);
+    setIsRestoreModalOpen(true);
+  };
+
+  const handleCancelClosed = () => {
+    setIsCancelModalOpen(false);
+    setCancelTarget(null);
+  };
+
+  const handleRestoreClosed = () => {
+    setIsRestoreModalOpen(false);
+    setRestoreTarget(null);
   };
 
   const handleCloseDelete = () => {
@@ -644,6 +776,9 @@ export default function ActivityPage() {
   }, [prefillValues, editingSchedule, resolveActivity]);
 
   const deleteActivity = deleteTarget ? resolveActivity(deleteTarget) : undefined;
+  const cancelActivity = cancelTarget ? resolveActivity(cancelTarget) : undefined;
+  const restoreActivity = restoreTarget ? resolveActivity(restoreTarget) : undefined;
+  const isSchedulePending = isLoadingSchedules || isLoadingActivities;
 
   const handleCheckIn = (schedule: ActivitySchedule, activity: Activity | undefined, mode: "checkin" | "history") => {
     const title = activity?.activity_name || schedule.activity?.activity_name || "กิจกรรม";
@@ -673,15 +808,20 @@ export default function ActivityPage() {
             onSelectDate={setSelectedDate}
             schedulesByMonth={schedulesByMonth}
           />
-          {displayScheduleItems.length === 0 ? (
+          {isSchedulePending ? (
+            <ActivityScheduleSkeletonCard />
+          ) : displayScheduleItems.length === 0 ? (
             <EmptyActivityCard selectedDate={selectedDate} onAddActivity={handleAddActivity} />
           ) : (
             <ActivityScheduleCard
               selectedDate={selectedDate}
               items={displayScheduleItems}
+              activities={activities}
               onAddActivity={handleAddActivity}
               onEdit={handleEditSchedule}
               onDelete={handleRequestDelete}
+              onCancel={handleRequestCancel}
+              onRestore={handleRequestRestore}
               onCopy={handleCopySchedule}
               onCheckIn={handleCheckIn}
               resolveActivity={resolveActivity}
@@ -744,6 +884,29 @@ export default function ActivityPage() {
         onCreateActivityOption={handleCreateActivityOption}
         mode={editingSchedule ? "edit" : "create"}
         initialValues={modalInitialValues}
+      />
+
+      <CancelActivityModal
+        isOpen={isCancelModalOpen}
+        onClose={handleCancelClosed}
+        scheduleId={cancelTarget?.as_id || ""}
+        seriesId={cancelTarget?.series_id}
+        activityName={cancelActivity?.activity_name}
+        onCancelled={async () => {
+          await loadSchedules(toDateKey(selectedDate));
+          showToast({ type: "success", title: "งดกิจกรรมสำเร็จ", message: "" });
+        }}
+      />
+
+      <RestoreActivityModal
+        isOpen={isRestoreModalOpen}
+        onClose={handleRestoreClosed}
+        scheduleId={restoreTarget?.as_id || ""}
+        activityName={restoreActivity?.activity_name}
+        onRestored={async () => {
+          await loadSchedules(toDateKey(selectedDate));
+          showToast({ type: "success", title: "ยกเลิกงดสำเร็จ", message: "" });
+        }}
       />
 
       {activeContactName ? (

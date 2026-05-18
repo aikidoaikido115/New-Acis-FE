@@ -187,17 +187,25 @@ export default function AdminRelativeUsersPage() {
   };
 
   return (
-    <div className="flex flex-col gap-6 p-4 sm:p-6 lg:p-8">
-      <div>
-        <h2 className="text-headline-5 font-bold text-gray-800">จัดการบัญชีญาติ</h2>
-        <p className="mt-1 text-sm text-slate-500">แสดงบัญชีผู้ใช้งานที่เป็นญาติ พร้อมสิทธิ์ลบโดยผู้ดูแลระบบ</p>
+    <div className="grid grid-cols-1 gap-4 sm:gap-6 p-3 sm:p-6 lg:p-8 w-full max-w-full overflow-x-hidden min-w-0">
+      
+      {/* Header */}
+      <div className="w-full min-w-0">
+        <h2 className="text-headline-6 sm:text-headline-5 font-bold text-gray-800 truncate">จัดการบัญชีญาติ</h2>
+        <p className="mt-1 text-xs sm:text-sm text-slate-500 truncate">แสดงบัญชีผู้ใช้งานที่เป็นญาติ พร้อมสิทธิ์ลบโดยผู้ดูแลระบบ</p>
       </div>
 
-      <AdminSectionTabs />
+      {/* Tabs */}
+      <div className="w-full min-w-0">
+        <AdminSectionTabs />
+      </div>
 
-      <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="grid gap-3 border-b border-slate-200 px-4 py-4 sm:px-6 lg:grid-cols-5">
-          <div className="relative lg:col-span-2">
+      <section className="rounded-2xl border border-slate-200 bg-white shadow-sm w-full max-w-[calc(100vw-24px)] sm:max-w-full min-w-0 overflow-hidden flex flex-col">
+        
+        {/* ส่วนตัวกรอง (Filter Bar) */}
+        <div className="flex flex-col lg:flex-row gap-3 border-b border-slate-200 px-4 py-4 sm:px-6 w-full min-w-0">
+          
+          <div className="relative w-full lg:flex-1 min-w-0">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
@@ -207,103 +215,117 @@ export default function AdminRelativeUsersPage() {
                 setCurrentPage(1);
               }}
               placeholder="ค้นหาจากชื่อผู้สูงอายุ หรือชื่อผู้ใช้ญาติ"
-              className="h-10 w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-sm text-slate-700 outline-none transition focus:border-blue-400"
+              className="h-10 w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-sm text-slate-700 outline-none transition focus:border-blue-400 min-w-0"
             />
           </div>
 
-          <Dropdown
-            value={alphabetFilter}
-            onChange={(value) => {
-              setAlphabetFilter(value as AlphabetFilter);
-              setCurrentPage(1);
-            }}
-            options={ALPHABET_FILTER_OPTIONS}
-            className="h-10"
-          />
+          <div className="flex flex-row gap-2 w-full lg:w-auto shrink-0 min-w-0">
+            <div className="flex-1 lg:w-44 min-w-0">
+              <Dropdown
+                value={alphabetFilter}
+                onChange={(value) => {
+                  setAlphabetFilter(value as AlphabetFilter);
+                  setCurrentPage(1);
+                }}
+                options={ALPHABET_FILTER_OPTIONS}
+                className="h-10 w-full"
+              />
+            </div>
 
-          <Dropdown
-            value={dateFilter}
-            onChange={(value) => {
-              setDateFilter(value as DateFilter);
-              setCurrentPage(1);
-            }}
-            options={DATE_FILTER_OPTIONS}
-            className="h-10"
-          />
+            <div className="flex-1 lg:w-44 min-w-0">
+              <Dropdown
+                value={dateFilter}
+                onChange={(value) => {
+                  setDateFilter(value as DateFilter);
+                  setCurrentPage(1);
+                }}
+                options={DATE_FILTER_OPTIONS}
+                className="h-10 w-full"
+              />
+            </div>
+          </div>
 
+          {/* ปุ่มล้างตัวกรอง */}
           <button
             type="button"
             onClick={handleResetFilters}
             disabled={!hasActiveFilters}
-            className="h-10 rounded-lg border border-slate-300 px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+            className="h-10 w-full lg:w-auto shrink-0 rounded-lg border border-slate-300 px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 min-w-0"
           >
             ล้างตัวกรอง
           </button>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead className="bg-slate-50 text-left text-slate-600">
-              <tr>
-                <th className="px-4 py-3 font-medium sm:px-6">
-                  <button type="button" onClick={() => handleSort("residentName")} className="inline-flex items-center gap-1.5">
-                    ชื่อผู้สูงอายุ
-                    <ArrowUpDown className="h-3.5 w-3.5" />
-                  </button>
-                </th>
-                <th className="px-4 py-3 font-medium">
-                  <button type="button" onClick={() => handleSort("createdAt")} className="inline-flex items-center gap-1.5">
-                    วันที่สร้างบัญชี
-                    <ArrowUpDown className="h-3.5 w-3.5" />
-                  </button>
-                </th>
-                <th className="px-4 py-3 font-medium text-right sm:px-6">การจัดการ</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {isLoading && (
+        {/* ตารางเลื่อนซ้ายขวา */}
+        <div className="w-full min-w-0 overflow-hidden">
+          <div className="w-full overflow-x-auto">
+            <table className="w-full min-w-[400px] sm:min-w-[600px] text-sm">
+              <thead className="bg-slate-50 text-left text-slate-600">
                 <tr>
-                  <td colSpan={6} className="px-6 py-10 text-center">
-                    <LoadingSpinner />
-                  </td>
+                  <th className="px-2 sm:px-6 py-3 font-medium whitespace-nowrap">
+                    <button type="button" onClick={() => handleSort("residentName")} className="inline-flex items-center gap-1.5 hover:text-blue-600">
+                      ชื่อผู้สูงอายุ
+                      <ArrowUpDown className="h-3.5 w-3.5" />
+                    </button>
+                  </th>
+                  <th className="px-2 sm:px-4 py-3 font-medium whitespace-nowrap">
+                    <button type="button" onClick={() => handleSort("createdAt")} className="inline-flex items-center gap-1.5 hover:text-blue-600">
+                      วันที่สร้างบัญชี
+                      <ArrowUpDown className="h-3.5 w-3.5" />
+                    </button>
+                  </th>
+                  <th className="px-2 sm:px-6 py-3 font-medium text-right whitespace-nowrap">การจัดการ</th>
                 </tr>
-              )}
+              </thead>
 
-              {paginatedUsers.map((user) => {
-                const isDeleting = isDeletingUserId === user.id;
-
-                return (
-                  <tr key={user.id} className="border-t border-slate-100 text-slate-700">
-                    <td className="px-4 py-3 font-medium text-gray-800 sm:px-6">{user.residentName || "-"}</td>
-                    <td className="px-4 py-3 text-xs text-slate-500">{formatDateTime(user.createdAt)}</td>
-                    <td className="px-4 py-3 sm:px-6">
-                      <div className="flex justify-end">
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteUser(user.id)}
-                          disabled={isDeleting}
-                          className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1 text-xs font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                          ลบผู้ใช้
-                        </button>
-                      </div>
+              <tbody>
+                {isLoading && (
+                  <tr>
+                    <td colSpan={3} className="px-6 py-10 text-center">
+                      <LoadingSpinner />
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                )}
 
-          {!isLoading && paginatedUsers.length === 0 && (
-            <div className="px-6 py-10 text-center text-sm text-slate-500">ไม่พบข้อมูลบัญชีญาติ</div>
-          )}
+                {paginatedUsers.map((user) => {
+                  const isDeleting = isDeletingUserId === user.id;
+
+                  return (
+                    <tr key={user.id} className="border-t border-slate-100 text-slate-700 hover:bg-slate-50 transition-colors">
+                      <td className="px-2 sm:px-6 py-3 font-medium text-gray-800 whitespace-nowrap max-w-[120px] sm:max-w-[200px] truncate" title={user.residentName || "-"}>
+                        {user.residentName || "-"}
+                      </td>
+                      <td className="px-2 sm:px-4 py-3 text-[11px] sm:text-xs text-slate-500 whitespace-nowrap">{formatDateTime(user.createdAt)}</td>
+                      <td className="px-2 sm:px-6 py-3 whitespace-nowrap">
+                        <div className="flex justify-end">
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteUser(user.id)}
+                            disabled={isDeleting}
+                            className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40 whitespace-nowrap"
+                          >
+                            <Trash2 className="h-3.5 w-3.5 shrink-0" />
+                            <span className="hidden sm:inline">ลบผู้ใช้</span>
+                            <span className="sm:hidden">ลบ</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+
+            {!isLoading && paginatedUsers.length === 0 && (
+              <div className="px-6 py-10 text-center text-sm text-slate-500">ไม่พบข้อมูลบัญชีญาติ</div>
+            )}
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 px-4 py-3 text-xs text-slate-500 sm:px-6">
-          <span>แสดง {startItem}-{endItem} จากทั้งหมด {filteredAndSortedUsers.length} รายการ</span>
-          <span>
+        {/* Footer ของตาราง */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-t border-slate-200 px-4 py-3 text-xs text-slate-500 sm:px-6 w-full min-w-0">
+          <span className="shrink-0">แสดง {startItem}-{endItem} จากทั้งหมด {filteredAndSortedUsers.length} รายการ</span>
+          <span className="truncate max-w-full">
             เรียงลำดับตาม {getSortLabel(sortField)} ({sortDirection === "asc" ? "น้อยไปมาก" : "มากไปน้อย"})
           </span>
         </div>

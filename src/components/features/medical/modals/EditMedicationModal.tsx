@@ -11,7 +11,7 @@ import { Dropdown } from "@/components/ui/dropdown";
 interface EditMedicationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: EditMedicationFormData) => void;
+  onSubmit: (data: EditMedicationFormData) => void | Promise<void>;
   medication: RoutineMedication;
   patientName: string;
   patientRoom: string;
@@ -335,16 +335,19 @@ export function EditMedicationModal({
       return;
     }
 
-    onSubmit({
-      ...formData,
-      medicationName: formData.medicationName.trim(),
-      dosage: formData.dosage.trim(),
-      amount: formData.amount.trim(),
-      amountUnit: formData.amountUnit.trim(),
-      note: formData.note.trim(),
-      frequencyPerDay: Math.min(MAX_FREQUENCY_PER_DAY, Math.max(1, Math.floor(formData.frequencyPerDay))),
+    Promise.resolve(
+      onSubmit({
+        ...formData,
+        medicationName: formData.medicationName.trim(),
+        dosage: formData.dosage.trim(),
+        amount: formData.amount.trim(),
+        amountUnit: formData.amountUnit.trim(),
+        note: formData.note.trim(),
+        frequencyPerDay: Math.min(MAX_FREQUENCY_PER_DAY, Math.max(1, Math.floor(formData.frequencyPerDay))),
+      })
+    ).then(() => {
+      onClose();
     });
-    onClose();
   };
 
   const handleAmountUnitSelect = (value: string) => {

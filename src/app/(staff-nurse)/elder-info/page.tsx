@@ -164,6 +164,7 @@ export default function Page() {
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
   const [editingResidentId, setEditingResidentId] = useState<string | null>(null);
   const [editingInitialValues, setEditingInitialValues] = useState<ResidentFormState | undefined>(undefined);
+  const [isFetchingEditData, setIsFetchingEditData] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [isRelativeViewModalOpen, setIsRelativeViewModalOpen] = useState(false);
@@ -813,6 +814,7 @@ export default function Page() {
     setEditingResidentId(id);
     setEditingInitialValues(undefined);
     setModalMode("edit");
+    setIsFetchingEditData(true);
     setIsAddModalOpen(true);
 
     try {
@@ -860,6 +862,8 @@ export default function Page() {
     } catch (error) {
       setEditingInitialValues(undefined);
       alert("ไม่สามารถโหลดข้อมูลผู้สูงอายุได้ ขึ้นฟอร์มว่างให้กรอกใหม่");
+    } finally {
+      setIsFetchingEditData(false);
     }
   };
 
@@ -998,6 +1002,7 @@ export default function Page() {
         onClose={() => setIsAddModalOpen(false)}
         onSubmit={handleResidentSubmit}
         isLoading={isSubmitting}
+        isFetchingInitialData={isFetchingEditData}
         rooms={rooms}
         initialValues={editingInitialValues}
         mode={modalMode}

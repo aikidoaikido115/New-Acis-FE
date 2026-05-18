@@ -12,6 +12,7 @@ interface ModalProps {
   scrollable?: boolean;
   disableBackdropClose?: boolean;
   printable?: boolean;
+  zIndexClassName?: string;
 }
 
 const sizeClasses = {
@@ -35,6 +36,7 @@ export function Modal({
   scrollable = false,
   disableBackdropClose = false,
   printable = false,
+  zIndexClassName = "z-50",
 }: ModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
 
@@ -65,7 +67,8 @@ export function Modal({
   return (
     <div
       className={cn(
-        "fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4",
+        "fixed inset-0 flex items-center justify-center bg-black/50 p-4",
+        zIndexClassName,
         scrollable && "overflow-y-auto",
         printable && "print-modal-root"
       )}

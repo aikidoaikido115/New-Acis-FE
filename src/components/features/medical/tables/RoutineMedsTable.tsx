@@ -1,9 +1,9 @@
 "use client";
 
-import { Edit, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { useState } from "react";
 import type { RoutineMedication } from "../medical.types";
-import { AddMedicationModal, EditMedicationModal, DeleteMedicationModal } from "../modals";
+import { AddMedicationModal, DeleteMedicationModal, EditMedicationModal } from "../modals";
 import type { EditMedicationFormData } from "../modals/EditMedicationModal";
 
 interface RoutineMedsTableProps {
@@ -44,14 +44,14 @@ export function RoutineMedsTable({
     <>
       {/* Table */}
       <div className="overflow-x-auto rounded-2xl bg-[#E9EDF1] border border-[#D6DCE2]">
-        <table className="w-full">
+        <table className="w-full min-w-[700px]">
           <thead>
             <tr className="border-b border-[#CFD5DC]">
-              <th className="text-left py-3 px-4 text-xs font-medium text-gray-500">ชื่อยา</th>
-              <th className="text-left py-3 px-4 text-xs font-medium text-gray-500">ปริมาณ/ขนาด</th>
-              <th className="text-left py-3 px-4 text-xs font-medium text-gray-500">ความถี่/วัน</th>
-              <th className="text-left py-3 px-4 text-xs font-medium text-gray-500">หมายเหตุ</th>
-              <th className="text-left py-3 px-4 text-xs font-medium text-gray-500">จัดการ</th>
+              <th className="text-left py-2.5 px-3 text-[11px] sm:text-xs font-medium text-gray-500">ชื่อยา</th>
+              <th className="text-left py-2.5 px-3 text-[11px] sm:text-xs font-medium text-gray-500">ปริมาณ/ขนาด</th>
+              <th className="text-left py-2.5 px-3 text-[11px] sm:text-xs font-medium text-gray-500">ความถี่/วัน</th>
+              <th className="text-left py-2.5 px-3 text-[11px] sm:text-xs font-medium text-gray-500">หมายเหตุ</th>
+              <th className="text-center py-2.5 px-3 text-[11px] sm:text-xs font-medium text-gray-500">จัดการ</th>
             </tr>
           </thead>
           <tbody>
@@ -67,27 +67,21 @@ export function RoutineMedsTable({
             {medications.map((med, index) => (
               <tr
                 key={med.id}
-                className={`align-middle ${index !== medications.length - 1 ? "border-b border-[#CFD5DC]" : ""}`}
+                className={`align-middle ${index !== medications.length - 1 ? "border-b border-[#CFD5DC]" : ""} cursor-pointer hover:bg-[#E3E8ED] transition-colors`}
+                onDoubleClick={() => handleEditClick(med)}
               >
-                <td className="py-3 px-4 text-xs sm:text-sm font-medium text-gray-900">{med.name}</td>
-                <td className="py-3 px-4 text-xs sm:text-sm font-medium text-gray-900">{med.dose}</td>
-                <td className="py-3 px-4 text-xs sm:text-sm font-medium text-gray-900">{med.frequency}</td>
-                <td className="py-3 px-4 text-xs sm:text-sm font-medium text-gray-900">{med.note}</td>
-                <td className="py-3 px-4">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handleEditClick(med)}
-                      className="p-1 text-[#1290EB] hover:text-[#0D75C0] transition-colors"
-                      title="แก้ไข"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
+                <td className="py-2.5 px-3 text-[11px] sm:text-xs font-medium text-gray-900">{med.name}</td>
+                <td className="py-2.5 px-3 text-[11px] sm:text-xs font-medium text-gray-900">{med.dose}</td>
+                <td className="py-2.5 px-3 text-[11px] sm:text-xs font-medium text-gray-900">{med.frequency}</td>
+                <td className="py-2.5 px-3 text-[11px] sm:text-xs font-medium text-gray-900">{med.note}</td>
+                <td className="py-2.5 px-3 text-center">
+                  <div className="inline-flex items-center rounded-lg border border-[#C7D0D9] bg-white p-1 shadow-sm">
                     <button
                       onClick={() => handleDeleteClick(med)}
-                      className="p-1 text-[#FF3557] hover:text-[#D92644] transition-colors"
+                      className="flex h-7 w-7 items-center justify-center rounded-md text-[#FF3557] hover:bg-red-50 hover:text-[#D92644] transition-colors"
                       title="ลบ"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
                 </td>
@@ -107,7 +101,6 @@ export function RoutineMedsTable({
         }}
       />
 
-      {/* Edit Medication Modal */}
       {showEditModal && selectedMedication && (
         <EditMedicationModal
           isOpen={showEditModal}
