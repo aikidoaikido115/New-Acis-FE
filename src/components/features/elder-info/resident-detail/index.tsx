@@ -220,9 +220,7 @@ export function ResidentDetailModal({ isOpen, onClose, residentId }: ResidentDet
 
         @media print {
           @page {
-            /* เปลี่ยนจาก A4 portrait เป็นสัดส่วน Pixel ของ Desktop (1024 x 1448 คือสัดส่วน A4)
-               เพื่อหลอก Safari และมือถือให้ทริกเกอร์ Desktop Breakpoint */
-            size: 1024px 1448px; 
+            size: A4 portrait; /* กลับมาเป็น A4 ปกติ มือถือจะได้ไม่งง */
             margin: 5mm;
           }
 
@@ -231,7 +229,8 @@ export function ResidentDetailModal({ isOpen, onClose, residentId }: ResidentDet
             padding: 0 !important;
             background: #ffffff !important;
             display: block !important;
-            min-width: 1024px !important; /* ล็อคความกว้างให้ body */
+            height: auto !important; 
+            overflow: visible !important; 
           }
 
           :global(body.print-resident-modal *) {
@@ -252,20 +251,22 @@ export function ResidentDetailModal({ isOpen, onClose, residentId }: ResidentDet
             inset: auto !important;
             margin: 0 !important;
             padding: 0 !important;
-            width: 1024px !important; /* ล็อคความกว้างให้ Modal */
+            width: 100% !important; /* ให้ยืดตามกระดาษจริง */
             max-width: none !important;
             height: auto !important;
+            overflow: visible !important;
             border: none !important;
             box-shadow: none !important;
           }
 
           .resident-detail-print {
-            position: absolute !important;
-            top: 0 !important;
-            left: 0 !important;
+            position: relative !important; 
+            top: auto !important;
+            left: auto !important;
             margin: 0 !important;
             padding: 0 !important;
-            width: 1024px !important; /* ล็อคความกว้าง Component ให้เท่า Desktop */
+            width: 100% !important; /* ให้ยืดตามกระดาษจริง */
+            height: auto !important;
             max-height: none !important;
             overflow: visible !important;
             -webkit-print-color-adjust: exact !important;
@@ -291,6 +292,7 @@ export function ResidentDetailModal({ isOpen, onClose, residentId }: ResidentDet
 
           section {
             page-break-inside: avoid;
+            break-inside: avoid;
           }
         }
       `}</style>
