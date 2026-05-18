@@ -220,7 +220,9 @@ export function ResidentDetailModal({ isOpen, onClose, residentId }: ResidentDet
 
         @media print {
           @page {
-            size: A4 portrait;
+            /* เปลี่ยนจาก A4 portrait เป็นสัดส่วน Pixel ของ Desktop (1024 x 1448 คือสัดส่วน A4)
+               เพื่อหลอก Safari และมือถือให้ทริกเกอร์ Desktop Breakpoint */
+            size: 1024px 1448px; 
             margin: 5mm;
           }
 
@@ -229,6 +231,7 @@ export function ResidentDetailModal({ isOpen, onClose, residentId }: ResidentDet
             padding: 0 !important;
             background: #ffffff !important;
             display: block !important;
+            min-width: 1024px !important; /* ล็อคความกว้างให้ body */
           }
 
           :global(body.print-resident-modal *) {
@@ -249,7 +252,7 @@ export function ResidentDetailModal({ isOpen, onClose, residentId }: ResidentDet
             inset: auto !important;
             margin: 0 !important;
             padding: 0 !important;
-            width: 100% !important;
+            width: 1024px !important; /* ล็อคความกว้างให้ Modal */
             max-width: none !important;
             height: auto !important;
             border: none !important;
@@ -262,7 +265,7 @@ export function ResidentDetailModal({ isOpen, onClose, residentId }: ResidentDet
             left: 0 !important;
             margin: 0 !important;
             padding: 0 !important;
-            width: 100% !important;
+            width: 1024px !important; /* ล็อคความกว้าง Component ให้เท่า Desktop */
             max-height: none !important;
             overflow: visible !important;
             -webkit-print-color-adjust: exact !important;
