@@ -1,17 +1,35 @@
 "use client";
 
+import { useState } from "react";
 import {
   WarehouseAlertDialog,
   warehouseCancelButtonClassName,
-  warehouseSuccessButtonClassName } from "../../../shared/warehouse/modal";
+  warehouseSuccessButtonClassName,
+} from "../../../shared/warehouse/modal";
 
 interface ApproveTransactionsModalProps {
   count: number;
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirm: () => Promise<void> | void;
 }
 
-export function ApproveTransactionsModal({ count, onClose, onConfirm }: ApproveTransactionsModalProps) {
+export function ApproveTransactionsModal({
+  count,
+  onClose,
+  onConfirm,
+}: ApproveTransactionsModalProps) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleConfirm = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await onConfirm();
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <WarehouseAlertDialog
       title="ยืนยันการอนุมัติ"
@@ -20,11 +38,11 @@ export function ApproveTransactionsModal({ count, onClose, onConfirm }: ApproveT
       iconTone="none"
       actions={
         <>
-          <button type="button" onClick={onClose} className={warehouseCancelButtonClassName}>
+          <button type="button" onClick={onClose} disabled={isSubmitting} className={warehouseCancelButtonClassName}>
             ยกเลิก
           </button>
-          <button type="button" onClick={onConfirm} className={warehouseSuccessButtonClassName}>
-            ยืนยันอนุมัติ
+          <button type="button" onClick={handleConfirm} disabled={isSubmitting} className={warehouseSuccessButtonClassName}>
+            {isSubmitting ? "กำลังอนุมัติ..." : "ยืนยันอนุมัติ"}
           </button>
         </>
       }

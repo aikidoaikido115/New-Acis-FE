@@ -159,7 +159,7 @@ export function MedicationCard({
         }`}
       >
         {/* Card Header */}
-        <div className="flex items-center gap-3 p-3.5 lg:p-4 transition-colors">
+        <div className="flex flex-wrap items-center gap-3 p-3.5 lg:p-4 transition-colors">
           {/* Avatar */}
           {patient.profileImage ? (
             <Image
@@ -182,7 +182,7 @@ export function MedicationCard({
           </div>
 
           {/* Badges */}
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="order-4 flex w-full items-center gap-2 flex-wrap sm:order-none sm:w-auto">
             {patient.allergies.length > 0 && (
               <div className="flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-amber-600 rounded-full text-xs font-medium">
                 <AlertTriangle className="w-3 h-3" />
@@ -232,14 +232,14 @@ export function MedicationCard({
 
               return (
               <div key={med.id} className="space-y-2">
-                <div className="flex items-center justify-between py-1.5">
+                <div className="flex flex-col gap-2 py-1.5 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-800">{med.name}</p>
                     <p className="text-[11px] text-gray-500">{med.dosage}</p>
                   </div>
 
                   {/* Status Buttons */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 self-start sm:self-auto">
                     {med.status === "รอให้" && (
                       <>
                         <button
@@ -298,7 +298,7 @@ export function MedicationCard({
             )}
 
             {/* Footer Actions */}
-            <div className="flex items-center justify-between pt-2.5 border-t border-gray-100">
+            <div className="flex flex-col gap-2 pt-2.5 border-t border-gray-100 sm:flex-row sm:items-center sm:justify-between">
               <button
                 onClick={() => onViewDetails(patient.id)}
                 className="inline-flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 font-medium transition-colors"
@@ -310,7 +310,7 @@ export function MedicationCard({
                 <button
                   onClick={handleGiveAllClick}
                   disabled={isGiveAllPending}
-                  className="px-3 py-1.5 bg-blue-500 text-white rounded-lg text-xs font-medium hover:bg-blue-600 transition-colors disabled:opacity-60"
+                  className="w-full px-3 py-1.5 bg-blue-500 text-white rounded-lg text-xs font-medium hover:bg-blue-600 transition-colors disabled:opacity-60 sm:w-auto"
                 >
                   ให้ยาทั้งหมด ({pendingCount})
                 </button>
@@ -349,7 +349,7 @@ export function MedicationCard({
               </div>
             </div>
 
-            <div className="flex items-center justify-between px-3.5 py-2.5 border-t border-gray-200">
+            <div className="flex flex-col gap-2 px-3.5 py-2.5 border-t border-gray-200 sm:flex-row sm:items-center sm:justify-between">
               <button
                 onClick={() => onViewDetails(patient.id)}
                 className="inline-flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 font-medium transition-colors"
@@ -361,7 +361,7 @@ export function MedicationCard({
                 <button
                   onClick={handleGiveAllClick}
                   disabled={isGiveAllPending}
-                  className="px-3 py-1.5 bg-blue-500 text-white rounded-lg text-xs font-medium hover:bg-blue-600 transition-colors disabled:opacity-60"
+                  className="w-full px-3 py-1.5 bg-blue-500 text-white rounded-lg text-xs font-medium hover:bg-blue-600 transition-colors disabled:opacity-60 sm:w-auto"
                 >
                   ให้ยาทั้งหมด ({pendingCount})
                 </button>

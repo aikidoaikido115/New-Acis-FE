@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Clock, MapPin, ImageIcon, X, Download, Search } from "lucide-react";
 import type { ActivityParticipation } from "@/types/activity-participation";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface Activity {
   id: string;
@@ -18,9 +19,10 @@ interface DailyActivitiesProps {
   activities?: Activity[];
   participations?: ActivityParticipation[];
   lastUpdatedAt?: string;
+  isLoading?: boolean;
 }
 
-export function DailyActivities({ activities, participations, lastUpdatedAt }: DailyActivitiesProps) {
+export function DailyActivities({ activities, participations, lastUpdatedAt, isLoading = false }: DailyActivitiesProps) {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const formatTime = (value?: string): string => {
@@ -90,7 +92,21 @@ export function DailyActivities({ activities, participations, lastUpdatedAt }: D
           </h2>
         </div>
         
-        {dailyActivities.length === 0 ? (
+        {isLoading ? (
+          <div className="space-y-4">
+            {Array.from({ length: 2 }).map((_, idx) => (
+              <div key={idx} className="flex flex-col md:flex-row gap-4 p-4 border border-gray-200 rounded-lg bg-white">
+                <Skeleton className="w-full md:w-48 h-32 rounded-lg shrink-0" />
+                <div className="flex-1 space-y-3">
+                  <Skeleton className="h-7 w-44 rounded" />
+                  <Skeleton className="h-6 w-56 rounded" />
+                  <Skeleton className="h-4 w-full rounded" />
+                  <Skeleton className="h-4 w-2/3 rounded" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : dailyActivities.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-gray-500">
             <span className="mb-4">
               <svg width="123" height="123" viewBox="0 0 123 123" fill="none" xmlns="http://www.w3.org/2000/svg">

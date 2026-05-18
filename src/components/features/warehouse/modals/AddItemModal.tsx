@@ -31,7 +31,7 @@ interface AddItemModalProps {
     minimumQuantity?: number;
     unit: string;
     category: ItemCategory;
-  }) => void;
+  }) => Promise<void> | void;
 }
 
 function getNextItemCode(category: ItemCategory, items: WarehouseItem[]) {
@@ -45,6 +45,7 @@ function getNextItemCode(category: ItemCategory, items: WarehouseItem[]) {
 }
 
 export function AddItemModal({ existingItems, onClose, onConfirm }: AddItemModalProps) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -88,26 +89,32 @@ export function AddItemModal({ existingItems, onClose, onConfirm }: AddItemModal
     onClose();
   };
 
-  const submitAndClose = () => {
+  const submitAndClose = async () => {
     setShowValidation(true);
-    if (!canSubmit) {
+    if (!canSubmit || isSubmitting) {
       return;
     }
 
-    onConfirm({
-      code,
-      name: formData.name.trim(),
-      description: formData.description.trim(),
-      quantity: formData.quantity,
-      minimumQuantity: formData.minimumQuantity,
-      unit: formData.unit.trim(),
-      category: formData.category });
-    onClose();
+    setIsSubmitting(true);
+    try {
+      await onConfirm({
+        code,
+        name: formData.name.trim(),
+        description: formData.description.trim(),
+        quantity: formData.quantity,
+        minimumQuantity: formData.minimumQuantity,
+        unit: formData.unit.trim(),
+        category: formData.category,
+      });
+      onClose();
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    submitAndClose();
+    await submitAndClose();
   };
 
   return (
@@ -221,13 +228,13 @@ export function AddItemModal({ existingItems, onClose, onConfirm }: AddItemModal
           </div>
 
           <WarehouseModalFooter>
-            <button type="button" onClick={handleRequestClose} className={warehouseCancelButtonClassName}>
+            <button type="button" onClick={handleRequestClose} disabled={isSubmitting} className={warehouseCancelButtonClassName}>
               ยกเลิก
             </button>
             <button
               type="submit"
               className={canSubmit ? warehouseSuccessButtonClassName : warehouseDisabledButtonClassName}
-              disabled={!canSubmit && showValidation}
+              disabled={isSubmitting || (!canSubmit && showValidation)}
             >
               สร้างเวชภัณฑ์
             </button>

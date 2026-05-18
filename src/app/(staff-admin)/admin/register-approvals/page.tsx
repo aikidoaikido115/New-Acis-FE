@@ -262,23 +262,30 @@ export default function AdminRegisterApprovalsPage() {
   };
 
   return (
-    <div className="flex flex-col gap-6 p-4 sm:p-6 lg:p-8">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-headline-5 font-bold text-gray-800">อนุมัติการสมัครใช้งาน</h2>
-          <p className="mt-1 text-sm text-slate-500">ตรวจสอบและอนุมัติผู้ที่สมัครใช้งานระบบ</p>
+    <div className="grid grid-cols-1 gap-4 sm:gap-6 p-3 sm:p-6 lg:p-8 w-full max-w-full overflow-x-hidden min-w-0">
+      
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full min-w-0">
+        <div className="min-w-0">
+          <h2 className="text-headline-6 sm:text-headline-5 font-bold text-gray-800 truncate">อนุมัติการสมัครใช้งาน</h2>
+          <p className="mt-1 text-xs sm:text-sm text-slate-500 truncate">ตรวจสอบและอนุมัติผู้ที่สมัครใช้งานระบบ</p>
         </div>
 
-        <div className="inline-flex items-center rounded-full border border-yellow-200 bg-yellow-50 px-3 py-1.5 text-xs font-medium text-yellow-800">
+        <div className="inline-flex items-center rounded-full border border-yellow-200 bg-yellow-50 px-3 py-1.5 text-xs font-medium text-yellow-800 w-fit shrink-0">
           รายการที่รอตรวจสอบ {pendingCount} รายการ
         </div>
       </div>
 
-      <AdminSectionTabs />
+      {/* Tabs */}
+      <div className="w-full min-w-0">
+        <AdminSectionTabs />
+      </div>
 
-      <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="grid gap-3 border-b border-slate-200 px-4 py-4 sm:px-6 lg:grid-cols-4">
-          <div className="relative lg:col-span-2">
+      <section className="rounded-2xl border border-slate-200 bg-white shadow-sm w-full max-w-[calc(100vw-24px)] sm:max-w-full min-w-0 overflow-hidden flex flex-col">
+        
+        <div className="flex flex-col lg:flex-row gap-3 border-b border-slate-200 px-4 py-4 sm:px-6 w-full min-w-0">
+          
+          <div className="relative w-full lg:flex-1 min-w-0">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
@@ -288,142 +295,153 @@ export default function AdminRegisterApprovalsPage() {
                 setCurrentPage(1);
               }}
               placeholder="ค้นหาจากชื่อผู้ใช้ ชื่อ หรืออีเมล"
-              className="h-10 w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-sm text-slate-700 outline-none transition focus:border-blue-400"
+              className="h-10 w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-sm text-slate-700 outline-none transition focus:border-blue-400 min-w-0"
             />
           </div>
 
-          <Dropdown
-            value={roleFilter}
-            onChange={(value) => {
-              setRoleFilter(value as RoleFilter);
-              setCurrentPage(1);
-            }}
-            options={ROLE_FILTER_OPTIONS}
-            className="h-10"
-          />
-
-          <Dropdown
-            value={statusFilter}
-            onChange={(value) => {
-              setStatusFilter(value as StatusFilter);
-              setCurrentPage(1);
-            }}
-            options={STATUS_FILTER_OPTIONS}
-            className="h-10"
-          />
+          <div className="flex flex-row gap-2 w-full lg:w-auto shrink-0 min-w-0">
+            <div className="flex-1 lg:w-44 min-w-0">
+              <Dropdown
+                value={roleFilter}
+                onChange={(value) => {
+                  setRoleFilter(value as RoleFilter);
+                  setCurrentPage(1);
+                }}
+                options={ROLE_FILTER_OPTIONS}
+                className="h-10 w-full"
+              />
+            </div>
+            <div className="flex-1 lg:w-44 min-w-0">
+              <Dropdown
+                value={statusFilter}
+                onChange={(value) => {
+                  setStatusFilter(value as StatusFilter);
+                  setCurrentPage(1);
+                }}
+                options={STATUS_FILTER_OPTIONS}
+                className="h-10 w-full"
+              />
+            </div>
+          </div>
+          
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead className="bg-slate-50 text-left text-slate-600">
-              <tr>
-                <th className="px-4 py-3 font-medium sm:px-6">
-                  <button type="button" onClick={() => handleSort("username")} className="inline-flex items-center gap-1.5">
-                    ผู้ขอสมัคร
-                    <ArrowUpDown className="h-3.5 w-3.5" />
-                  </button>
-                </th>
-                <th className="px-4 py-3 font-medium">อีเมล</th>
-                <th className="px-4 py-3 font-medium">
-                  <button type="button" onClick={() => handleSort("roleRequested")} className="inline-flex items-center gap-1.5">
-                    บทบาทที่ขอ
-                    <ArrowUpDown className="h-3.5 w-3.5" />
-                  </button>
-                </th>
-                <th className="px-4 py-3 font-medium">
-                  <button type="button" onClick={() => handleSort("requestedAt")} className="inline-flex items-center gap-1.5">
-                    วันที่สมัคร
-                    <ArrowUpDown className="h-3.5 w-3.5" />
-                  </button>
-                </th>
-                <th className="px-4 py-3 font-medium">สถานะ</th>
-                <th className="px-4 py-3 font-medium text-right sm:px-6">การกระทำ</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {isLoading && (
+        <div className="w-full min-w-0 overflow-hidden">
+          <div className="w-full overflow-x-auto">
+            <table className="w-full min-w-[800px] text-sm">
+              <thead className="bg-slate-50 text-left text-slate-600">
                 <tr>
-                  <td colSpan={6} className="px-6 py-10 text-center">
-                    <LoadingSpinner />
-                  </td>
+                  <th className="px-4 py-3 font-medium sm:px-6 whitespace-nowrap">
+                    <button type="button" onClick={() => handleSort("username")} className="inline-flex items-center gap-1.5 hover:text-blue-600">
+                      ผู้ขอสมัคร
+                      <ArrowUpDown className="h-3.5 w-3.5" />
+                    </button>
+                  </th>
+                  <th className="px-4 py-3 font-medium whitespace-nowrap">อีเมล</th>
+                  <th className="px-4 py-3 font-medium whitespace-nowrap">
+                    <button type="button" onClick={() => handleSort("roleRequested")} className="inline-flex items-center gap-1.5 hover:text-blue-600">
+                      บทบาทที่ขอ
+                      <ArrowUpDown className="h-3.5 w-3.5" />
+                    </button>
+                  </th>
+                  <th className="px-4 py-3 font-medium whitespace-nowrap">
+                    <button type="button" onClick={() => handleSort("requestedAt")} className="inline-flex items-center gap-1.5 hover:text-blue-600">
+                      วันที่สมัคร
+                      <ArrowUpDown className="h-3.5 w-3.5" />
+                    </button>
+                  </th>
+                  <th className="px-4 py-3 font-medium whitespace-nowrap">สถานะ</th>
+                  <th className="px-4 py-3 font-medium text-right sm:px-6 whitespace-nowrap">การกระทำ</th>
                 </tr>
-              )}
+              </thead>
 
-              {paginatedRequests.map((request) => (
-                <tr key={request.id} className="border-t border-slate-100 text-slate-700">
-                  <td className="px-4 py-3 sm:px-6">
-                    <div className="font-medium text-gray-800">@{request.username}</div>
-                    <div className="text-xs text-slate-500">{request.name}</div>
-                  </td>
-                  <td className="px-4 py-3">{request.email}</td>
-                  <td className="px-4 py-3">{toRoleLabel(request.roleRequested)}</td>
-                  <td className="px-4 py-3 text-xs text-slate-500">{formatDateTime(request.requestedAt)}</td>
-                  <td className="px-4 py-3">
-                    <span className={cn("inline-flex rounded-full px-2.5 py-1 text-xs font-medium", getStatusBadgeClass(request.status))}>
-                      {getStatusLabel(request.status)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right sm:px-6">
-                    <div className="flex justify-end">
-                      {request.status === "pending" ? (
-                        <div className="flex items-center gap-2">
+              <tbody>
+                {isLoading && (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-10 text-center">
+                      <LoadingSpinner />
+                    </td>
+                  </tr>
+                )}
+
+                {paginatedRequests.map((request) => (
+                  <tr key={request.id} className="border-t border-slate-100 text-slate-700 hover:bg-slate-50 transition-colors">
+                    <td className="px-4 py-3 sm:px-6 whitespace-nowrap">
+                      <div className="font-medium text-gray-800">@{request.username}</div>
+                      <div className="text-xs text-slate-500 max-w-[200px] truncate" title={request.name}>{request.name}</div>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">{request.email}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">{toRoleLabel(request.roleRequested)}</td>
+                    <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">{formatDateTime(request.requestedAt)}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className={cn("inline-flex rounded-full px-2.5 py-1 text-[11px] sm:text-xs font-medium", getStatusBadgeClass(request.status))}>
+                        {getStatusLabel(request.status)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right sm:px-6 whitespace-nowrap">
+                      <div className="flex flex-row items-center justify-end gap-2">
+                        {request.status === "pending" ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleApprove(request.id)}
+                              disabled={updatingId === request.id}
+                              className={cn(
+                                "inline-flex items-center justify-center gap-1 rounded-lg px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-40 whitespace-nowrap",
+                                "border border-green-200 text-green-700 hover:bg-green-50"
+                              )}
+                            >
+                              <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                              <span className="hidden sm:inline">อนุมัติการใช้งาน</span>
+                              <span className="sm:hidden">อนุมัติ</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleReject(request.id)}
+                              disabled={updatingId === request.id}
+                              className={cn(
+                                "inline-flex items-center justify-center gap-1 rounded-lg px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-40 whitespace-nowrap",
+                                "border border-red-200 text-red-700 hover:bg-red-50"
+                              )}
+                            >
+                              <XCircle className="h-3.5 w-3.5 shrink-0" />
+                              ปฏิเสธ
+                            </button>
+                          </>
+                        ) : (
                           <button
                             type="button"
-                            onClick={() => handleApprove(request.id)}
+                            onClick={() => handleSuspend(request.id)}
                             disabled={updatingId === request.id}
                             className={cn(
-                              "inline-flex min-w-[136px] items-center justify-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-40",
-                              "border border-green-200 text-green-700 hover:bg-green-50"
-                            )}
-                          >
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                            อนุมัติการใช้งาน
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleReject(request.id)}
-                            disabled={updatingId === request.id}
-                            className={cn(
-                              "inline-flex min-w-[120px] items-center justify-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-40",
+                              "inline-flex items-center justify-center gap-1 rounded-lg px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-40 whitespace-nowrap",
                               "border border-red-200 text-red-700 hover:bg-red-50"
                             )}
                           >
-                            <XCircle className="h-3.5 w-3.5" />
-                            ปฏิเสธ
+                            <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                            <span className="hidden sm:inline">ปิดการใช้งาน</span>
+                            <span className="sm:hidden">ปิดใช้งาน</span>
                           </button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => handleSuspend(request.id)}
-                          disabled={updatingId === request.id}
-                          className={cn(
-                            "inline-flex min-w-[136px] items-center justify-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-40",
-                            "border border-red-200 text-red-700 hover:bg-red-50"
-                          )}
-                        >
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                          ปิดการใช้งาน
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
 
-          {!isLoading && paginatedRequests.length === 0 && (
-            <div className="px-6 py-10 text-center text-sm text-slate-500">
-              ไม่พบรายการสมัครตามเงื่อนไขที่เลือก
-            </div>
-          )}
+            {!isLoading && paginatedRequests.length === 0 && (
+              <div className="px-6 py-10 text-center text-sm text-slate-500">
+                ไม่พบรายการสมัครตามเงื่อนไขที่เลือก
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 px-4 py-3 text-xs text-slate-500 sm:px-6">
-          <span>แสดง {startItem}-{endItem} จาก {filteredAndSortedRequests.length} รายการ</span>
-          <span>เรียงตาม {getSortLabel(sortField)} ({sortDirection === "asc" ? "น้อยไปมาก" : "มากไปน้อย"})</span>
+        {/* Footer */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-t border-slate-200 px-4 py-3 text-xs text-slate-500 sm:px-6 w-full min-w-0">
+          <span className="shrink-0">แสดง {startItem}-{endItem} จาก {filteredAndSortedRequests.length} รายการ</span>
+          <span className="truncate max-w-full">เรียงตาม {getSortLabel(sortField)} ({sortDirection === "asc" ? "น้อยไปมาก" : "มากไปน้อย"})</span>
         </div>
       </section>
 

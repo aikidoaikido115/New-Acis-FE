@@ -1,21 +1,30 @@
 "use client";
 
+import { useState } from "react";
 import type { WarehouseItem } from "@/services/warehouse.service";
 import {
   WarehouseAlertDialog,
   warehouseCancelButtonClassName,
-  warehouseDangerButtonClassName } from "../../../shared/warehouse/modal";
+  warehouseDangerButtonClassName,
+} from "../../../shared/warehouse/modal";
 
 interface DeleteItemModalProps {
   item: WarehouseItem;
   onClose: () => void;
-  onConfirm: (itemId: string) => void;
+  onConfirm: (itemId: string) => Promise<void> | void;
 }
 
 export function DeleteItemModal({ item, onClose, onConfirm }: DeleteItemModalProps) {
-  const handleConfirm = () => {
-    onConfirm(item.id);
-    onClose();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleConfirm = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await onConfirm(item.id);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -30,10 +39,10 @@ export function DeleteItemModal({ item, onClose, onConfirm }: DeleteItemModalPro
       onClose={onClose}
       actions={
         <>
-          <button type="button" onClick={handleConfirm} className={warehouseDangerButtonClassName}>
-            นำรายการออก
+          <button type="button" onClick={handleConfirm} disabled={isSubmitting} className={warehouseDangerButtonClassName}>
+            {isSubmitting ? "กำลังส่งคำขอ..." : "นำรายการออก"}
           </button>
-          <button type="button" onClick={onClose} className={warehouseCancelButtonClassName}>
+          <button type="button" onClick={onClose} disabled={isSubmitting} className={warehouseCancelButtonClassName}>
             ยกเลิก
           </button>
         </>

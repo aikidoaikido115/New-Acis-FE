@@ -13,6 +13,7 @@ import { activityScheduleService } from "@/services/activity-schedule.service";
 import { activityParticipationService } from "@/services/activity-participation.service";
 import { ContactInformationModal } from "@/components/shared/contact/ContactInformationModal";
 import { resolveContactInfo } from "@/components/shared/contact/contactDirectory";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { Activity } from "@/types/activity";
 import type { ActivitySchedule } from "@/types/activity-schedule";
 
@@ -55,6 +56,32 @@ function EmptyActivityCard({ selectedDate, onAddActivity }: EmptyActivityCardPro
             <Plus className="h-4 w-4" />
             เพิ่มกิจกรรมในวันนี้
           </button>
+      </div>
+    </div>
+  );
+}
+
+function ActivityScheduleSkeletonCard() {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="border-b border-slate-200 px-6 py-4">
+        <Skeleton className="h-5 w-64" />
+      </div>
+      <div className="px-6 py-4 space-y-4">
+        {Array.from({ length: 3 }).map((_, idx) => (
+          <div key={idx} className="flex gap-4 border-b border-slate-100 pb-4 last:border-b-0">
+            <div className="hidden w-16 sm:flex flex-col items-center gap-2">
+              <Skeleton className="h-4 w-10" />
+              <Skeleton className="h-4 w-4 rounded-full" />
+              <Skeleton className="h-12 w-px" />
+            </div>
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-2/3" />
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -373,6 +400,8 @@ export default function ActivityPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [scheduleItems, setScheduleItems] = useState<ActivitySchedule[]>([]);
+  const [isLoadingActivities, setIsLoadingActivities] = useState(true);
+  const [isLoadingSchedules, setIsLoadingSchedules] = useState(true);
   const [schedulesByMonth, setSchedulesByMonth] = useState<Record<string, number>>({}); 
   const [editingSchedule, setEditingSchedule] = useState<ActivitySchedule | null>(null);
   const [prefillValues, setPrefillValues] = useState<Partial<ActivityFormData> | undefined>(undefined);
@@ -413,6 +442,7 @@ export default function ActivityPage() {
   }, []); // รันครั้งเดียวตอนโหลด
 
   const loadActivities = useCallback(async () => {
+    setIsLoadingActivities(true);
     try {
       const data = await activityService.getAll();
       setActivities(data);
@@ -422,6 +452,8 @@ export default function ActivityPage() {
         title: "โหลดกิจกรรมไม่สำเร็จ",
         message: error?.message || "ไม่สามารถโหลดรายการกิจกรรมจากระบบได้",
       });
+    } finally {
+      setIsLoadingActivities(false);
     }
   }, [showToast]);
 
@@ -431,6 +463,7 @@ export default function ActivityPage() {
 
   const loadSchedules = useCallback(
     async (dateKey: string) => {
+      setIsLoadingSchedules(true);
       try {
         const data = await activityScheduleService.getByDate(dateKey);
         setScheduleItems(data);
@@ -445,6 +478,8 @@ export default function ActivityPage() {
           title: "โหลดตารางกิจกรรมไม่สำเร็จ",
           message: error?.message || "ไม่สามารถโหลดตารางกิจกรรมได้",
         });
+      } finally {
+        setIsLoadingSchedules(false);
       }
     },
     [showToast]
@@ -743,6 +778,7 @@ export default function ActivityPage() {
   const deleteActivity = deleteTarget ? resolveActivity(deleteTarget) : undefined;
   const cancelActivity = cancelTarget ? resolveActivity(cancelTarget) : undefined;
   const restoreActivity = restoreTarget ? resolveActivity(restoreTarget) : undefined;
+  const isSchedulePending = isLoadingSchedules || isLoadingActivities;
 
   const handleCheckIn = (schedule: ActivitySchedule, activity: Activity | undefined, mode: "checkin" | "history") => {
     const title = activity?.activity_name || schedule.activity?.activity_name || "กิจกรรม";
@@ -772,7 +808,9 @@ export default function ActivityPage() {
             onSelectDate={setSelectedDate}
             schedulesByMonth={schedulesByMonth}
           />
-          {displayScheduleItems.length === 0 ? (
+          {isSchedulePending ? (
+            <ActivityScheduleSkeletonCard />
+          ) : displayScheduleItems.length === 0 ? (
             <EmptyActivityCard selectedDate={selectedDate} onAddActivity={handleAddActivity} />
           ) : (
             <ActivityScheduleCard

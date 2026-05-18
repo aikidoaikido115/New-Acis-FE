@@ -19,10 +19,11 @@ import {
 interface EditItemModalProps {
   item: WarehouseItem;
   onClose: () => void;
-  onConfirm: (updated: WarehouseItem) => void;
+  onConfirm: (updated: WarehouseItem) => Promise<void> | void;
 }
 
 export function EditItemModal({ item, onClose, onConfirm }: EditItemModalProps) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<WarehouseItem>({ ...item });
   const [showDiscardModal, setShowDiscardModal] = useState(false);
   const [showValidation, setShowValidation] = useState(false);
@@ -47,24 +48,30 @@ export function EditItemModal({ item, onClose, onConfirm }: EditItemModalProps) 
     onClose();
   };
 
-  const submitAndClose = () => {
+  const submitAndClose = async () => {
     setShowValidation(true);
-    if (!canSubmit) {
+    if (!canSubmit || isSubmitting) {
       return;
     }
 
-    onConfirm({
-      ...formData,
-      name: formData.name.trim(),
-      description: formData.description.trim(),
-      unit: formData.unit.trim(),
-      minimumQuantity: formData.minimumQuantity ?? 0 });
-    onClose();
+    setIsSubmitting(true);
+    try {
+      await onConfirm({
+        ...formData,
+        name: formData.name.trim(),
+        description: formData.description.trim(),
+        unit: formData.unit.trim(),
+        minimumQuantity: formData.minimumQuantity ?? 0,
+      });
+      onClose();
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    submitAndClose();
+    await submitAndClose();
   };
 
   return (
@@ -169,13 +176,13 @@ export function EditItemModal({ item, onClose, onConfirm }: EditItemModalProps) 
           </div>
 
           <WarehouseModalFooter>
-            <button type="button" onClick={handleRequestClose} className={warehouseCancelButtonClassName}>
+            <button type="button" onClick={handleRequestClose} disabled={isSubmitting} className={warehouseCancelButtonClassName}>
               ยกเลิก
             </button>
             <button
               type="submit"
               className={canSubmit ? warehouseSuccessButtonClassName : warehouseDisabledButtonClassName}
-              disabled={!canSubmit && showValidation}
+              disabled={isSubmitting || (!canSubmit && showValidation)}
             >
               แก้ไข
             </button>

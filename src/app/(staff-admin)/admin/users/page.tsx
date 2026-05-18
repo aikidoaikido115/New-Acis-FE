@@ -230,23 +230,30 @@ export default function AdminUsersPage() {
   };
 
   return (
-    <div className="flex flex-col gap-6 p-4 sm:p-6 lg:p-8">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-headline-5 font-bold text-gray-800">จัดการผู้ใช้งานระบบ</h2>
-          <p className="mt-1 text-sm text-slate-500">มอบสิทธิ์หัวหน้า ถอนสิทธิ์หัวหน้า และลบผู้ใช้ออกจากระบบ</p>
+    <div className="grid grid-cols-1 gap-4 sm:gap-6 p-3 sm:p-6 lg:p-8 w-full max-w-full overflow-x-hidden min-w-0">
+      
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full min-w-0">
+        <div className="min-w-0">
+          <h2 className="text-headline-6 sm:text-headline-5 font-bold text-gray-800 truncate">จัดการผู้ใช้งานระบบ</h2>
+          <p className="mt-1 text-xs sm:text-sm text-slate-500 truncate">มอบสิทธิ์หัวหน้า ถอนสิทธิ์หัวหน้า และลบผู้ใช้ออกจากระบบ</p>
         </div>
 
-        <div className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700">
+        <div className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 w-fit shrink-0">
           ผู้ที่มีสิทธิ์หัวหน้าทั้งหมด {totalSuperusers} คน
         </div>
       </div>
 
-      <AdminSectionTabs />
+      {/* Tabs */}
+      <div className="w-full min-w-0">
+        <AdminSectionTabs />
+      </div>
 
-      <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="grid gap-3 border-b border-slate-200 px-4 py-4 sm:px-6 lg:grid-cols-4">
-          <div className="relative lg:col-span-2">
+      <section className="rounded-2xl border border-slate-200 bg-white shadow-sm w-full max-w-[calc(100vw-24px)] sm:max-w-full min-w-0 overflow-hidden flex flex-col">
+        
+        <div className="flex flex-col lg:flex-row gap-3 border-b border-slate-200 px-4 py-4 sm:px-6 w-full min-w-0">
+          
+          <div className="relative w-full lg:flex-1 min-w-0">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
@@ -256,142 +263,153 @@ export default function AdminUsersPage() {
                 setCurrentPage(1);
               }}
               placeholder="ค้นหาจากชื่อผู้ใช้ ชื่อ หรืออีเมล"
-              className="h-10 w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-sm text-slate-700 outline-none transition focus:border-blue-400"
+              className="h-10 w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-sm text-slate-700 outline-none transition focus:border-blue-400 min-w-0"
             />
           </div>
 
-          <Dropdown
-            value={roleFilter}
-            onChange={(value) => {
-              setRoleFilter(value as RoleFilter);
-              setCurrentPage(1);
-            }}
-            options={ROLE_FILTER_OPTIONS}
-            className="h-10"
-          />
-
-          <Dropdown
-            value={superuserFilter}
-            onChange={(value) => {
-              setSuperuserFilter(value as SuperuserFilter);
-              setCurrentPage(1);
-            }}
-            options={SUPERUSER_FILTER_OPTIONS}
-            className="h-10"
-          />
+          <div className="flex flex-row gap-2 w-full lg:w-auto shrink-0 min-w-0">
+            <div className="flex-1 lg:w-44 min-w-0">
+              <Dropdown
+                value={roleFilter}
+                onChange={(value) => {
+                  setRoleFilter(value as RoleFilter);
+                  setCurrentPage(1);
+                }}
+                options={ROLE_FILTER_OPTIONS}
+                className="h-10 w-full"
+              />
+            </div>
+            <div className="flex-1 lg:w-44 min-w-0">
+              <Dropdown
+                value={superuserFilter}
+                onChange={(value) => {
+                  setSuperuserFilter(value as SuperuserFilter);
+                  setCurrentPage(1);
+                }}
+                options={SUPERUSER_FILTER_OPTIONS}
+                className="h-10 w-full"
+              />
+            </div>
+          </div>
+          
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead className="bg-slate-50 text-left text-slate-600">
-              <tr>
-                <th className="px-4 py-3 font-medium sm:px-6">
-                  <button type="button" onClick={() => handleSort("username")} className="inline-flex items-center gap-1.5">
-                    ชื่อผู้ใช้
-                    <ArrowUpDown className="h-3.5 w-3.5" />
-                  </button>
-                </th>
-                <th className="px-4 py-3 font-medium">อีเมล</th>
-                <th className="px-4 py-3 font-medium">
-                  <button type="button" onClick={() => handleSort("role")} className="inline-flex items-center gap-1.5">
-                    บทบาท
-                    <ArrowUpDown className="h-3.5 w-3.5" />
-                  </button>
-                </th>
-                <th className="px-4 py-3 font-medium">สิทธิ์หัวหน้า</th>
-                <th className="px-4 py-3 font-medium">
-                  <button type="button" onClick={() => handleSort("createdAt")} className="inline-flex items-center gap-1.5">
-                    วันที่สร้างบัญชี
-                    <ArrowUpDown className="h-3.5 w-3.5" />
-                  </button>
-                </th>
-                <th className="px-4 py-3 font-medium text-right sm:px-6">การจัดการ</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {isLoading && (
+        <div className="w-full min-w-0 overflow-hidden">
+          <div className="w-full overflow-x-auto">
+            <table className="w-full min-w-[800px] text-sm">
+              <thead className="bg-slate-50 text-left text-slate-600">
                 <tr>
-                  <td colSpan={6} className="px-6 py-10 text-center">
-                    <LoadingSpinner />
-                  </td>
+                  <th className="px-4 py-3 font-medium sm:px-6 whitespace-nowrap">
+                    <button type="button" onClick={() => handleSort("username")} className="inline-flex items-center gap-1.5 hover:text-blue-600">
+                      ชื่อผู้ใช้
+                      <ArrowUpDown className="h-3.5 w-3.5" />
+                    </button>
+                  </th>
+                  <th className="px-4 py-3 font-medium whitespace-nowrap">อีเมล</th>
+                  <th className="px-4 py-3 font-medium whitespace-nowrap">
+                    <button type="button" onClick={() => handleSort("role")} className="inline-flex items-center gap-1.5 hover:text-blue-600">
+                      บทบาท
+                      <ArrowUpDown className="h-3.5 w-3.5" />
+                    </button>
+                  </th>
+                  <th className="px-4 py-3 font-medium whitespace-nowrap">สิทธิ์หัวหน้า</th>
+                  <th className="px-4 py-3 font-medium whitespace-nowrap">
+                    <button type="button" onClick={() => handleSort("createdAt")} className="inline-flex items-center gap-1.5 hover:text-blue-600">
+                      วันที่สร้างบัญชี
+                      <ArrowUpDown className="h-3.5 w-3.5" />
+                    </button>
+                  </th>
+                  <th className="px-4 py-3 font-medium text-right sm:px-6 whitespace-nowrap">การจัดการ</th>
                 </tr>
-              )}
+              </thead>
 
-              {paginatedUsers.map((user) => {
-                const isUpdating = updatingUserId === user.id;
-                const isDeleting = isDeletingUserId === user.id;
-                const hasStaffLink = Boolean(user.staffId);
-                const canManageSuperuser = hasStaffLink && (user.isSuperuser || user.role === "nurse");
-
-                return (
-                  <tr key={user.id} className="border-t border-slate-100 text-slate-700">
-                    <td className="px-4 py-3 sm:px-6">
-                      <div className="font-medium text-gray-800">@{user.username}</div>
-                      <div className="text-xs text-slate-500">{user.name}</div>
-                    </td>
-                    <td className="px-4 py-3">{user.email}</td>
-                    <td className="px-4 py-3">
-                      <span className={cn("inline-flex rounded-full px-2.5 py-1 text-xs font-medium", getRoleBadgeClass(user.role))}>
-                        {toRoleLabel(user.role)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={cn(
-                          "inline-flex rounded-full px-2.5 py-1 text-xs font-medium",
-                          user.isSuperuser
-                            ? "bg-yellow-100 text-yellow-800"
-                            : "bg-slate-100 text-slate-600"
-                        )}
-                      >
-                        {user.isSuperuser ? "หัวหน้าศูนย์" : "ทั่วไป"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-slate-500">{formatDateTime(user.createdAt)}</td>
-                    <td className="px-4 py-3 sm:px-6">
-                      <div className="flex flex-wrap items-center justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleToggleSuperuser(user.id)}
-                          disabled={isUpdating || isDeleting || !canManageSuperuser}
-                          className={cn(
-                            "inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-40",
-                            user.isSuperuser
-                              ? "border border-orange-200 text-orange-700 hover:bg-orange-50"
-                              : "border border-blue-200 text-blue-700 hover:bg-blue-50"
-                          )}
-                        >
-                          {user.isSuperuser ? <ShieldOff className="h-3.5 w-3.5" /> : <ShieldCheck className="h-3.5 w-3.5" />}
-                          {user.isSuperuser ? "ถอนสิทธิ์หัวหน้า" : "มอบสิทธิ์หัวหน้า"}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteUser(user.id)}
-                          disabled={isUpdating || isDeleting || !hasStaffLink}
-                          className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1 text-xs font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                          ลบผู้ใช้
-                        </button>
-                      </div>
+              <tbody>
+                {isLoading && (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-10 text-center">
+                      <LoadingSpinner />
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                )}
 
-          {!isLoading && paginatedUsers.length === 0 && (
-            <div className="px-6 py-10 text-center text-sm text-slate-500">
-              ไม่พบข้อมูลผู้ใช้ตามเงื่อนไขที่เลือก
-            </div>
-          )}
+                {paginatedUsers.map((user) => {
+                  const isUpdating = updatingUserId === user.id;
+                  const isDeleting = isDeletingUserId === user.id;
+                  const hasStaffLink = Boolean(user.staffId);
+                  const canManageSuperuser = hasStaffLink && (user.role === "nurse");
+
+                  return (
+                    <tr key={user.id} className="border-t border-slate-100 text-slate-700 hover:bg-slate-50 transition-colors">
+                      <td className="px-4 py-3 sm:px-6 whitespace-nowrap">
+                        <div className="font-medium text-gray-800">@{user.username}</div>
+                        <div className="text-xs text-slate-500 max-w-[200px] truncate" title={user.name}>{user.name}</div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">{user.email}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className={cn("inline-flex rounded-full px-2.5 py-1 text-[11px] sm:text-xs font-medium", getRoleBadgeClass(user.role))}>
+                          {toRoleLabel(user.role)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span
+                          className={cn(
+                            "inline-flex rounded-full px-2.5 py-1 text-[11px] sm:text-xs font-medium",
+                            user.isSuperuser
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "bg-slate-100 text-slate-600"
+                          )}
+                        >
+                          {user.isSuperuser ? "หัวหน้าศูนย์" : "ทั่วไป"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">{formatDateTime(user.createdAt)}</td>
+                      <td className="px-4 py-3 sm:px-6 whitespace-nowrap">
+                        {/* 3. บังคับ flex-row (เรียงแนวนอนเสมอ) เพื่อไม่ให้ปุ่มตกลงมาซ้อนกันแบบในภาพล่าสุด */}
+                        <div className="flex flex-row items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleSuperuser(user.id)}
+                            disabled={isUpdating || isDeleting || !canManageSuperuser}
+                            className={cn(
+                              "inline-flex items-center gap-1 rounded-lg px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-40 whitespace-nowrap",
+                              user.isSuperuser
+                                ? "border border-orange-200 text-orange-700 hover:bg-orange-50"
+                                : "border border-blue-200 text-blue-700 hover:bg-blue-50"
+                            )}
+                          >
+                            {user.isSuperuser ? <ShieldOff className="h-3.5 w-3.5 shrink-0" /> : <ShieldCheck className="h-3.5 w-3.5 shrink-0" />}
+                            {user.isSuperuser ? "ถอนสิทธิ์" : "มอบสิทธิ์"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteUser(user.id)}
+                            disabled={isUpdating || isDeleting || !hasStaffLink}
+                            className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40 whitespace-nowrap"
+                          >
+                            <Trash2 className="h-3.5 w-3.5 shrink-0" />
+                            <span className="hidden sm:inline">ลบผู้ใช้</span>
+                            <span className="sm:hidden">ลบ</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+
+            {!isLoading && paginatedUsers.length === 0 && (
+              <div className="px-6 py-10 text-center text-sm text-slate-500">
+                ไม่พบข้อมูลผู้ใช้ตามเงื่อนไขที่เลือก
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 px-4 py-3 text-xs text-slate-500 sm:px-6">
-          <span>แสดง {startItem}-{endItem} จากทั้งหมด {filteredAndSortedUsers.length} รายการ</span>
-          <span>
+        {/* Footer ของตาราง */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-t border-slate-200 px-4 py-3 text-xs text-slate-500 sm:px-6 w-full min-w-0">
+          <span className="shrink-0">แสดง {startItem}-{endItem} จากทั้งหมด {filteredAndSortedUsers.length} รายการ</span>
+          <span className="truncate max-w-full">
             เรียงลำดับตาม {getSortLabel(sortField)} ({sortDirection === "asc" ? "น้อยไปมาก" : "มากไปน้อย"})
           </span>
         </div>

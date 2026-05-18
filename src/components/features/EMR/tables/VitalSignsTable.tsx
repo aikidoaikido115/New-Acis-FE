@@ -1161,9 +1161,9 @@ export function VitalSignsTable({ selectedFloor = "all", selectedStatus = "all",
   };
 
   const inputClassName =
-    "w-[54px] rounded border border-gray-300 bg-white px-1.5 py-1 text-center text-[11px] text-gray-900 focus:border-blue-500 focus:outline-none";
+    "w-full xl:w-[54px] rounded border border-gray-300 bg-white px-1.5 py-1 text-center text-[11px] text-gray-900 focus:border-blue-500 focus:outline-none";
   const abnormalInputClassName =
-    "w-[54px] rounded border border-rose-400 bg-rose-50 px-1.5 py-1 text-center text-[11px] text-rose-700 focus:border-rose-500 focus:outline-none";
+    "w-full xl:w-[54px] rounded border border-rose-400 bg-rose-50 px-1.5 py-1 text-center text-[11px] text-rose-700 focus:border-rose-500 focus:outline-none";
 
   const handleInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>, residentId: string) => {
     if (event.key !== "Enter") {
@@ -1222,14 +1222,15 @@ export function VitalSignsTable({ selectedFloor = "all", selectedStatus = "all",
   };
 
   return (
-    <div className="p-6 space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
+    <div className="p-3 sm:p-6 space-y-4 w-full max-w-[100vw] overflow-x-hidden min-w-0">
+      
+      <div className="w-full overflow-x-auto pb-2 scrollbar-none border-b border-gray-100">
+        <div className="flex w-max gap-2 px-1">
           {timeSlots.map((slot) => (
             <button
               key={slot.id}
               onClick={() => void handleSelectTimeSlot(slot.id)}
-              className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all ${
+              className={`shrink-0 flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all ${
                 selectedTime === slot.id
                   ? "bg-blue-500 text-white shadow-sm"
                   : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-200"
@@ -1240,86 +1241,89 @@ export function VitalSignsTable({ selectedFloor = "all", selectedStatus = "all",
             </button>
           ))}
         </div>
-
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-500">ค้างบันทึกหน้านี้ {dirtyCurrentPageResidents.length} รายการ</span>
-          <button
-            type="button"
-            onClick={() => setShowPreviousPlaceholder((prev) => !prev)}
-            className={`rounded border px-3 py-1.5 text-xs font-medium ${
-              showPreviousPlaceholder
-                ? "border-amber-300 bg-amber-50 text-amber-700"
-                : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-            }`}
-          >
-            {showPreviousPlaceholder ? "ซ่อนค่าก่อนหน้าในช่องว่าง" : "แสดงค่าก่อนหน้าในช่องว่าง"}
-          </button>
-          <button
-            type="button"
-            onClick={() => void handleSaveAllCurrentPage()}
-            disabled={isBulkSaving || dirtyCurrentPageResidents.length === 0}
-            className="rounded bg-emerald-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-600 disabled:opacity-60"
-          >
-            {isBulkSaving ? "กำลังบันทึกทั้งหมด" : "บันทึกทั้งหมด"}
-          </button>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-500">เรียงข้อมูล</span>
-          <Dropdown
-            options={[
-              { value: "room", label: "ห้อง (น้อยไปมาก)" },
-              { value: "temperature", label: "อุณหภูมิ" },
-              { value: "heartRate", label: "ชีพจร" },
-              { value: "bloodPressure", label: "ความดัน" },
-              { value: "oxygenSaturation", label: "O2" },
-              { value: "breathingRate", label: "หายใจ" },
-              { value: "bloodGlucose", label: "น้ำตาล" },
-              { value: "fluidIn", label: "น้ำเข้า" },
-              { value: "fluidOut", label: "น้ำออก" },
-              { value: "urineOutput", label: "ปัสสาวะ" },
-              { value: "stool", label: "อุจจาระ" },
-              { value: "diaperChange", label: "ผ้าอ้อม" },
-            ]}
-            value={sortField ?? "room"}
-            onChange={(next) => {
-              setCurrentPage(1);
-
-              if (next === "room") {
-                setSortField(null);
-                setSortDirection("asc");
-                return;
-              }
-
-              setSortField(next as SortField);
-              setSortDirection("asc");
-            }}
-            className="w-44"
-          />
-          {sortField ? (
-            <button
-              type="button"
-              onClick={() => setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"))}
-              className="rounded border border-blue-300 bg-blue-50 px-2 py-1 text-xs text-blue-700"
-            >
-              {sortDirection === "asc" ? "น้อยไปมาก" : "มากไปน้อย"}
-            </button>
-          ) : null}
-        </div>
-
-        <div className="flex items-center gap-1 rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-700">
-          <span>กำลังเรียงตาม:</span>
-          <span className="font-semibold text-slate-900">{getSortLabel(sortField)}</span>
-          {sortField ? (
-            sortDirection === "asc" ? <ArrowUp className="h-3.5 w-3.5 text-blue-700" /> : <ArrowDown className="h-3.5 w-3.5 text-blue-700" />
-          ) : (
-            <span className="text-slate-500">(น้อยไปมาก)</span>
-          )}
-        </div>
       </div>
 
-      <div className="hidden xl:block overflow-hidden rounded-lg" style={{ border: "1px solid rgba(103, 103, 103, 0.48)" }}>
-        <div>
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 min-w-0 w-full">
+        <div className="flex flex-col gap-2 w-full lg:w-auto min-w-0">
+          <span className="text-xs text-gray-500">ค้างบันทึกหน้านี้ {dirtyCurrentPageResidents.length} รายการ</span>
+          <div className="flex flex-col sm:flex-row gap-2 w-full min-w-0">
+            <button
+              type="button"
+              onClick={() => setShowPreviousPlaceholder((prev) => !prev)}
+              className={`w-full sm:w-auto rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
+                showPreviousPlaceholder
+                  ? "border-amber-300 bg-amber-50 text-amber-700"
+                  : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              {showPreviousPlaceholder ? "ซ่อนค่าก่อนหน้าในช่องว่าง" : "แสดงค่าก่อนหน้าในช่องว่าง"}
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleSaveAllCurrentPage()}
+              disabled={isBulkSaving || dirtyCurrentPageResidents.length === 0}
+              className="w-full sm:w-auto rounded-lg bg-emerald-500 px-3 py-2 text-xs font-medium text-white hover:bg-emerald-600 disabled:opacity-60 transition-colors"
+            >
+              {isBulkSaving ? "กำลังบันทึกทั้งหมด..." : "บันทึกทั้งหมด"}
+            </button>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1.5 w-full lg:w-auto min-w-0 bg-gray-50 p-3 rounded-lg border border-gray-100 lg:bg-transparent lg:p-0 lg:border-none">
+          <span className="text-xs text-gray-500 font-medium">เรียงข้อมูล</span>
+          <div className="flex items-center gap-2 w-full min-w-0">
+            <div className="flex-1 lg:w-44 min-w-0">
+              <Dropdown 
+                options={[
+                  { value: "room", label: "ห้อง (น้อยไปมาก)" },
+                  { value: "temperature", label: "อุณหภูมิ" },
+                  { value: "heartRate", label: "ชีพจร" },
+                  { value: "bloodPressure", label: "ความดัน" },
+                  { value: "oxygenSaturation", label: "O2" },
+                  { value: "breathingRate", label: "หายใจ" },
+                  { value: "bloodGlucose", label: "น้ำตาล" },
+                  { value: "fluidIn", label: "น้ำเข้า" },
+                  { value: "fluidOut", label: "น้ำออก" },
+                  { value: "urineOutput", label: "ปัสสาวะ" },
+                  { value: "stool", label: "อุจจาระ" },
+                  { value: "diaperChange", label: "ผ้าอ้อม" },
+                ]}
+                value={sortField ?? "room"}
+                onChange={(next) => {
+                  setCurrentPage(1);
+                  if (next === "room") {
+                    setSortField(null);
+                    setSortDirection("asc");
+                    return;
+                  }
+                  setSortField(next as SortField);
+                  setSortDirection("asc");
+                }}
+              />
+            </div>
+            {sortField ? (
+              <button
+                type="button"
+                onClick={() => setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"))}
+                className="shrink-0 flex items-center justify-center rounded-lg border border-blue-300 bg-blue-50 h-[38px] px-3 text-xs font-medium text-blue-700 transition-colors"
+              >
+                {sortDirection === "asc" ? "น้อยไปมาก" : "มากไปน้อย"}
+              </button>
+            ) : null}
+          </div>
+          <div className="flex items-center gap-1 text-[11px] text-slate-500 mt-1">
+            <span>กำลังเรียงตาม:</span>
+            <span className="font-semibold text-slate-800">{getSortLabel(sortField)}</span>
+            {sortField ? (
+              sortDirection === "asc" ? <ArrowUp className="h-3 w-3 text-blue-600" /> : <ArrowDown className="h-3 w-3 text-blue-600" />
+            ) : null}
+          </div>
+        </div>
+
+      </div>
+
+      <div className="hidden xl:block overflow-x-auto rounded-lg" style={{ border: "1px solid rgba(103, 103, 103, 0.48)" }}>
+        <div className="min-w-[1200px]">
           <table className="table-fixed w-full">
             <thead>
               <tr style={{ backgroundColor: "rgba(239, 242, 247, 1)", borderBottom: "1px solid rgba(103, 103, 103, 0.48)" }}>
@@ -1465,7 +1469,7 @@ export function VitalSignsTable({ selectedFloor = "all", selectedStatus = "all",
         </div>
       </div>
 
-      <div className="xl:hidden space-y-3">
+      <div className="xl:hidden space-y-4 w-full min-w-0">
         {isLoading ? (
           <div className="rounded-lg border border-gray-300 bg-white py-6 px-4 text-center">
             <LoadingSpinner />
@@ -1493,25 +1497,31 @@ export function VitalSignsTable({ selectedFloor = "all", selectedStatus = "all",
             return (
               <div
                 key={residentId}
-                className={`rounded-lg border px-3 py-3 ${isFailed ? "border-rose-300 bg-rose-50" : "border-gray-300 bg-white"}`}
+                className={`rounded-2xl border p-4 shadow-sm bg-white space-y-4 w-full min-w-0 overflow-hidden ${
+                  isFailed ? "border-rose-300 bg-rose-50/50" : "border-gray-200"
+                }`}
               >
-                <div className="mb-2 flex items-start justify-between gap-2">
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{residentName}</p>
-                    {roomLabel ? <p className="text-xs text-gray-500">{roomLabel}</p> : null}
-                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                      <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${hasPersisted ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
+                <div className="flex items-start justify-between gap-2 border-b border-gray-100 pb-3 min-w-0">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <p className="text-sm font-bold text-gray-900 flex-1 min-w-0 truncate" title={residentName}>{residentName}</p>
+                      {isDirty ? <span className="h-2 w-2 rounded-full bg-amber-500 shrink-0" /> : null}
+                    </div>
+                    {roomLabel ? <p className="text-xs text-gray-500 mt-0.5">{roomLabel}</p> : null}
+                    
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium whitespace-nowrap ${hasPersisted ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
                         {hasPersisted ? "มีข้อมูลแล้ว" : "ยังไม่เคยบันทึก"}
                       </span>
-                      {abnormalDraftKeys.size > 0 ? <span className="text-[10px] text-rose-600">มีค่าผิดปกติ</span> : null}
-                      {isDirty ? <span className="text-[10px] text-amber-600">ยังไม่บันทึก</span> : null}
-                      {isFailed ? <span className="text-[10px] text-rose-600">บันทึกล่าสุดไม่สำเร็จ</span> : null}
+                      {abnormalDraftKeys.size > 0 ? <span className="text-[10px] bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full font-medium whitespace-nowrap">มีค่าผิดปกติ</span> : null}
+                      {isDirty ? <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium whitespace-nowrap">ยังไม่บันทึก</span> : null}
+                      {isFailed ? <span className="text-[10px] bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full font-medium whitespace-nowrap">บันทึกล่าสุดไม่สำเร็จ</span> : null}
                     </div>
                   </div>
 
                   <button
                     type="button"
-                    className="text-blue-500 hover:text-blue-700 transition-colors"
+                    className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-full transition-colors shrink-0"
                     onClick={() => router.push(`/emr/${residentId}`)}
                     aria-label="ดูรายละเอียดผู้พัก"
                   >
@@ -1519,39 +1529,92 @@ export function VitalSignsTable({ selectedFloor = "all", selectedStatus = "all",
                   </button>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  <label className="text-[11px] text-gray-600">อุณหภูมิ {renderInput(residentId, "temperature", { isAbnormal: abnormalDraftKeys.has("temperature") })}</label>
-                  <label className="text-[11px] text-gray-600">ชีพจร {renderInput(residentId, "heartRate", { isAbnormal: abnormalDraftKeys.has("heartRate") })}</label>
-                  <label className="text-[11px] text-gray-600">O2 {renderInput(residentId, "oxygenSaturation", { isAbnormal: abnormalDraftKeys.has("oxygenSaturation") })}</label>
-                  <label className="text-[11px] text-gray-600">หายใจ {renderInput(residentId, "breathingRate", { isAbnormal: abnormalDraftKeys.has("breathingRate") })}</label>
-                  <label className="text-[11px] text-gray-600">น้ำตาล {renderInput(residentId, "bloodGlucose", { isAbnormal: abnormalDraftKeys.has("bloodGlucose") })}</label>
-                  <label className="text-[11px] text-gray-600">น้ำเข้า {renderInput(residentId, "fluidIn", { isAbnormal: abnormalDraftKeys.has("fluidIn") })}</label>
-                  <label className="text-[11px] text-gray-600">น้ำออก {renderInput(residentId, "fluidOut", { isAbnormal: abnormalDraftKeys.has("fluidOut") })}</label>
-                  <label className="text-[11px] text-gray-600">อุจจาระ {renderInput(residentId, "stool", { isAbnormal: abnormalDraftKeys.has("stool") })}</label>
-                  <label className="text-[11px] text-gray-600">ผ้าอ้อม {renderInput(residentId, "diaperChange", { isAbnormal: abnormalDraftKeys.has("diaperChange") })}</label>
-                  <label className="text-[11px] text-gray-600">ความดันบน {renderInput(residentId, "bloodPressureSystolic", { isAbnormal: abnormalDraftKeys.has("bloodPressureSystolic") })}</label>
-                  <label className="text-[11px] text-gray-600">ความดันล่าง {renderInput(residentId, "bloodPressureDiastolic", { isAbnormal: abnormalDraftKeys.has("bloodPressureDiastolic") })}</label>
-                  <div className="col-span-2 sm:col-span-3">
-                    <div className="flex items-end gap-2">
-                      <label className="text-[11px] text-gray-600">ปัสสาวะ {renderInput(residentId, "urineOutput", { isAbnormal: abnormalDraftKeys.has("urineOutput") })}</label>
-                      <button
-                        type="button"
-                        onClick={() => handleDraftChange(residentId, "urineType", urineType === "times" ? "ml" : "times")}
-                        className="rounded border border-gray-300 bg-white px-2 py-1 text-[10px] text-gray-700 hover:bg-gray-50"
-                        title="สลับหน่วยปัสสาวะ"
-                      >
-                        หน่วย: {urineType === "times" ? "ครั้ง" : "มล."}
-                      </button>
+                <div className="space-y-3 min-w-0">
+                  <div className="grid grid-cols-2 gap-3 min-w-0">
+                    <div className="min-w-0">
+                      <label className="text-[11px] font-medium text-gray-500 block mb-1 truncate" title="อุณหภูมิ (°C)">อุณหภูมิ (°C)</label>
+                      {renderInput(residentId, "temperature", { isAbnormal: abnormalDraftKeys.has("temperature") })}
+                    </div>
+                    <div className="min-w-0">
+                      <label className="text-[11px] font-medium text-gray-500 block mb-1 truncate" title="ชีพจร (ครั้ง/นาที)">ชีพจร (ครั้ง/นาที)</label>
+                      {renderInput(residentId, "heartRate", { isAbnormal: abnormalDraftKeys.has("heartRate") })}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 min-w-0">
+                    <div className="min-w-0">
+                      <label className="text-[11px] font-medium text-gray-500 block mb-1 truncate" title="ความดันบน (SYS)">ความดันบน (SYS)</label>
+                      {renderInput(residentId, "bloodPressureSystolic", { isAbnormal: abnormalDraftKeys.has("bloodPressureSystolic") })}
+                    </div>
+                    <div className="min-w-0">
+                      <label className="text-[11px] font-medium text-gray-500 block mb-1 truncate" title="ความดันล่าง (DIA)">ความดันล่าง (DIA)</label>
+                      {renderInput(residentId, "bloodPressureDiastolic", { isAbnormal: abnormalDraftKeys.has("bloodPressureDiastolic") })}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 min-w-0">
+                    <div className="min-w-0">
+                      <label className="text-[11px] font-medium text-gray-500 block mb-1 truncate" title="O2 Saturation (%)">O2 Saturation (%)</label>
+                      {renderInput(residentId, "oxygenSaturation", { isAbnormal: abnormalDraftKeys.has("oxygenSaturation") })}
+                    </div>
+                    <div className="min-w-0">
+                      <label className="text-[11px] font-medium text-gray-500 block mb-1 truncate" title="การหายใจ (ครั้ง/นาที)">การหายใจ (ครั้ง/นาที)</label>
+                      {renderInput(residentId, "breathingRate", { isAbnormal: abnormalDraftKeys.has("breathingRate") })}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 min-w-0">
+                    <div className="min-w-0">
+                      <label className="text-[11px] font-medium text-gray-500 block mb-1 truncate" title="น้ำตาลในเลือด (DTX)">น้ำตาลในเลือด (DTX)</label>
+                      {renderInput(residentId, "bloodGlucose", { isAbnormal: abnormalDraftKeys.has("bloodGlucose") })}
+                    </div>
+                    <div className="min-w-0">
+                      <label className="text-[11px] font-medium text-gray-500 block mb-1 truncate" title="สารน้ำเข้า (Fluid In)">สารน้ำเข้า (Fluid In)</label>
+                      {renderInput(residentId, "fluidIn", { isAbnormal: abnormalDraftKeys.has("fluidIn") })}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 min-w-0">
+                    <div className="min-w-0">
+                      <label className="text-[11px] font-medium text-gray-500 block mb-1 truncate" title="สารน้ำออก (Fluid Out)">สารน้ำออก (Fluid Out)</label>
+                      {renderInput(residentId, "fluidOut", { isAbnormal: abnormalDraftKeys.has("fluidOut") })}
+                    </div>
+                    <div className="min-w-0">
+                      <label className="text-[11px] font-medium text-gray-500 block mb-1 truncate" title="อุจจาระ (ครั้ง)">อุจจาระ (ครั้ง)</label>
+                      {renderInput(residentId, "stool", { isAbnormal: abnormalDraftKeys.has("stool") })}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 min-w-0">
+                    <div className="min-w-0">
+                      <label className="text-[11px] font-medium text-gray-500 block mb-1 truncate" title="เปลี่ยนผ้าอ้อม (ครั้ง)">เปลี่ยนผ้าอ้อม (ครั้ง)</label>
+                      {renderInput(residentId, "diaperChange", { isAbnormal: abnormalDraftKeys.has("diaperChange") })}
+                    </div>
+                    <div className="min-w-0 flex flex-col">
+                      <label className="text-[11px] font-medium text-gray-500 block mb-1 truncate" title="ปัสสาวะ">ปัสสาวะ</label>
+                      <div className="flex items-center gap-1.5 w-full min-w-0">
+                        <div className="flex-1 min-w-0">
+                          {renderInput(residentId, "urineOutput", { isAbnormal: abnormalDraftKeys.has("urineOutput") })}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleDraftChange(residentId, "urineType", urineType === "times" ? "ml" : "times")}
+                          className="shrink-0 rounded-lg border border-gray-300 bg-gray-50 px-2 py-1 text-[10px] font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+                          title="สลับหน่วยปัสสาวะ"
+                        >
+                          {urineType === "times" ? "ครั้ง" : "มล."}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-3">
+                <div className="flex flex-col gap-2 pt-3 border-t border-gray-100 min-w-0">
                   <button
                     type="button"
                     onClick={() => handlePullPreviousRow(residentId)}
                     disabled={!hasPrevious}
-                    className="mb-2 w-full rounded border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-60"
+                    className="w-full rounded-xl border border-amber-300 bg-amber-50/70 py-2.5 text-xs font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-50 transition-colors truncate px-2"
                   >
                     ดึงค่าก่อนหน้า (เติมเฉพาะช่องว่าง)
                   </button>
@@ -1559,9 +1622,9 @@ export function VitalSignsTable({ selectedFloor = "all", selectedStatus = "all",
                     type="button"
                     onClick={() => void handleSaveRow(residentId)}
                     disabled={isSaving}
-                    className="w-full rounded bg-blue-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-600 disabled:opacity-60"
+                    className="w-full rounded-xl bg-blue-500 py-2.5 text-xs font-semibold text-white hover:bg-blue-600 disabled:opacity-50 transition-colors shadow-sm truncate px-2"
                   >
-                    {isSaving ? "กำลังบันทึก" : "บันทึกข้อมูลแถวนี้"}
+                    {isSaving ? "กำลังบันทึก..." : "บันทึกข้อมูล"}
                   </button>
                 </div>
               </div>
@@ -1570,7 +1633,7 @@ export function VitalSignsTable({ selectedFloor = "all", selectedStatus = "all",
         )}
       </div>
 
-      <div className="flex justify-end">
+      <div className="flex justify-center sm:justify-end w-full overflow-x-auto pb-2 scrollbar-none">
         <Pagination currentPage={sortedSafeCurrentPage} totalPages={sortedTotalPages} onPageChange={setCurrentPage} />
       </div>
       {confirmDialog}

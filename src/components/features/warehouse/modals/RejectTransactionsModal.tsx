@@ -9,28 +9,38 @@ import {
   warehouseDangerButtonClassName,
   warehouseDisabledButtonClassName,
   warehouseLabelClassName,
-  warehouseTextareaClassName } from "../../../shared/warehouse/modal";
+  warehouseTextareaClassName,
+} from "../../../shared/warehouse/modal";
 
 interface RejectTransactionsModalProps {
   count: number;
   onClose: () => void;
-  onConfirm: (reason: string) => void;
+  onConfirm: (reason: string) => Promise<void> | void;
 }
 
-export function RejectTransactionsModal({ count, onClose, onConfirm }: RejectTransactionsModalProps) {
+export function RejectTransactionsModal({
+  count,
+  onClose,
+  onConfirm,
+}: RejectTransactionsModalProps) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [reason, setReason] = useState("");
   const [showValidation, setShowValidation] = useState(false);
 
   const canSubmit = reason.trim().length > 0;
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setShowValidation(true);
-    if (!canSubmit) {
+    if (!canSubmit || isSubmitting) {
       return;
     }
-
-    onConfirm(reason.trim());
+    setIsSubmitting(true);
+    try {
+      await onConfirm(reason.trim());
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -38,9 +48,7 @@ export function RejectTransactionsModal({ count, onClose, onConfirm }: RejectTra
       <WarehouseModalHeader title="ไม่อนุมัติรายการ" onClose={onClose} />
       <form onSubmit={handleSubmit}>
         <div className="space-y-5 px-7 py-5">
-          <p className="text-body-large leading-6 text-[#262626]">
-            คุณไม่อนุมัติ {count} รายการ กรุณาระบุเหตุผล
-          </p>
+          <p className="text-body-large leading-6 text-[#262626]">คุณไม่อนุมัติ {count} รายการ กรุณาระบุเหตุผล</p>
 
           <div>
             <label htmlFor="reject-reason" className={warehouseLabelClassName}>
@@ -53,19 +61,21 @@ export function RejectTransactionsModal({ count, onClose, onConfirm }: RejectTra
               onChange={(event) => setReason(event.target.value)}
               placeholder="กรุณาใส่เหตุผล"
               className={`${warehouseTextareaClassName} ${showValidation && !canSubmit ? "border-[#FF7A7A]" : ""}`}
+              disabled={isSubmitting}
             />
           </div>
         </div>
 
         <WarehouseModalFooter>
-          <button type="button" onClick={onClose} className={warehouseCancelButtonClassName}>
+          <button type="button" onClick={onClose} disabled={isSubmitting} className={warehouseCancelButtonClassName}>
             ยกเลิก
           </button>
           <button
             type="submit"
+            disabled={!canSubmit || isSubmitting}
             className={canSubmit ? warehouseDangerButtonClassName : warehouseDisabledButtonClassName}
           >
-            ยืนยันไม่อนุมัติ
+            {isSubmitting ? "กำลังดำเนินการ..." : "ยืนยันไม่อนุมัติ"}
           </button>
         </WarehouseModalFooter>
       </form>
